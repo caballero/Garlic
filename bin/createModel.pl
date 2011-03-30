@@ -120,9 +120,24 @@ pod2usage(-verbose => 2) if (defined $help);
 pod2usage(-verbose => 2) unless (defined $model);
 
 # Configurable parameters
-my $get         = 'wget -q'; # use this command to fetch files from internet
-my $ucsc        = 'http://hgdownload.cse.ucsc.edu/goldenPath';
+my $get         = 'wget -q'; # command to fetch files from internet
+my $unpack      = 'tar zxf'; # command to unpack the files downloaded
+my $ucsc        = 'http://hgdownload.cse.ucsc.edu/goldenPath'; # UCSC url
 my $ucsc_genome = "$ucsc/$model/bigZips/chromFa.tar.gz";
 my $ucsc_repeat = "$ucsc/$model/bigZips/chromOut.tar.gz";
 my $ucsc_trf    = "$ucsc/$model/bigZips/chromTrf.tar.gz";
 my $ucsc_gene   = "$ucsc/$model/database/ensGene.txt.gz"; 
+
+mkdir "$dir"        unless (-d "$dir");
+mkdir "$dir/$model" unless (-d "$dir/$model");
+chdir "$dir/$model";
+
+unless (defined $fasta) {
+    # Grab files from UCSC
+    mkdir 'fasta' unless (-d 'fasta');
+    chdir 'fasta';
+    system ("$get $ucsc_genome");
+    die "cannot find genomic sequences in $ucsc_genome" unless (-e 'chromFa.tar.gz');
+    system ($unpack 'chromFa.tar.gz');
+    opendir D, '.' or die "cannot read local directory\n";
+}
