@@ -39,8 +39,10 @@ new sequence generated.
 REQUERIMENTS
 
 - Perl
-- Models
-- RepBase consensus sequences
+- Genome models. You can download from: [] 
+  or create your own, see below.
+- RepBase consensus sequences. You need to download the EMBL file from RepBase
+  (registration required) and put the file in data/repbase [suggested]. 
 
 USAGE
 
@@ -54,10 +56,21 @@ For more options, please read the documentation using:
 
 2. Train a new model
 
-You can obtain the model from out website, 
+You can obtain the models from our website, we are currently suporting some
+organisms with complete annotation in the UCSC Genome Database:
+[http://hgdownload.cse.ucsc.edu/downloads.html]
 
+You can create your own model fetching the data from the UCSC site:
 
-perl model
+  perl createModel.pl -m hg19
+
+Also you can use your own sequences and annotations to create a model:
+
+  perl createModel.pl -m myOrg -f myOrg.fa -r myOrg_RM.out -t myOrg_TRF.out -g myOrg_Genes.table
+
+Please read the documentation using:
+
+  perl createModel.pl --help
 
 CITATION
 
