@@ -27,9 +27,12 @@ OPTIONS
     -r --repeats  RepeatMasker output               FileName*
     -t --trf      TRF output                        FileName*
     -g --genes    Gene annotation                   FileName*
+    -e --exclude  Exclude this sequences            Pattern**
 
-  * File can be compressed (.gz/.bz2), if you are passing more than one file
-    separate them with ',' Example: -f chr1.fa,chr2.fa,chr3.fa
+   * File can be compressed (.gz/.bz2), if you are passing more than one file
+     separate them with ',' Example: "-f chr1.fa,chr2.fa,chr3.fa"
+  ** This pattern will match the fasta files. Example: "-e hap1" will exclude
+     all files with "hap1" in the name.
     
 =head1 EXAMPLES
 
@@ -89,6 +92,7 @@ use strict;
 use warnings;
 use Getopt::Long;
 use Pod::Usage;
+use File::Find;
 
 # Parameters initialization
 my $model      = undef;      # Model definition
@@ -102,6 +106,7 @@ my $gene       = undef;      # Gene annotation
 my $help       = undef;      # Help flag
 my $verbose    = undef;      # Verbose mode flag
 my $rm_tmp     = undef;      # Remove downloaded files
+my $exclude    = undef;
 
 GetOptions(
     'h|help'           => \$help,
@@ -114,6 +119,7 @@ GetOptions(
     'r|repeat:s'       => \$repeat,
     't|trf:s'          => \$trf,
     'g|gene:s'         => \$gene,
+    'e|exclude:s'      => \$exclude,
     'rm_tmp'           => \$rm_tmp
 ) or pod2usage(-verbose => 2);
 pod2usage(-verbose => 2) if (defined $help);
@@ -128,16 +134,38 @@ my $ucsc_repeat = "$ucsc/$model/bigZips/chromOut.tar.gz";
 my $ucsc_trf    = "$ucsc/$model/bigZips/chromTrf.tar.gz";
 my $ucsc_gene   = "$ucsc/$model/database/ensGene.txt.gz"; 
 
-mkdir "$dir"        unless (-d "$dir");
-mkdir "$dir/$model" unless (-d "$dir/$model");
+# Check directories, create them if required
+unless (-d "$dir") {
+    warn "creating directory $dir\n" if (defined $verbose);
+    mkdir "$dir";
+}
+unless (-d "$dir/$model") {
+    warn "creating directory $dir/$model\n" if (defined $verbose);
+    chdir "$dir/$model";
+}
+warn "moving to $dir/$model\n" if (defined $verbose);
 chdir "$dir/$model";
 
+# Check fasta files
 unless (defined $fasta) {
     # Grab files from UCSC
+    warn "obtaining fasta files from $ucsc\n" if (defined $verbose);
     mkdir 'fasta' unless (-d 'fasta');
     chdir 'fasta';
     system ("$get $ucsc_genome");
-    die "cannot find genomic sequences in $ucsc_genome" unless (-e 'chromFa.tar.gz');
-    system ($unpack 'chromFa.tar.gz');
-    opendir D, '.' or die "cannot read local directory\n";
+    die "cannot find genomic sequences in $ucsc_genome" unless (-e 'chromFa.tar.gz' and -s 'chromFa.tar.gz');
+    warn "unpacking TAR\n" if (defined $verbose);
+    system ("$unpack chromFa.tar.gz");
+    warn "searching fasta files\n" if (defined $verbose);
+    $fasta = searchFiles('fa', '.');
+}
+
+
+## SUBROUTINES
+
+# searchFiles => check a directory for a specific pattern of files
+# call: searchFiles(PATTTERN, DIRECTORY)
+# return: list of files separated with ','
+sub searchFiles {
+    
 }
