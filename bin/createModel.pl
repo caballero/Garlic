@@ -273,7 +273,8 @@ sub maskRepeat {
             $ini = $arr[5];
             $end = $arr[6];
             $len = $end - $ini;
-            substr ($seq{$seq}, $ini - 1, $len) = 'N' x $len;
+            $ss  = substr ($seq{$seq}, $ini - 1, $len);
+            substr ($seq{$seq}, $ini - 1, $len) = lc $ss;
         }
         close FH;
     }
@@ -293,7 +294,8 @@ sub maskTRF {
             $ini = $arr[1];
             $end = $arr[2];
             $len = $end - $ini;
-            substr ($seq{$seq}, $ini - 1, $len) = 'N' x $len;
+            $ss  = substr ($seq{$seq}, $ini - 1, $len);
+            substr ($seq{$seq}, $ini - 1, $len) = lc $ss;
         }
         close FH;
     }
@@ -313,7 +315,8 @@ sub maskGenes {
             $ini = $arr[4];
             $end = $arr[5];
             $len = $end - $ini;
-            substr ($seq{$seq}, $ini - 1, $len) = 'N' x $len;
+            $ss  = substr ($seq{$seq}, $ini - 1, $len);
+            substr ($seq{$seq}, $ini - 1, $len) = lc $ss;
         }
         close FH;
     }
@@ -337,5 +340,36 @@ sub removeTmp {
     foreach my $file (@files) {
         system ("rm -rf $file"); 
     }
+}
+
+sub calcGC {
+    my $seq = shift @_;
+    my $len = $seq =~ tr/ACGTacgt/ACGTacgt/;
+    my $ngc = $seq =~ tr/CGcg/CGcg/;
+    return 'NA' if ($len < 1);
+
+    my $gc  = $ngc / $len;
+    if    ($gc <  5) { $gc =  '0-5'  ; }
+    elsif ($gc < 10) { $gc =  '5-10' ; }
+    elsif ($gc < 15) { $gc = '10-15' ; }    
+    elsif ($gc < 20) { $gc = '15-20' ; }   
+    elsif ($gc < 25) { $gc = '20-25' ; }
+    elsif ($gc < 30) { $gc = '25-30' ; }
+    elsif ($gc < 35) { $gc = '30-35' ; }
+    elsif ($gc < 40) { $gc = '35-40' ; }
+    elsif ($gc < 45) { $gc = '40-45' ; }
+    elsif ($gc < 50) { $gc = '45-50' ; }
+    elsif ($gc < 55) { $gc = '50-55' ; }
+    elsif ($gc < 60) { $gc = '55-60' ; }   
+    elsif ($gc < 65) { $gc = '60-65' ; }
+    elsif ($gc < 70) { $gc = '65-70' ; }
+    elsif ($gc < 75) { $gc = '70-75' ; }
+    elsif ($gc < 80) { $gc = '75-80' ; }
+    elsif ($gc < 85) { $gc = '80-85' ; }
+    elsif ($gc < 90) { $gc = '85-90' ; }
+    elsif ($gc < 95) { $gc = '90-95' ; }
+    else             { $gc = '95-100'; }
+    
+    return $gc;
 }
     
