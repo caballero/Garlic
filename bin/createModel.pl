@@ -6,7 +6,8 @@ createModel.pl
 
 =head1 DESCRIPTION
 
-This script creates a background model for a genome, computing the composition of the non-functional sequences and the elements presented naturally.
+This script creates a background model for a genome, computing the composition
+of the non-functional sequences and the elements presented naturally.
 
 =head1 USAGE
 
@@ -28,18 +29,23 @@ OPTIONS
     -g --genes         Gene annotation               FileName*
     -e --exclude       Exclude this sequences        Pattern**
     
-    --mask_repeat      Mask intersersed repeats*** 
-    --mask_trf         Mask simple repeats***
-    --no_mask_gene     No mask genes
+    --mask_repeat      Do intersersed repeats masking*** 
+    --mask_trf         Do simple repeats masking***
+    --no_mask_gene     Don't mask genes
+    --no_repeat_table  Don't create repeats table
+    --no_kmer_table    Don't compute k-mer composition
 
-    * File can be compressed (.gz/.bz2), if you are passing more than one file separate them with ',' Example: "-f chr1.fa,chr2.fa,chr3.fa"
-   ** This pattern will match the fasta files. Example: "-e hap1" will exclude all files with "hap1" in the name.
-  *** UCSC Genome Database sequences are repeats hard-masked.
+  * File can be compressed (.gz/.bz2), if you are passing more than one file 
+    separate them with ',' Example: "-f chr1.fa,chr2.fa,chr3.fa"
+ ** This pattern will match the fasta files. Example: "-e hap1" will exclude 
+    all files with "hap1" in the name.
+*** UCSC Genome Database sequences are repeat soft-masked.
     
 =head1 EXAMPLES
 
-You can obtain the models from our website, we are currently suporting some organisms with complete annotation in the UCSC Genome Database:
-[http://hgdownload.cse.ucsc.edu/downloads.html]
+You can obtain the models from our website, we are currently suporting some 
+organisms with complete annotation in the UCSC Genome Database:
+<http://hgdownload.cse.ucsc.edu/downloads.html>
 
 You can create your own model fetching the data from the UCSC site:
 
@@ -51,13 +57,17 @@ The model names are according to UCSC, like:
   - mm9     -> mouse genome release 9
   - equCab2 -> horse genome release 2
 
-This script will download the required files and process it. Caution, the files are really big and the download time could be large.
+This script will download the required files and process it. Caution, the files
+are really big and the download time could be large.
 
 Also you can use your own sequences and annotations to create a model:
 
   perl createModel.pl -m myOrg -f myOrg.fa -r myOrg_RM.out -t myOrg_TRF.out -g myOrg_Genes.table
 
-In this case you must provide the sequences in a Fasta file, the RepeatMasker output, the Tandem Repeat Finder output and the annotated genes in a tabular text file with column 3 indicating the chromosome, column 5 the starting coordinate and column 6 indicating the ending coordinate.
+In this case you must provide the sequences in a Fasta file, the RepeatMasker 
+output, the Tandem Repeat Finder output and the annotated genes in a tabular 
+text file with column 3 indicating the chromosome, column 5 the starting 
+coordinate and column 6 indicating the ending coordinate.
   
 =head1 AUTHOR
 
@@ -69,11 +79,16 @@ jcaballero@systemsbiology.org
 
 =head1 LICENSE
 
-This is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+This is free software: you can redistribute it and/or modify it under the terms
+of the GNU General Public License as published by the Free Software Foundation, 
+either version 3 of the License, or (at your option) any later version.
 
-This is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+This is distributed in the hope that it will be useful, but WITHOUT ANY 
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along with code.  If not, see <http://www.gnu.org/licenses/>.
+You should have received a copy of the GNU General Public License along with 
+code.  If not, see <http://www.gnu.org/licenses/>.
 
 =cut
 
@@ -96,33 +111,40 @@ my $help            = undef;      # Help flag
 my $verbose         = undef;      # Verbose mode flag
 my $rm_tmp          = undef;      # Remove downloaded files
 my $exclude         = undef;      # Exclude sequence name pattern
-my $mask_repeat     = 1;          # No masking flag
-my $mask_trf        = 1;          # No masking flag
-my $no_mask_gene    = undef;      # No masking flag
+my $mask_repeat     = undef;      # Repeat masking flag
+my $mask_trf        = undef;      # TRF masking flag
+my $no_mask_gene    = undef;      # Gene masking flag
+my $no_repeat_table = undef;      # No repeats profile flag
+my $no_kmer_table   = undef;      # No kmer profile flag
 
+# Fetch options
 GetOptions(
-    'h|help'         => \$help,
-    'v|verbose'      => \$verbose,
-    'm|model=s'      => \$model,
-    'd|dir:s'        => \$dir,
-    'k|kmer:i'       => \$kmer,
-    'w|win:i'        => \$win,
-    'f|fasta:s'      => \$fasta,
-    'r|repeat:s'     => \$repeat,
-    't|trf:s'        => \$trf,
-    'g|gene:s'       => \$gene,
-    'e|exclude:s'    => \$exclude,
-    'rm_tmp'         => \$rm_tmp,
-    'mask_repeat'    => \$mask_repeat,
-    'mask_trf'       => \$mask_trf,
-    'no_mask_gene'   => \$no_mask_gene
+    'h|help'          => \$help,
+    'v|verbose'       => \$verbose,
+    'm|model=s'       => \$model,
+    'd|dir:s'         => \$dir,
+    'k|kmer:i'        => \$kmer,
+    'w|win:i'         => \$win,
+    'f|fasta:s'       => \$fasta,
+    'r|repeat:s'      => \$repeat,
+    't|trf:s'         => \$trf,
+    'g|gene:s'        => \$gene,
+    'e|exclude:s'     => \$exclude,
+    'rm_tmp'          => \$rm_tmp,
+    'mask_repeat'     => \$mask_repeat,
+    'mask_trf'        => \$mask_trf,
+    'no_mask_gene'    => \$no_mask_gene,
+    'no_repeat_table' => \$no_repeat_table,
+    'no_kmer_table'   => \$no_kmer_table 
 ) or pod2usage(-verbose => 2);
+
+# Call help if required
 pod2usage(-verbose => 2) if (defined $help);
 pod2usage(-verbose => 2) unless (defined $model);
 
 # Configurable parameters
 my $get           = 'wget -c'; # command to fetch files from internet
-$get .= ' -q' unless (defined $verbose);
+   $get          .= ' -q' unless (defined $verbose);
 my $unpack        = 'tar zxf'; # command to unpack the files downloaded
 my $ucsc          = 'http://hgdownload.cse.ucsc.edu/goldenPath'; # UCSC url
 my $ucsc_genome   = "$ucsc/$model/bigZips/chromFa.tar.gz";
@@ -136,7 +158,10 @@ my @repeat   = ();
 my @trf      = ();
 my @gene     = ();
 my %seq      = ();
-my ($seq, $ini, $end, $len); 
+my %data     = ();
+my %kmer     = ();
+my ($seq, $seq_id, $ini, $end, $len); 
+my @gc = qw/0-5 5-10 10-15 15-20 20-25 25-30 30-35 35-40 40-45 45-50 50-55 55-60 65-70 70-75 75-80 80-85 85-90 90-95 95-100/;
 
 # Check directories, create them if required
 unless (-e "$dir" and -d "$dir") {
@@ -170,10 +195,10 @@ maskTRF()      if (defined $mask_trf);
 maskGene() unless (defined $no_mask_gene);
 
 # Create the K-mer/Window table
-profileSeq();
+profileSeq() unless (defined $no_kmer_table);
 
 # Create the Repeat Table
-profileRepeat();
+profileRepeat() unless (defined $no_repeat_table);
 
 removeTmp() if (defined $rm_tmp);
 
@@ -239,7 +264,6 @@ sub getUCSC_fasta {
 
 sub readFasta {
     warn "loading fasta sequences\n" if (defined $verbose);
-    my $id = undef;
     foreach my $file (@fasta) {
         if (defined $exclude) {
             next if ($file =~ m/$exclude/);
@@ -251,8 +275,8 @@ sub readFasta {
         open FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
             chomp;
-            if (m/^>(\S+?)/) { $id = $1;        }
-            else             { $seq{$id} .= $_; }
+            if (m/^>(\S+?)/) { $seq_id = $1;        }
+            else             { $seq{$seq_id} .= $_; }
         }
         close FH;
     }
@@ -268,13 +292,13 @@ sub maskRepeat {
         while (<FH>) {
             s/^\s*//;
             my @arr = split (/\s+/, $_);
-            $seq = $arr[4];
-            next unless (defined $seq{$seq});
+            $seq_id = $arr[4];
+            next unless (defined $seq{$seq_id});
             $ini = $arr[5];
             $end = $arr[6];
             $len = $end - $ini;
-            $ss  = substr ($seq{$seq}, $ini - 1, $len);
-            substr ($seq{$seq}, $ini - 1, $len) = lc $ss;
+            $ss  = substr ($seq{$seq_id}, $ini - 1, $len);
+            substr ($seq{$seq_id}, $ini - 1, $len) = lc $ss;
         }
         close FH;
     }
@@ -289,13 +313,13 @@ sub maskTRF {
         open FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
             my @arr = split (/\t/, $_);
-            $seq = $arr[0];
-            next unless (defined $seq{$seq});
+            $seq_id = $arr[0];
+            next unless (defined $seq{$seq_id});
             $ini = $arr[1];
             $end = $arr[2];
             $len = $end - $ini;
-            $ss  = substr ($seq{$seq}, $ini - 1, $len);
-            substr ($seq{$seq}, $ini - 1, $len) = lc $ss;
+            $ss  = substr ($seq{$seq_id}, $ini - 1, $len);
+            substr ($seq{$seq_id}, $ini - 1, $len) = lc $ss;
         }
         close FH;
     }
@@ -310,13 +334,13 @@ sub maskGenes {
         open FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
             my @arr = split (/\t/, $_);
-            $seq = $arr[2];
-            next unless (defined $seq{$seq});
+            $seq_id = $arr[2];
+            next unless (defined $seq{$seq_id});
             $ini = $arr[4];
             $end = $arr[5];
             $len = $end - $ini;
-            $ss  = substr ($seq{$seq}, $ini - 1, $len);
-            substr ($seq{$seq}, $ini - 1, $len) = lc $ss;
+            $ss  = substr ($seq{$seq_id}, $ini - 1, $len);
+            substr ($seq{$seq_id}, $ini - 1, $len) = lc $ss;
         }
         close FH;
     }
@@ -324,7 +348,54 @@ sub maskGenes {
 
 sub profileSeq {
     warn "profiling sequences, k-mer=$kmer and window=$win\n" if (defined $verbose);
-    
+    my $bp_slices = 0;
+    createKmer($kmer - 1);
+    foreach $seq_id (keys %seq) {
+	warn "  analyzing sequence $seq_id\n" if (defined $verbose);
+        $seq = $seq{$seq_id};
+	$seq =~ s/[^ACGT]/N/g;
+	$seq =~ s/N+/N/g;
+	for (my $i = 0; $i <= (length $seq) - $win; $i++) {
+	    my $slice = substr ($seq, $i, $win);
+	    next if ($slice =~ m/N/);
+	    $bp_slices += $win;
+	    my $gc = calcGC($slice);
+	    for (my $j = 0; $j <= $win - $kmer; $j++) {
+	        my $kmer = substr ($slice, $j, $kmer);
+		$data{$gc}{$kmer}++;
+	    }
+        }
+    }
+    warn "  $bp_slices bases analyzed\n" if (defined $verbose);
+    my $file = "$model.K$kmer.W$win.data";
+    warn "writing k-mer profile in $file\n" if (defined $verbose);
+    open K, ">$file" or die "cannot write file $file\n";
+    foreach my $gc (@gc) {
+	print K "#GC=$gc\n";
+	foreach my $word (@kmer) {
+            my $tot = 0;
+	    foreach my $b (@bases) {
+                $tot += $data{$gc}{"$word$b"} if (defined $data{$gc}{"$word$b"});
+	    }
+	    if ($tot > 0) {
+		foreach my $b (@bases) {
+		    my $cnt = 0;
+		    $cnt = $data{$gc}{"$word$b"} if (defined $data{$gc}{"$word$b"});
+		    $frq = sprintf ("%.8f", $cnt / $tot);
+		    print K "$word$b\t$frq\t$cnt\n";
+	        }
+	    }
+	    else {
+		foreach my $b (@bases) {
+		    print K "$word$b\t0.25\t0\n";
+	        }
+	    }
+        }
+    }
+}
+
+sub createKmer {
+
 }
 
 sub profileRepeat{
@@ -333,6 +404,7 @@ sub profileRepeat{
 }
 
 sub removeTmp {
+    warn "removing temporary files\n" if (defined $verbose);
     my @files = @gene;
     push @files, 'fasta';
     push @files, 'RM';
