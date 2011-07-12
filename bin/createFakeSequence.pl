@@ -2,7 +2,7 @@
 
 =head1 NAME 
 
-intergenic.pl
+createFakeSequence.pl
 
 =head1 DESCRIPTION
 
@@ -21,21 +21,49 @@ in random positions and orientation.
 
 The main idea is to recreate a sequence generator without limits of size and
 sequences as real as the intergenic regions of a genome.
+=head1 USAGE
+
+perl createFakeSequence.pl [OPTIONS]
+
+=head1 EXAMPLES
+
+** Examples
+
+=head1 AUTHOR
+
+Juan Caballero, Institute for Systems Biology @ 2011
+
+=head1 CONTACT
+
+jcaballero@systemsbiology.org
+
+=head1 LICENSE
+
+This is free software: you can redistribute it and/or modify it under the terms
+of the GNU General Public License as published by the Free Software Foundation, 
+either version 3 of the License, or (at your option) any later version.
+
+This is distributed in the hope that it will be useful, but WITHOUT ANY 
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with 
+code.  If not, see <http://www.gnu.org/licenses/>.
 
 =cut
 
-#use strict;
-#use warnings;
+use strict;
+use warnings;
 use Getopt::Long;
+use Pod::Usage;
 use List::Util qw/shuffle/;
 
 ## Global variables
 my $seq     =       ''; # The sequence itself
 my $model   =    undef; # Model to use
-my $kmer    =        2; # HMM size to use
+my $kmer    =        4; # HMM size to use
 my $nrep    =    undef; # Number of repeats to insert
 my $nsim    =    undef; # Number of simple repeats to insert
-my $npseudo =    undef; # Number of pseudogenes to insert
 my $out     =   'fake'; # Filename to use
 my $size    =    undef; # Final size of the sequence
 my $mask    =    undef; # Flag to mask repeats
@@ -43,7 +71,7 @@ my $win     =      200; # Window size for sequence GC transition
 my $help    =    undef; # Variable to activate help
 my $debug   =    undef; # Variable to activate verbose mode
 my $baseseq =    undef; # Size of the sequence to generate
-my %model   =       (); # Has to store model parameters
+my %model   =       (); # Hash to store model parameters
 my %inserts =       (); # Hash to store the insert sequences data
 my %gct     =       (); # Hash for GC transitions GC(n-1) -> GC(n)
 my %elemk   =       (); # Hash for kmers probabilities
@@ -56,7 +84,7 @@ my $dir     = './data'; # Path to models/RebBase directories
 my %rep_seq =       (); # Hash with consensus sequences from RepBase
 my $max_cyc =     1000; # Max number of cycles in loops
 my $mut_cyc =       10;
-my @dna     = qw/A C G T/; # yes, the DNA
+my @dna     = qw/A C G T/; # yes, the DNA alphabet
 
 ## Parameters extraction
 usage() if (!GetOptions( 
@@ -68,11 +96,11 @@ usage() if (!GetOptions(
 				'win|w:i'   	=> \$win,
 				'repeats|r:i'  	=> \$nrep,
 				'simple|s:i'  	=> \$nsim,
-#				'pseudo|p:i'  	=> \$npseudo,
-				'mingc|g:i'    => \$mingc,
-				'maxgc|c:i'    => \$maxgc,
+				'mingc|g:i'     => \$mingc,
+				'maxgc|c:i'     => \$maxgc,
 				'mask|m'     	=> \$mask,
-				'debug|d'   	=> \$debug));
+				'debug|d'   	=> \$debug)
+);
 
 usage() if (defined $help);
 usage() unless (defined $model and defined $size and defined $out);
@@ -196,19 +224,9 @@ foreach my $type (keys %inserts) {
 }
 close INS;
 
-=head1 SUBROUTINES
-
-=cut
-
-=head2 usage
-
-Subroutine for print help and exit
-
-Call: usage()
-
-Return: exit
-
-=cut
+#################################################
+##      S  U  B  R  O  U  T  I  N  E  S        ##
+#################################################
 
 sub usage {
 print <<__HELP__
@@ -234,16 +252,6 @@ __HELP__
 exit 1;
 }
 
-=head2 formatFasta
-
-Subroutine for format the array in a fasta format string
-
-Call: formatFasta($seq, $col) [STR, INT]
-
-Return: $fseq [STR]
-
-=cut
-
 sub formatFasta {
 	my $sseq  = shift @_;
 	my $col   = shift @_;
@@ -261,16 +269,6 @@ sub formatFasta {
 	}
 	return $fseq;
 }
-
-=head2 checkBases
-
-Subroutine for check the bases of a sequence
-
-Call: checkBases($seq) [STR]
-
-Return: $cseq [STR]
-
-=cut
 
 sub checkBases {
 	my $cseq = shift @_;
@@ -299,32 +297,11 @@ sub checkBases {
 	return $cseq;
 }
 
-=head2 revcomp
-
-Subroutine for change a sequence in reverse and complementary format
-
-Call: revcomp($seq) [STR]
-
-Return: $rseq [STR]
-
-=cut
-
 sub revcomp {
 	my $rseq =  shift @_;
 	$rseq    =~ tr/ACGTacgt/TGCAtgca/;
 	return reverse $rseq;
 }
-
-=head2 checkSeqSize
-
-Subroutine to verify the size of the final sequence, if it's too big then remove
-some bases; if it's short, add more bases (partial duplication).
-
-Call: checkSeqSize($size, $seq) [NUM, STR]
-
-Return: $new_seq [STR]
-
-=cut
 
 sub checkSeqSize {
 	my $size     = shift @_;
@@ -347,16 +324,6 @@ sub checkSeqSize {
 	checkSeqSize($size, $seq); # Recursion!
 }
 
-=head2 calcInsertNum
-
-Subroutine to get a number of inserts
-
-Call: calcInsertNum($size, $freq) [NUM, NUM]
-
-Return: $num [NUM]
-
-=cut
-
 sub calcInsertNum {
 	my $size = shift @_;
 	my $freq = shift @_;
@@ -373,16 +340,6 @@ sub calcInsertNum {
 	return $num;
 }
 
-=head2 readConfig
-
-Subroutine to read/parse a model configuration file
-
-Call: readConfig($path, $model) [STR, STR]
-
-Return: %mode [HASH]
-
-=cut
-
 sub readConfig {
 	my $path = shift @_;
 	my $mod  = shift @_;
@@ -398,16 +355,6 @@ sub readConfig {
 	return %mod;
 }
 
-=head2 checkSize
-
-Subroutine to validate the sequence size
-
-Call: checkSize($size) [STR]
-
-Return: $size [NUM]
-
-=cut
-
 sub checkSize{
 	my $sz = shift @_;
 	$sz = lc $sz;
@@ -417,16 +364,6 @@ sub checkSize{
 	else                  { $sz =~ s/\D//g;                   }
 	return $sz;
 }
-
-=head2 loadGCt
-
-Subroutine to extract the GC transitions
-
-Call: loadGCt($path, $model, $window) [STR, STR, NUM]
-
-Return: NOTHING (local %gct [HASH])
-
-=cut
 
 sub loadGCt {
 	my $path   = shift @_;
@@ -450,16 +387,6 @@ sub loadGCt {
 		}
 	}
 }
-
-=head2 loadKmers
-
-Subroutine to extract the k-mer compositions
-
-Call: loadKmers($path, $model, $kmer, $window) [STR, STR, NUM, NUM]
-
-Return: NOTHING (local %gc [HASH], %elemk [HASH])
-
-=cut
 
 sub loadKmers {
 	my $path = shift @_;
@@ -486,16 +413,6 @@ sub loadKmers {
 	foreach $gc (keys %classgc) { $gc{$gc} /= $tot; }
 }
 
-=head2 loadRepeatConsensus
-
-Subroutine to load the repeats consensus from RepBase
-
-Call: loadRepeatConsensus($path_to_file) [STR]
-
-Return: Nothing
-
-=cut 
-
 sub loadRepeatConsensus {
 	my $file = shift @_;
 	my $rep  = '';
@@ -518,16 +435,6 @@ sub loadRepeatConsensus {
 	}
 	close REF;
 }
-
-=head2 selectSimple
-
-Subroutine to select the Simple repeats sample
-
-Call: selectSimple($file, $total, $wanted) [STR, INT, INT]
-
-Return: $simple_size [INT]
-
-=cut
 
 sub selectSimple {
 	my $path   = shift @_;
@@ -617,16 +524,6 @@ sub selectSimple {
 	close F;
 	return $size;
 }
-
-=head2 selectRepeat
-
-Subroutine to select the interspersed repeats sample
-
-Call: selectRepeat($file, $total, $wanted) [STR, INT, INT]
-
-Return: $repeats_size [INT]
-
-=cut
 
 sub selectRepeat {
 	my $path   = shift @_;
@@ -744,16 +641,6 @@ sub selectRepeat {
 	return $size;
 }
 
-=head2 selPositions
-
-Subroutine to select the most mutable point in a sequence
-
-Call: selPosition($seq) [STR, INT]
-
-Return: $seq [STR]
-
-=cut
-
 sub selPosition {
 	my $seq = shift @_;
 	my $gc  = shift @_;
@@ -768,16 +655,6 @@ sub selPosition {
 	}
 	return @pos;
 }
-
-=head2 addDeletions
-
-Subroutine to delete some random fragments in a sequence
-
-Call: addDeletions($seq, $ndel) [STR, INT]
-
-Return: $seq [STR]
-
-=cut
 
 sub addDeletions {
 	my $seq  = shift @_;
@@ -817,14 +694,6 @@ sub addDeletions {
 	}
 	return $seq;
 }
-
-=head2 addInsertions
-
-Subroutine to insert some random fragments in a sequence
-Call: addInsertions($seq, $nins) [STR, INT]
-Return: $seq [STR]
-
-=cut
 
 sub addInsertions {
 	my $seq  = shift @_;
@@ -867,16 +736,6 @@ sub addInsertions {
 	print "  Added $tins insertions, GC=$gcl\n" if(defined $debug);
 	return $seq;	
 }
-
-=head2 addTransitions
-
-Subroutine to mutate some random fragments in a sequence
-
-Call: addTransitions($seq, $nsit) [STR, INT]
-
-Return: $seq [STR]
-
-=cut
 
 sub addTransitions {
 	my $seq  = shift @_;
@@ -928,16 +787,6 @@ sub addTransitions {
 	}
 	return $seq;
 }
-
-=head2 addTransversions
-
-Subroutine to mutate some random fragments in a sequence
-
-Call: addTransversions($seq, $nver) [STR, INT]
-
-Return: $seq [STR]
-
-=cut
 
 sub addTransversions {
 	my $seq  = shift @_;
@@ -991,16 +840,6 @@ sub addTransversions {
 	return $seq;
 }
 
-=head2 calcGC
-
-Subroutine to calculate the GC content in a sequence
-
-Call: calcGC($seq) [STR]
-
-Return: $gc [INT]
-
-=cut
-
 sub calcGC {
 	my $seq    = shift @_;
 	my $tot    = length $seq;
@@ -1030,16 +869,6 @@ sub newGC {
 	}
 	return $gc;
 }
-
-=head2 createSeq
-
-Subroutine for create a random sequence based on kmer composition
-
-Call: createSeq($kmer, $gc, $size, $win, $seed) [INT, INT, INT, INT, STR]
-
-Return: $seq [STR]
-
-=cut
 
 sub createSeq {
 	my $k     = shift @_;
@@ -1072,16 +901,6 @@ sub createSeq {
 	}
 	return $seq;
 }
-
-=head2 createSubSeq
-
-Subroutine for create a random sequence based on kmer composition
-
-Call: createSubSeq($word, $win) [INT, INT]
-
-Return: $seq [STR]
-
-=cut
 
 sub createSubSeq {
 	my $k = shift @_;
@@ -1152,16 +971,6 @@ sub insertElements{
 	return $s;
 }
 
-=head2 randSel
-
-Get a list of random positions.
-
-Call: randSel($total, $wanted) [INT, INT]
-
-Return:
-
-=cut
-
 sub randSel {
 	my $total = shift @_;
 	my $want  = shift @_;
@@ -1178,45 +987,10 @@ sub randSel {
 	return %select;
 }
 
-=head2 errorExit
-
-Subroutine to report an error and abort the program
-
-Call: errorExit($message) [STR]
-
-Return: 1 (safe exit)
-
-=cut
-
 sub errorExit {
 	my $mess = shift @_;
 	print "ABORTED: $mess\n";
 	exit 1;
 }
 
-=head1 AUTHOR
 
-Juan Caballero
-
-Institute for Systems Biology @ 2009
-
-=head1 CONTACT
-
-jcaballero@systemsbiology.org
-
-=head1 LICENSE
-
-This is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with code.  If not, see <http://www.gnu.org/licenses/>.
-
-=cut

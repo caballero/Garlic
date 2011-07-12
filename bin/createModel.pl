@@ -51,23 +51,23 @@ You can create your own model fetching the data from the UCSC site:
 
   perl createModel.pl -m hg19
 
-The model names are according to UCSC, like:
+The model names are according to UCSC:
   - hg19    -> human genome release 19 (GRCh37)
   - hg18    -> human genome release 18 (GRCh36)
   - mm9     -> mouse genome release 9
   - equCab2 -> horse genome release 2
+  - ...
 
 This script will download the required files and process it. Caution, the files
 are really big and the download time could be large.
 
 Also you can use your own sequences and annotations to create a model:
 
-  perl createModel.pl -m myOrg -f myOrg.fa -r myOrg_RM.out -t myOrg_TRF.out -g myOrg_Genes.table
+  perl createModel.pl -m myOrg -f myOrg.fa -r RM.out -t TRF.out -g Genes.table
 
 In this case you must provide the sequences in a Fasta file, the RepeatMasker 
 output, the Tandem Repeat Finder output and the annotated genes in a tabular 
-text file with column 3 indicating the chromosome, column 5 the starting 
-coordinate and column 6 indicating the ending coordinate.
+text file similar to the knownGenes.txt format.
   
 =head1 AUTHOR
 
@@ -160,15 +160,16 @@ my @gene     = ();
 my %seq      = ();
 my %data     = ();
 my %kmer     = ();
-my ($seq, $seq_id, $ini, $end, $len); 
-my @gc = qw/0-5 5-10 10-15 15-20 20-25 25-30 30-35 35-40 40-45 45-50 50-55 55-60 65-70 70-75 75-80 80-85 85-90 90-95 95-100/;
+my @dna      = qw/A C G T/;
+my ($seq, $seq_id, $ini, $end, $len);
+my @gc = qw/0-10 10-20 20-30 30-40 40-50 50-60 60-70 70-80 80-90 90-100/;
 
 # Check directories, create them if required
 unless (-e "$dir" and -d "$dir") {
     warn "creating directory $dir\n" if (defined $verbose);
     mkdir "$dir";
 }
-unless (-e "dir/$model" and -d "$dir/$model") {
+unless (-e "$dir/$model" and -d "$dir/$model") {
     warn "creating directory $dir/$model\n" if (defined $verbose);
     mkdir "$dir/$model";
 }
@@ -177,9 +178,9 @@ chdir "$dir/$model" or die "cannot move to $dir/$model";
 
 # Get files from UCSC genome database if required
 getUCSC_fasta()  unless (defined $fasta);
-getUCSC_repeat() unless (defined $repeat);
-getUCSC_trf()    unless (defined $trf);
-getUCSC_gene()   unless (defined $gene);
+getUCSC_repeat() unless (defined $repeat or defined $no_repeat_table);
+getUCSC_trf()    unless (defined $trf    or defined $no_repeat_table);
+getUCSC_gene()   unless (defined $gene   or defined $no_mask_gene);
 
 # Creating list of files to process
 @fasta   = split (/,/, $fasta);
@@ -203,7 +204,6 @@ profileRepeat() unless (defined $no_repeat_table);
 removeTmp() if (defined $rm_tmp);
 
 warn "Done\n" if (defined $verbose);
-
 
 #################################################
 ##      S  U  B  R  O  U  T  I  N  E  S        ##
@@ -349,53 +349,104 @@ sub maskGenes {
 sub profileSeq {
     warn "profiling sequences, k-mer=$kmer and window=$win\n" if (defined $verbose);
     my $bp_slices = 0;
-    createKmer($kmer - 1);
+    my @kmer = createKmer($kmer - 1, @dna);
+    my %kmer = ();
+    my %gctr = ();
+    
     foreach $seq_id (keys %seq) {
-	warn "  analyzing sequence $seq_id\n" if (defined $verbose);
+	    warn "  analyzing sequence $seq_id\n" if (defined $verbose);
         $seq = $seq{$seq_id};
-	$seq =~ s/[^ACGT]/N/g;
-	$seq =~ s/N+/N/g;
-	for (my $i = 0; $i <= (length $seq) - $win; $i++) {
-	    my $slice = substr ($seq, $i, $win);
-	    next if ($slice =~ m/N/);
-	    $bp_slices += $win;
-	    my $gc = calcGC($slice);
-	    for (my $j = 0; $j <= $win - $kmer; $j++) {
-	        my $kmer = substr ($slice, $j, $kmer);
-		$data{$gc}{$kmer}++;
-	    }
+	    $seq =~ s/[^ACGT]/N/g;
+	    my $last_gc_win = undef;
+	    for (my $i = 0; $i <= (length $seq) - $win; $i += $win) {
+	        my $slice = substr ($seq, $i, $win);
+	        my $num_N = $slice =~ tr/N/N/;
+	        my $frq_N = $num_N / (length $slice);
+	        next if ($frq_N > 0.3); # No more than 30% bad bases 
+	        $bp_slices += (length $slice) - $num_N; # Effective bases
+	        
+	        # GC in the window and transition
+	        my $gc = calcGC($slice);
+	        $gctr{$last_gc}{$gc}++ if (defined $last_gc);
+	        $last_gc = $gc;
+	       
+	        # Kmer count
+	        for (my $j = 0; $j <= $win - $kmer; $j++) {
+	            my $kmer = substr ($slice, $j, $kmer);
+	            $kmer{$gc}{$kmer}++;
+	        }
         }
     }
+    
     warn "  $bp_slices bases analyzed\n" if (defined $verbose);
-    my $file = "$model.K$kmer.W$win.data";
-    warn "writing k-mer profile in $file\n" if (defined $verbose);
-    open K, ">$file" or die "cannot write file $file\n";
+    my $kmer_file = "$model.K$kmer.W$win.data";
+    warn "writing k-mer profile in $kmer_file\n" if (defined $verbose);
+    open K, ">$kmer_file" or die "cannot write file $kmer_file\n";
     foreach my $gc (@gc) {
-	print K "#GC=$gc\n";
-	foreach my $word (@kmer) {
-            my $tot = 0;
-	    foreach my $b (@bases) {
-                $tot += $data{$gc}{"$word$b"} if (defined $data{$gc}{"$word$b"});
+	    print K "#GC=$gc\n";
+	    foreach my $word (@kmer) {
+	        my $tot = 0;
+	        foreach my $b (@dna) {
+	            $tot += $kmer{$gc}{"$word$b"} if (defined $kmer{$gc}{"$word$b"});
+	        }
+	        if ($tot > 0) {
+	            foreach my $b (@dna) {
+	                my $cnt = 0;
+	                $cnt = $kmer{$gc}{"$word$b"} if (defined $kmer{$gc}{"$word$b"});
+	                my $frq = sprintf ("%.8f", $cnt / $tot);
+	                print K "$word$b\t$frq\t$cnt\n";
+	            }
+	        }
+	        else {
+	            foreach my $b (@dna) {
+	                print K "$word$b\t0.25\t0\n";
+	            }
+	        }
 	    }
-	    if ($tot > 0) {
-		foreach my $b (@bases) {
-		    my $cnt = 0;
-		    $cnt = $data{$gc}{"$word$b"} if (defined $data{$gc}{"$word$b"});
-		    $frq = sprintf ("%.8f", $cnt / $tot);
-		    print K "$word$b\t$frq\t$cnt\n";
+	}
+	
+	my $gc_file = "$model.GCt.W$win.data";
+	warn "writing GC transitions in $gc_file\n" if (defined $verbose);
+	open G, ">$gc_file" or die "cannot open $gc_file\n";
+    foreach my $gc1 (@gc) {
+        my $tot = 0;
+        foreach my $gc2 (@gc) {
+            $tot += $gct{$gc1}{$gc2} if (defined $gct{$gc1}{$gc2});
+        }
+        if ($tot > 0) {
+            foreach my $gc2 (@gc) {
+                my $cnt = 0;
+                $cnt = $gct{$gc1}{$gc2} if (defined $gct{$gc1}{$gc2});
+                my $frq = sprintf ("%.8f", $cnt / $tot);
+	            print G "$gc1\t$gc2\t$frq\t$cnt\n";
 	        }
 	    }
 	    else {
-		foreach my $b (@bases) {
-		    print K "$word$b\t0.25\t0\n";
+	        foreach my $gc2 (@gc) {
+                my $cnt = 0;
+                my $frq = sprintf ("%.8f", 1 / (length @gc));
+	            print G "$gc1\t$gc2\t$frq\t$cnt\n";
 	        }
 	    }
-        }
     }
+    close G;
 }
 
 sub createKmer {
-
+    my $k = shift @_; $k--;
+	my @old = @_;
+	my @new = ();
+	if ($k < 1) {
+		return @old;
+	}
+	else {
+		foreach my $e (@old) {
+			foreach my $n (@dna) {
+				push @new, "$e$n"; # add new element
+			}
+		}
+		createKmer($k, @new);
+	}
 }
 
 sub profileRepeat{
@@ -416,31 +467,22 @@ sub removeTmp {
 
 sub calcGC {
     my $seq = shift @_;
-    my $len = $seq =~ tr/ACGTacgt/ACGTacgt/;
-    my $ngc = $seq =~ tr/CGcg/CGcg/;
+    $seq =~ s/[^ACGTacgt]//;
+    my $len = length $seq;
     return 'NA' if ($len < 1);
+    my $ngc = $seq =~ tr/CGcg/CGcg/;
 
     my $gc  = $ngc / $len;
-    if    ($gc <  5) { $gc =  '0-5'  ; }
-    elsif ($gc < 10) { $gc =  '5-10' ; }
-    elsif ($gc < 15) { $gc = '10-15' ; }    
-    elsif ($gc < 20) { $gc = '15-20' ; }   
-    elsif ($gc < 25) { $gc = '20-25' ; }
-    elsif ($gc < 30) { $gc = '25-30' ; }
-    elsif ($gc < 35) { $gc = '30-35' ; }
-    elsif ($gc < 40) { $gc = '35-40' ; }
-    elsif ($gc < 45) { $gc = '40-45' ; }
-    elsif ($gc < 50) { $gc = '45-50' ; }
-    elsif ($gc < 55) { $gc = '50-55' ; }
-    elsif ($gc < 60) { $gc = '55-60' ; }   
-    elsif ($gc < 65) { $gc = '60-65' ; }
-    elsif ($gc < 70) { $gc = '65-70' ; }
-    elsif ($gc < 75) { $gc = '70-75' ; }
-    elsif ($gc < 80) { $gc = '75-80' ; }
-    elsif ($gc < 85) { $gc = '80-85' ; }
-    elsif ($gc < 90) { $gc = '85-90' ; }
-    elsif ($gc < 95) { $gc = '90-95' ; }
-    else             { $gc = '95-100'; }
+    if    ($gc <= 10) { $gc =  '0-10' ; }
+    elsif ($gc <= 20) { $gc = '10-20' ; }   
+    elsif ($gc <= 30) { $gc = '20-30' ; }
+    elsif ($gc <= 40) { $gc = '30-40' ; }
+    elsif ($gc <= 50) { $gc = '40-50' ; }
+    elsif ($gc <= 60) { $gc = '50-60' ; }   
+    elsif ($gc <= 70) { $gc = '60-70' ; }
+    elsif ($gc <= 80) { $gc = '70-80' ; }
+    elsif ($gc <= 90) { $gc = '80-90' ; }
+    else              { $gc = '90-100'; }
     
     return $gc;
 }
