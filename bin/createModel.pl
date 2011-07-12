@@ -158,10 +158,10 @@ my @repeat   = ();
 my @trf      = ();
 my @gene     = ();
 my %seq      = ();
-my %data     = ();
+my %gct      = ();
 my %kmer     = ();
 my @dna      = qw/A C G T/;
-my ($seq, $seq_id, $ini, $end, $len);
+my ($seq, $ss, $seq_id, $ini, $end, $len);
 my @gc = qw/0-10 10-20 20-30 30-40 40-50 50-60 60-70 70-80 80-90 90-100/;
 
 # Check directories, create them if required
@@ -357,22 +357,22 @@ sub profileSeq {
 	    warn "  analyzing sequence $seq_id\n" if (defined $verbose);
         $seq = $seq{$seq_id};
 	    $seq =~ s/[^ACGT]/N/g;
-	    my $last_gc_win = undef;
+	    my $last_gc = undef;
 	    for (my $i = 0; $i <= (length $seq) - $win; $i += $win) {
-	        my $slice = substr ($seq, $i, $win);
-	        my $num_N = $slice =~ tr/N/N/;
-	        my $frq_N = $num_N / (length $slice);
+	        $ss = substr ($seq, $i, $win);
+	        my $num_N = $ss =~ tr/N/N/;
+	        my $frq_N = $num_N / (length $ss);
 	        next if ($frq_N > 0.3); # No more than 30% bad bases 
-	        $bp_slices += (length $slice) - $num_N; # Effective bases
+	        $bp_slices += (length $ss) - $num_N; # Effective bases
 	        
 	        # GC in the window and transition
-	        my $gc = calcGC($slice);
+	        my $gc = calcGC($ss);
 	        $gctr{$last_gc}{$gc}++ if (defined $last_gc);
 	        $last_gc = $gc;
 	       
 	        # Kmer count
 	        for (my $j = 0; $j <= $win - $kmer; $j++) {
-	            my $kmer = substr ($slice, $j, $kmer);
+	            my $kmer = substr ($ss, $j, $kmer);
 	            $kmer{$gc}{$kmer}++;
 	        }
         }
