@@ -187,7 +187,7 @@ getUCSC_gene()   unless (defined $gene   or defined $no_mask_gene);
 @repeat  = split (/,/, $repeat);
 @trf     = split (/,/, $trf);
 @gene    = split (/,/, $gene);
-$exclude =~ s/,/|/g;
+$exclude =~ s/,/|/g if (defined $exclude);
 
 # Load sequences and mask them
 readFasta();
@@ -325,7 +325,7 @@ sub maskTRF {
     }
 }
 
-sub maskGenes {
+sub maskGene {
     warn "masking genes\n" if (defined $verbose);
     foreach my $file (@gene) {
         my $fileh = $file;
