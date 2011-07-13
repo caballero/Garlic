@@ -350,7 +350,7 @@ sub maskGene {
 }
 
 sub profileSeqs {
-    warn "profiling sequences, k-mer=$kmer and window=$win\n" if (defined $verbose);
+    warn "profiling sequences, kmer=$kmer and window=$win\n" if (defined $verbose);
     my $bp_slices = 0;
     my @kmer      = createKmer($kmer - 1, @dna);
     my %kmer      = ();
@@ -383,7 +383,7 @@ sub profileSeqs {
     
     warn "  $bp_slices bases analyzed\n" if (defined $verbose);
     my $kmer_file = "$model.K$kmer.W$win.data";
-    warn "writing k-mer profile in $kmer_file\n" if (defined $verbose);
+    warn "writing k-mer profile in \"$kmer_file\"\n" if (defined $verbose);
     open K, ">$kmer_file" or die "cannot write file $kmer_file\n";
     foreach my $gc (@gc) {
 	    print K "#GC=$gc\n";
@@ -410,7 +410,7 @@ sub profileSeqs {
 	}
 	
 	my $gc_file = "$model.GCt.W$win.data";
-	warn "writing GC transitions in $gc_file\n" if (defined $verbose);
+	warn "writing GC transitions in \"$gc_file\"\n" if (defined $verbose);
 	open G, ">$gc_file" or die "cannot open $gc_file\n";
     foreach my $gc1 (@gc) {
         my $tot = 0;
@@ -461,11 +461,11 @@ sub profileRepeats {
     profileRM()  if (defined $repeat);
     
     my $file = "$model.W$win.repeats.data";
-    warn "writing repeats info in $file\n";
+    warn "writing repeats info in \"$file\"\n";
     open R, ">$file" or die "cannot open $file\n";
     foreach my $gc (@gc) {
         print R "#GC=$gc\n";
-        foreach my $rep (%{ $repeat{$gc} }) {
+        foreach my $rep (keys %{ $repeat{$gc} }) {
             print R $repeat{$gc}{$rep}, "\n";
         }
     }
@@ -474,6 +474,7 @@ sub profileRepeats {
 }
 
 sub profileTRF {
+    warn "parsing TRF files\n" if (defined $verbose);
     my $nsim = 0;
     foreach my $file (@trf) {
         open T, "$file" or die "cannot open $file\n";
@@ -487,7 +488,7 @@ sub profileTRF {
             my $div       = 100 - $line[7];
             my $indel     = $line[8];
             my $consensus = $line[-1];
-            my $label     = "SIM$nsim\t$consensus\t$period\t$div\t$indel";
+            my $label     = "SIM$nsim:$consensus:$period:$div:$indel";
             next unless (defined $seq{$seq_id});
             $nsim++;
             my $left      = substr ($seq{$seq_id}, $ini - $win, $win);
@@ -500,6 +501,7 @@ sub profileTRF {
 }
 
 sub profileRM {
+    warn "parsing RepeatMasker files\n" if (defined $verbose);
     foreach my $file (@repeat) {
         open T, "$file" or die "cannot open $file\n";
         while (<T>) {
@@ -524,7 +526,7 @@ sub profileRM {
                 $rini = $line[13];
                 $rend = $line[12];
             }
-            my $label     = "REP$rid\t$class\t$type\t$dir\t$div\t$ins\t$del\t$rini\t$rend";
+            my $label     = "REP$rid:$class:$type:$dir:$div:$ins:$del:$rini:$rend";
             next unless (defined $seq{$seq_id});
             my $left      = substr ($seq{$seq_id}, $ini - $win, $win);
             my $right     = substr ($seq{$seq_id}, $end, $win);
