@@ -158,8 +158,6 @@ my @repeat   = ();
 my @trf      = ();
 my @gene     = ();
 my %seq      = ();
-my %gct      = ();
-my %kmer     = ();
 my @dna      = qw/A C G T/;
 my ($seq, $ss, $seq_id, $ini, $end, $len);
 my @gc = qw/0-10 10-20 20-30 30-40 40-50 50-60 60-70 70-80 80-90 90-100/;
@@ -275,8 +273,8 @@ sub readFasta {
         open FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
             chomp;
-            if (m/^>(\S+?)/) { $seq_id = $1;        }
-            else             { $seq{$seq_id} .= $_; }
+            if (m/^>(.+)/) { $seq_id = $1;        }
+            else           { $seq{$seq_id} .= $_; }
         }
         close FH;
     }
@@ -349,9 +347,9 @@ sub maskGene {
 sub profileSeq {
     warn "profiling sequences, k-mer=$kmer and window=$win\n" if (defined $verbose);
     my $bp_slices = 0;
-    my @kmer = createKmer($kmer - 1, @dna);
-    my %kmer = ();
-    my %gctr = ();
+    my @kmer      = createKmer($kmer - 1, @dna);
+    my %kmer      = ();
+    my %gct       = ();
     
     foreach $seq_id (keys %seq) {
 	    warn "  analyzing sequence $seq_id\n" if (defined $verbose);
@@ -367,7 +365,7 @@ sub profileSeq {
 	        
 	        # GC in the window and transition
 	        my $gc = calcGC($ss);
-	        $gctr{$last_gc}{$gc}++ if (defined $last_gc);
+	        $gct{$last_gc}{$gc}++ if (defined $last_gc);
 	        $last_gc = $gc;
 	       
 	        # Kmer count
@@ -399,7 +397,8 @@ sub profileSeq {
 	        }
 	        else {
 	            foreach my $b (@dna) {
-	                print K "$word$b\t0.25\t0\n";
+	                my $frq = sprintf ("%.8f", 1 / @dna);
+	                print K "$word$b\t$frq\t0\n";
 	            }
 	        }
 	    }
@@ -424,7 +423,7 @@ sub profileSeq {
 	    else {
 	        foreach my $gc2 (@gc) {
                 my $cnt = 0;
-                my $frq = sprintf ("%.8f", 1 / (length @gc));
+                my $frq = sprintf ("%.8f", 1 / @gc);
 	            print G "$gc1\t$gc2\t$frq\t$cnt\n";
 	        }
 	    }
@@ -473,16 +472,16 @@ sub calcGC {
     my $ngc = $seq =~ tr/CGcg/CGcg/;
 
     my $gc  = $ngc / $len;
-    if    ($gc <= 10) { $gc =  '0-10' ; }
-    elsif ($gc <= 20) { $gc = '10-20' ; }   
-    elsif ($gc <= 30) { $gc = '20-30' ; }
-    elsif ($gc <= 40) { $gc = '30-40' ; }
-    elsif ($gc <= 50) { $gc = '40-50' ; }
-    elsif ($gc <= 60) { $gc = '50-60' ; }   
-    elsif ($gc <= 70) { $gc = '60-70' ; }
-    elsif ($gc <= 80) { $gc = '70-80' ; }
-    elsif ($gc <= 90) { $gc = '80-90' ; }
-    else              { $gc = '90-100'; }
+    if    ($gc <= 0.10) { $gc =  '0-10' ; }
+    elsif ($gc <= 0.20) { $gc = '10-20' ; }   
+    elsif ($gc <= 0.30) { $gc = '20-30' ; }
+    elsif ($gc <= 0.40) { $gc = '30-40' ; }
+    elsif ($gc <= 0.50) { $gc = '40-50' ; }
+    elsif ($gc <= 0.60) { $gc = '50-60' ; }   
+    elsif ($gc <= 0.70) { $gc = '60-70' ; }
+    elsif ($gc <= 0.80) { $gc = '70-80' ; }
+    elsif ($gc <= 0.90) { $gc = '80-90' ; }
+    else                { $gc = '90-100'; }
     
     return $gc;
 }
