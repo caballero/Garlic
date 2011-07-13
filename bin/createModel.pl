@@ -119,23 +119,23 @@ my $no_kmer_table   = undef;      # No kmer profile flag
 
 # Fetch options
 GetOptions(
-    'h|help'          => \$help,
-    'v|verbose'       => \$verbose,
-    'm|model=s'       => \$model,
-    'd|dir:s'         => \$dir,
-    'k|kmer:i'        => \$kmer,
-    'w|win:i'         => \$win,
-    'f|fasta:s'       => \$fasta,
-    'r|repeat:s'      => \$repeat,
-    't|trf:s'         => \$trf,
-    'g|gene:s'        => \$gene,
-    'e|exclude:s'     => \$exclude,
-    'rm_tmp'          => \$rm_tmp,
-    'mask_repeat'     => \$mask_repeat,
-    'mask_trf'        => \$mask_trf,
-    'no_mask_gene'    => \$no_mask_gene,
-    'no_repeat_table' => \$no_repeat_table,
-    'no_kmer_table'   => \$no_kmer_table 
+    'h|help'             => \$help,
+    'v|verbose'          => \$verbose,
+    'm|model=s'          => \$model,
+    'd|dir:s'            => \$dir,
+    'k|kmer:i'           => \$kmer,
+    'w|win:i'            => \$win,
+    'f|fasta:s'          => \$fasta,
+    'r|repeat:s'         => \$repeat,
+    't|trf:s'            => \$trf,
+    'g|gene:s'           => \$gene,
+    'e|exclude:s'        => \$exclude,
+    'rm_tmp'             => \$rm_tmp,
+    'mask_repeat|mR'     => \$mask_repeat,
+    'mask_trf|mT'        => \$mask_trf,
+    'no_mask_gene|nG'    => \$no_mask_gene,
+    'no_repeat_table|nR' => \$no_repeat_table,
+    'no_kmer_table|nK'   => \$no_kmer_table 
 ) or pod2usage(-verbose => 2);
 
 # Call help if required
@@ -158,6 +158,7 @@ my @repeat   = ();
 my @trf      = ();
 my @gene     = ();
 my %seq      = ();
+my %repeat   = ();
 my @dna      = qw/A C G T/;
 my ($seq, $ss, $seq_id, $ini, $end, $len);
 my @gc = qw/0-10 10-20 20-30 30-40 40-50 50-60 60-70 70-80 80-90 90-100/;
@@ -193,12 +194,13 @@ maskRepeat()   if (defined $mask_repeat);
 maskTRF()      if (defined $mask_trf);
 maskGene() unless (defined $no_mask_gene);
 
-# Create the K-mer/Window table
-profileSeq() unless (defined $no_kmer_table);
+# Create the K-mer/Window and GCt tables
+profileSeqs() unless (defined $no_kmer_table);
 
 # Create the Repeat Table
-profileRepeat() unless (defined $no_repeat_table);
+profileRepeats() unless (defined $no_repeat_table);
 
+# Clean up
 removeTmp() if (defined $rm_tmp);
 
 warn "Done\n" if (defined $verbose);
@@ -232,12 +234,13 @@ sub getUCSC_trf {
     chdir '..';
     warn "searching TRF files\n" if (defined $verbose);
     $trf = searchFiles('.bed$', 'TRF');
+    die "cannot find TRF files!" unless (defined $trf);
 }
 
 sub getUCSC_repeat {
     warn "obtaining RepeatMasker files from $ucsc\n" if (defined $verbose);
     mkdir 'RM' unless (-e 'RM' and -d 'RM');
-    chdir 'RM' or die "cannot move to RM directory\n";;
+    chdir 'RM' or die "cannot move to RM directory\n";
     system ("$get $ucsc_repeat");
     die "cannot find RepeatMasker output in $ucsc_repeat" unless (-e 'chromOut.tar.gz' and -s 'chromOut.tar.gz');
     warn "unpacking TAR\n" if (defined $verbose);
@@ -245,6 +248,7 @@ sub getUCSC_repeat {
     chdir '..';
     warn "searching RM files\n" if (defined $verbose);
     $repeat = searchFiles('.out$', 'RM');
+    die "cannot find RM files!" unless (defined $repeat);
 }
 
 sub getUCSC_fasta {
@@ -258,6 +262,7 @@ sub getUCSC_fasta {
     chdir '..';
     warn "searching fasta files\n" if (defined $verbose);
     $fasta = searchFiles('.fa$', 'fasta');
+    die "cannot find fasta files!" unless (defined $fasta);
 }
 
 sub readFasta {
@@ -344,7 +349,7 @@ sub maskGene {
     }
 }
 
-sub profileSeq {
+sub profileSeqs {
     warn "profiling sequences, k-mer=$kmer and window=$win\n" if (defined $verbose);
     my $bp_slices = 0;
     my @kmer      = createKmer($kmer - 1, @dna);
@@ -429,6 +434,8 @@ sub profileSeq {
 	    }
     }
     close G;
+    %kmer = ();
+    %gct  = ();
 }
 
 sub createKmer {
@@ -448,11 +455,91 @@ sub createKmer {
 	}
 }
 
-sub profileRepeat{
+sub profileRepeats {
     warn "profiling repeats\n" if (defined $verbose);
+    profileTRF() if (defined $trf);
+    profileRM()  if (defined $repeat);
     
+    my $file = "$model.W$win.repeats.data";
+    warn "writing repeats info in $file\n";
+    open R, ">$file" or die "cannot open $file\n";
+    foreach my $gc (@gc) {
+        print R "#GC=$gc\n";
+        foreach my $rep (%{ $repeat{$gc} }) {
+            print R $repeat{$gc}{$rep}, "\n";
+        }
+    }
+    close R;
+    %repeat = ();
 }
 
+sub profileTRF {
+    my $nsim = 0;
+    foreach my $file (@trf) {
+        open T, "$file" or die "cannot open $file\n";
+        while (<T>) {
+            chomp;
+            my @line      = split (/\t/, $_);
+            my $seq_id    = $line[0];
+            my $ini       = $line[1];
+            my $end       = $line[2];
+            my $period    = $line[5];
+            my $div       = 100 - $line[7];
+            my $indel     = $line[8];
+            my $consensus = $line[-1];
+            my $label     = "SIM$nsim\t$consensus\t$period\t$div\t$indel";
+            next unless (defined $seq{$seq_id});
+            $nsim++;
+            my $left      = substr ($seq{$seq_id}, $ini - $win, $win);
+            my $right     = substr ($seq{$seq_id}, $end, $win);
+            my $gc        = calcGC("$left$right");
+            $repeat{$gc}{"sim$nsim"} = $label;
+        }
+        close T;
+    }
+}
+
+sub profileRM {
+    foreach my $file (@repeat) {
+        open T, "$file" or die "cannot open $file\n";
+        while (<T>) {
+            chomp;
+            s/^\s+//;
+            next unless (m/^\d+/);
+            next if (m/Simple_repeat|Low_complexity/);
+            my @line      = split (/\s+/, $_);
+            my $seq_id    = $line[4];
+            my $ini       = $line[5];
+            my $end       = $line[6];
+            my $div       = $line[1];
+            my $ins       = $line[2];
+            my $del       = $line[3];
+            my $dir       = $line[8];
+            my $type      = $line[9];
+            my $class     = $line[10];
+            my $rini      = $line[11];
+            my $rend      = $line[12];
+            my $rid       = $line[14];
+            if ($dir eq 'C') {
+                $rini = $line[13];
+                $rend = $line[12];
+            }
+            my $label     = "REP$rid\t$class\t$type\t$dir\t$div\t$ins\t$del\t$rini\t$rend";
+            next unless (defined $seq{$seq_id});
+            my $left      = substr ($seq{$seq_id}, $ini - $win, $win);
+            my $right     = substr ($seq{$seq_id}, $end, $win);
+            my $gc        = calcGC("$left$right");
+            
+            if (defined $repeat{$gc}{"rep$rid"}) {
+                $repeat{$gc}{"rep$rid"} .= ";$label";
+            }
+            else {
+                $repeat{$gc}{"rep$rid"} = $label;
+            }
+        }
+        close T;
+    }
+}
 sub removeTmp {
     warn "removing temporary files\n" if (defined $verbose);
     my @files = @gene;
@@ -465,6 +552,7 @@ sub removeTmp {
 }
 
 sub calcGC {
+    # GC ranges must be equal to @gc values or weird stuff will happen
     my $seq = shift @_;
     $seq =~ s/[^ACGTacgt]//;
     my $len = length $seq;
