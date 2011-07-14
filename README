@@ -29,20 +29,20 @@ We modeled:
 (1) composition of the background genome
 (2) interspersed repeats
 (3) low complexity sequences
-(4) pseudogenes?
 
 The current algorithm creates a base sequence, then the sequence is bombarded
-with artificially evolved elements (repeats, low complexity, pseudogenes) as
+with artificially evolved elements (interspersed repeats, low complexity) as
 expected in the reference genome. The final output is a Fasta file with the 
 new sequence generated.
 
 REQUERIMENTS
 
 - Perl
-- Genome models. You can download from: [] 
+- Genome models. You can download from: [repository] 
   or create your own, see below.
 - RepBase consensus sequences. You need to download the EMBL file from RepBase
-  (registration required) and put the file in data/repbase [suggested]. 
+  [http://www.girinst.org/repbase] (registration required) and put the file in
+  data/repbase [suggested]. 
 
 USAGE
 
@@ -66,7 +66,7 @@ You can create your own model fetching the data from the UCSC site:
 
 Also you can use your own sequences and annotations to create a model:
 
-  perl createModel.pl -m myOrg -f myOrg.fa -r myOrg_RM.out -t myOrg_TRF.out -g myOrg_Genes.table
+  perl createModel.pl -m myOrg -f myOrg.fa -r RM.out -t TRF.out -g Genes.table
 
 Please read the documentation using:
 
