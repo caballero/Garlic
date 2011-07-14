@@ -382,7 +382,7 @@ sub profileSeqs {
     }
     
     warn "  $bp_slices bases analyzed\n" if (defined $verbose);
-    my $kmer_file = "$model.K$kmer.W$win.data";
+    my $kmer_file = "$model.kmer.K$kmer.W$win.data";
     warn "writing k-mer profile in \"$kmer_file\"\n" if (defined $verbose);
     open K, ">$kmer_file" or die "cannot write file $kmer_file\n";
     foreach my $gc (@gc) {
@@ -460,13 +460,13 @@ sub profileRepeats {
     profileTRF() if (defined $trf);
     profileRM()  if (defined $repeat);
     
-    my $file = "$model.W$win.repeats.data";
+    my $file = "$model.repeats.W$win.data";
     warn "writing repeats info in \"$file\"\n";
     open R, ">$file" or die "cannot open $file\n";
     foreach my $gc (@gc) {
         print R "#GC=$gc\n";
-        foreach my $rep (keys %{ $repeat{$gc} }) {
-            print R $repeat{$gc}{$rep}, "\n";
+        foreach my $rep (@{ $repeat{$gc} }) {
+            print R "$rep\n";
         }
     }
     close R;
@@ -475,7 +475,6 @@ sub profileRepeats {
 
 sub profileTRF {
     warn "parsing TRF files\n" if (defined $verbose);
-    my $nsim = 0;
     foreach my $file (@trf) {
         open T, "$file" or die "cannot open $file\n";
         while (<T>) {
@@ -488,13 +487,12 @@ sub profileTRF {
             my $div       = 100 - $line[7];
             my $indel     = $line[8];
             my $consensus = $line[-1];
-            my $label     = "SIM$nsim:$consensus:$period:$div:$indel";
+            my $label     = "SIMPLE:$consensus:$period:$div:$indel";
             next unless (defined $seq{$seq_id});
-            $nsim++;
             my $left      = substr ($seq{$seq_id}, $ini - $win, $win);
             my $right     = substr ($seq{$seq_id}, $end, $win);
             my $gc        = calcGC("$left$right");
-            $repeat{$gc}{"sim$nsim"} = $label;
+            push @{ $repeat{$gc} }, $label;
         }
         close T;
     }
@@ -508,7 +506,7 @@ sub profileRM {
             chomp;
             s/^\s+//;
             next unless (m/^\d+/);
-            next if (m/Simple_repeat|Low_complexity/);
+            next if (m/Simple_repeat|Low_complexity|Unknown/);
             my @line      = split (/\s+/, $_);
             my $seq_id    = $line[4];
             my $ini       = $line[5];
@@ -521,23 +519,17 @@ sub profileRM {
             my $class     = $line[10];
             my $rini      = $line[11];
             my $rend      = $line[12];
-            my $rid       = $line[14];
             if ($dir eq 'C') {
                 $rini = $line[13];
                 $rend = $line[12];
+                $dir  = '-';
             }
-            my $label     = "REP$rid:$class:$type:$dir:$div:$ins:$del:$rini:$rend";
+            my $label     = "$class:$type:$dir:$div:$ins:$del:$rini:$rend";
             next unless (defined $seq{$seq_id});
             my $left      = substr ($seq{$seq_id}, $ini - $win, $win);
             my $right     = substr ($seq{$seq_id}, $end, $win);
             my $gc        = calcGC("$left$right");
-            
-            if (defined $repeat{$gc}{"rep$rid"}) {
-                $repeat{$gc}{"rep$rid"} .= ";$label";
-            }
-            else {
-                $repeat{$gc}{"rep$rid"} = $label;
-            }
+            push @{ $repeat{$gc} }, $label;
         }
         close T;
     }
