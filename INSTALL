@@ -1,0 +1,30 @@
+FakeSequence - An artificial non-functional realistic DNA sequence generator.
+
+Copyright (C) 2011 Juan Caballero [Institute for Systems Biology]
+
+INSTALLATION INSTRUCTIONS
+
+All the code is in Perl, so basically just unpack/clone the package in a
+convenient directory and add/create the models under data/
+
+a) Unpacking a TAR-ball
+   > tar zxf fakesequence.tgz
+
+b) Clonning the repository from GitHub:
+   > git clone git://github.com/caballero/FakeSequence.git
+
+The scripts must work out-of-the-box, but minor changes might be required:
+
+1. Perl path: the default is /usr/bin/perl, change it in all scripts if
+   required.
+2. Perl modules: we use standard modules: [Getopt, Pod, File, List], please
+   use CPAN if your perl version doesn't include them.
+3. Data dir: default is './data', you can modified this value as a parameter
+   or changing the variable $data in the scripts.
+4. createModel.pl require 'wget' and 'tar', you can adjust the path or change
+   the commands in the source code.
+
+TESTING
+
+Run bin/test.sh to check if the installation works, it will model and create
+and artificial sequence using the Fugu genome.
