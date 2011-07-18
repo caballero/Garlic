@@ -79,7 +79,7 @@ my %gc      =       (); # Hash for GC content probabilities
 my @classgc =       (); # Array for class GC
 my %classgc =       (); # Hash for class GC
 my $mingc   =        0; # Minimal GC content to use
-my $maxgc   =       95; # Maximal GC content to use
+my $maxgc   =       90; # Maximal GC content to use
 my $dir     = './data'; # Path to models/RebBase directories
 my %rep_seq =       (); # Hash with consensus sequences from RepBase
 my $max_cyc =     1000; # Max number of cycles in loops
@@ -109,7 +109,7 @@ usage() unless (defined $model and defined $size and defined $out);
 %model = readConfig($dir, $model);
 
 # GC classes creation
-for (my $i = $mingc; $i <= $maxgc; $i += 5) { 
+for (my $i = $mingc; $i <= $maxgc; $i += 10) { 
 	push @classgc, $i;
 	$classgc{$i}++;
 }
@@ -137,16 +137,9 @@ unless (defined $nsim and $nsim >= 0) {
 }
 print "$nsim simple repeats to select\n" if(defined $debug);
 if ($nsim > 0) {
-#	while (1) {
-		%{ $inserts{'simple'} } = ();
-		my $sim_size = selectSimple($dir, $model{'model'}, $model{'simple_file'}, $model{'simple_count'}, $nsim);
-#		if (($baseseq - $sim_size) > 0) {
-#			$baseseq -= $sim_size;
-#			last;
-#		}
-#		print "Bad selection, trying again\n" if (defined $debug);
-#	}
-print "Selected $nsim simple repeats ($sim_size bp)\n" if(defined $debug);
+	%{ $inserts{'simple'} } = ();
+	my $sim_size = selectSimple($dir, $model{'model'}, $model{'simple_file'}, $model{'simple_count'}, $nsim);
+	print "Selected $nsim simple repeats ($sim_size bp)\n" if(defined $debug);
 }
 
 # Number of interspearsed repeats to use
@@ -158,33 +151,10 @@ print "$nrep interspersed repeats to select\n" if(defined $debug);
 if ($nrep > 0) {
 	# loading repeats consensus
 	loadRepeatConsensus("$dir/repbase/RepeatMaskerLib.embl");
-#	while (1) {
-		%{ $inserts{'repeat'} } = ();
-		my $rep_size = selectRepeat($dir, $model{'model'}, $model{'repeats_file'}, $model{'repeats_count'}, $nrep);
-#		if (($baseseq - $rep_size) > 0) {
-#			$baseseq -= $rep_size;
-#			last;
-#		}
-#		print "Bad selection, trying again\n" if (defined $debug);
-#	}
-print "Selected $nrep interspersed repeats ($rep_size bp)\n" if(defined $debug);
+	%{ $inserts{'repeat'} } = ();
+	my $rep_size = selectRepeat($dir, $model{'model'}, $model{'repeats_file'}, $model{'repeats_count'}, $nrep);
+	print "Selected $nrep interspersed repeats ($rep_size bp)\n" if(defined $debug);
 }
-
-# Number of pseudogenes to use
-#unless (defined $npseudo and $npseudo >= 0) {
-#	$nsim = calcInsertNum($size, $model{'pseudo_count'} / $model{'genome_size'});
-#}
-#if ($npseudo > 0) {
-#	while (1) {
-#		%{ $inserts{'pseudo'} } = ();
-#		my $pseudo_size = selectPseudo($dir, $model{'pseudo_file'}, $npseudo);
-#		if (($baseseq - $pseudo_size) > 0) {
-#			$baseseq -= $pseudo_size;
-#			last;
-#		}
-#	}
-#}
-#print "Selected $npseudo pseudogenes" if(defined $debug);
 
 # Generation of base sequence
 my $fgc    = newGC();
@@ -232,15 +202,15 @@ sub usage {
 print <<__HELP__
 Usage: perl intergenic.pl [--help|-h] -o MODEL -l SIZE -n OUFILE [PARAMETERS] 
 Parameters:
-  -o --model     Model to use (like hg18, mm9, ... etc).
+  -o --model     Model to use (like hg19, mm9, ... etc).
   -l --length    Size in bases [kb, Mb, Gb accepted].
   -n --name      Output files to create [*.fasta and *.log].
 	
 Optional or automatic parameters:
   -w --win       Window size for base generation profile.     Default =   200
-  -k --kmer      Seed size to use [available: 1,2,3,4,5,6].   Default =     2
+  -k --kmer      Seed size to use [available: 1,2,3,4,5,6].   Default =     4
   -g --mingc     Minimal GC content to use [0,5,10,..,95].    Default =     0
-  -c --maxgc     Maximal GC content to use [0,5,10,..,95].    Default =    95
+  -c --maxgc     Maximal GC content to use [0,5,10,..,95].    Default =    90
   -r --repeats   Number of total repeats to insert.           Default =  Auto
   -s --simple    Number of total simple repeats to insert.    Default =  Auto
   -m --mask      Mask repeats in final sequence.              Default = False
@@ -395,7 +365,8 @@ sub loadKmers {
 	my $win  = shift @_;
 	my $gc   = undef; 
 	my $tot  = 0;
-	open K, "$path/$mod/$mod.K$kmer.W$win" or errorExit("cannot open $path/$mod/$mod.K$kmer.W$win");
+	my $file = "$path/$mod/$mod.K$kmer.W$win.data";
+	open K, "$file" or errorExit("cannot open $file");
 	while (<K>) {
 		if (/#.*N=(\d+), GC=(\d+)-/) {
 			$gc      = $2;
@@ -430,7 +401,7 @@ sub loadRepeatConsensus {
 			$rep_seq{$rep} .= $_; 
 		}
 		else {
-			#Nothing
+			# Nothing
 		}
 	}
 	close REF;
@@ -845,12 +816,6 @@ sub calcGC {
 	my $tot    = length $seq;
 	my $gc     = $seq =~ tr/GCgc//;
 	my $new_gc = int($gc * 100 / $tot);
-	#for (my $i = 0; $i <= $#classgc; $i++) {
-	#	if ($classgc[$i] >= $new_gc) {
-	#		$gc = $classgc[$i];
-	#		last;
-	#	}
-	#}
 	return $new_gc;
 }
 
@@ -888,16 +853,6 @@ sub createSeq {
 		
 		# Transition of GC
 		$gc = newGC();
-		#if ($#classgc > 1) {
-		# 	$gc = $classgc[int(rand(@classgc))];
-		#	last if (rand() <= ($gct{$old_gc}{$gc})*($gc{$gc}));
-		#	if ($tries > $max) {
-		#		print "Too much tries in GC transition ... using $gc\n";
-		#		$tries = 0;
-		#		last;
-		#	}
-		#	$tries++;
-		#}
 	}
 	return $seq;
 }
@@ -988,8 +943,8 @@ sub randSel {
 }
 
 sub errorExit {
-	my $mess = shift @_;
-	print "ABORTED: $mess\n";
+	my $err_message = shift @_;
+	print "ABORTED: $err_message\n";
 	exit 1;
 }
 
