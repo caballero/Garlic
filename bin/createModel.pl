@@ -116,6 +116,7 @@ my $mask_trf        = undef;      # TRF masking flag
 my $no_mask_gene    = undef;      # Gene masking flag
 my $no_repeat_table = undef;      # No repeats profile flag
 my $no_kmer_table   = undef;      # No kmer profile flag
+my $write_mask_seq  = undef;      # Write fasta flag
 
 # Fetch options
 GetOptions(
@@ -135,7 +136,8 @@ GetOptions(
     'mask_trf|mT'        => \$mask_trf,
     'no_mask_gene|nG'    => \$no_mask_gene,
     'no_repeat_table|nR' => \$no_repeat_table,
-    'no_kmer_table|nK'   => \$no_kmer_table 
+    'no_kmer_table|nK'   => \$no_kmer_table,
+    'write_mask_seq'     => \$write_mask_seq
 ) or pod2usage(-verbose => 2);
 
 # Call help if required
@@ -191,9 +193,10 @@ $exclude =~ s/,/|/g if (defined $exclude);
 
 # Load sequences and mask them
 readFasta();
+maskGene() unless (defined $no_mask_gene);
 maskRepeat()   if (defined $mask_repeat);
 maskTRF()      if (defined $mask_trf);
-maskGene() unless (defined $no_mask_gene);
+writeMaskSeq("$model.masked.fa") if (defined $write_mask_seq);
 
 # Create the K-mer/Window and GCt tables
 profileSeqs() unless (defined $no_kmer_table);
@@ -310,8 +313,13 @@ sub readFasta {
         open FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
             chomp;
-            if (m/^>(.+)/) { $seq_id = $1;        }
-            else           { $seq{$seq_id} .= $_; }
+            if (m/^>(.+)/) { 
+                $seq_id = $1;        
+            }
+            else {
+                s/[^ACGTacgt]/N/g;
+                $seq{$seq_id} .= $_; 
+            }
         }
         close FH;
     }
@@ -332,8 +340,7 @@ sub maskRepeat {
             $ini = $arr[5];
             $end = $arr[6];
             $len = $end - $ini;
-            $ss  = substr ($seq{$seq_id}, $ini - 1, $len);
-            substr ($seq{$seq_id}, $ini - 1, $len) = lc $ss;
+            substr ($seq{$seq_id}, $ini - 1, $len) = 'R' x $len;
         }
         close FH;
     }
@@ -353,8 +360,7 @@ sub maskTRF {
             $ini = $arr[1];
             $end = $arr[2];
             $len = $end - $ini;
-            $ss  = substr ($seq{$seq_id}, $ini - 1, $len);
-            substr ($seq{$seq_id}, $ini - 1, $len) = lc $ss;
+            substr ($seq{$seq_id}, $ini - 1, $len) = 'S' x $len;
         }
         close FH;
     }
@@ -374,8 +380,7 @@ sub maskGene {
             $ini = $arr[4];
             $end = $arr[5];
             $len = $end - $ini;
-            $ss  = substr ($seq{$seq_id}, $ini - 1, $len);
-            substr ($seq{$seq_id}, $ini - 1, $len) = lc $ss;
+            substr ($seq{$seq_id}, $ini - 1, $len) = 'X' x $len;
         }
         close FH;
     }
@@ -506,8 +511,14 @@ sub profileRepeats {
 }
 
 sub profileTRF {
-    warn "parsing TRF files\n" if (defined $verbose);
+    warn "  parsing TRF files\n" if (defined $verbose);
     foreach my $file (@trf) {
+        if (defined $exclude) {
+            next if ($file =~ m/$exclude/);
+        }
+        my $last_ini = -1;
+        my $last_end = -1;
+        my $last_div = -1;
         open T, "$file" or die "cannot open $file\n";
         while (<T>) {
             chomp;
@@ -521,19 +532,36 @@ sub profileTRF {
             my $consensus = $line[-1];
             my $label     = "SIMPLE:$consensus:$period:$div:$indel";
             next unless (defined $seq{$seq_id});
+            
+            # Check for overlaping repeats
+            if ($ini >= $last_ini and $ini <= $last_end) {
+                if ($div >= $last_div) {
+                    next; # because last repeat has less variation
+                }
+                else {
+                    pop @{ $repeat{$gc} }; # last repeat removal
+                }
+            }
+             
             my $left      = substr ($seq{$seq_id}, $ini - $win, $win);
             my $right     = substr ($seq{$seq_id}, $end, $win);
             my $gc        = calcGC("$left$right");
             push @{ $repeat{$gc} }, $label;
+            $last_ini = $ini;
+            $last_end = $end;
+            $last_div = $div;
         }
         close T;
     }
 }
 
 sub profileRM {
-    warn "parsing RepeatMasker files\n" if (defined $verbose);
+    warn "  parsing RepeatMasker files\n" if (defined $verbose);
     my %repdata = ();
     foreach my $file (@repeat) {
+        if (defined $exclude) {
+            next if ($file =~ m/$exclude/);
+        }
         open T, "$file" or die "cannot open $file\n";
         while (<T>) {
             chomp;
@@ -581,6 +609,23 @@ sub profileRM {
         push @{ $repeat{$gc} }, $repdata{$rid}{'label'};
     }
 }
+
+sub writeMaskedSeqs {
+    my $file = shift @_;
+    warn "writing sequence in $file\n" if (defined $verbose);
+    open F, ">$file" or die "cannot write $file\n";
+    foreach my $id (keys %seq) {
+        my $seq = $seq{$id};
+        print F ">$id\n";
+        while ($seq) {
+            my $s = substr ($seq, 0, 70);
+            print F "$s\n";
+            substr ($seq, 0, 70) = '';
+        }
+    }
+    close F;
+}
+
 sub removeTmp {
     warn "removing temporary files\n" if (defined $verbose);
     my @files = @gene;
