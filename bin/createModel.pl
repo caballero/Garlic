@@ -519,6 +519,7 @@ sub profileTRF {
         my $last_ini = -1;
         my $last_end = -1;
         my $last_div = -1;
+        my $last_gc  = -1;
         open T, "$file" or die "cannot open $file\n";
         while (<T>) {
             chomp;
@@ -539,7 +540,7 @@ sub profileTRF {
                     next; # because last repeat has less variation
                 }
                 else {
-                    pop @{ $repeat{$gc} }; # last repeat removal
+                    pop @{ $repeat{$last_gc} }; # last repeat removal
                 }
             }
              
@@ -550,6 +551,7 @@ sub profileTRF {
             $last_ini = $ini;
             $last_end = $end;
             $last_div = $div;
+            $last_gc  = $gc;
         }
         close T;
     }
