@@ -158,6 +158,7 @@ my @repeat   = ();
 my @trf      = ();
 my @gene     = ();
 my %seq      = ();
+my %simple   = ();
 my %repeat   = ();
 my @dna      = qw/A C G T/;
 my ($seq, $ss, $seq_id, $ini, $end, $len);
@@ -217,18 +218,31 @@ sub searchFiles {
 }
 
 sub getUCSC_gene {
-    warn "obtaining Gene files from $ucsc\n" if (defined $verbose);
-    system ("$get $ucsc_gene");
-    die "cannot find Gene output in $ucsc_gene" unless (-e 'ensGene.txt.gz' and -s 'ensGene.txt.gz');
-    $gene = 'ensGene.txt.gz';
+    if (-e 'ensGene.txt.gz') {
+        warn "ensGene.txt.gz present, using it\n" if (defined $verbose);
+    }
+    else {
+        warn "obtaining Gene files from $ucsc\n" if (defined $verbose);
+        system ("$get $ucsc_gene");
+        die "cannot find Gene output in $ucsc_gene" unless (-e 'ensGene.txt.gz' and -s 'ensGene.txt.gz');
+        $gene = 'ensGene.txt.gz';
+    }
 }
 
 sub getUCSC_trf {
-    warn "obtaining TRF files from $ucsc\n" if (defined $verbose);
-    mkdir 'TRF' unless (-e 'TRF' and -d 'TRF');
-    chdir 'TRF' or die "cannot move to TRF directory\n";
-    system ("$get $ucsc_trf");
-    die "cannot find TRF output in $ucsc_trf" unless (-e 'chromTrf.tar.gz' and -s 'chromTrf.tar.gz');
+    if (-e "TRF/chromTrf.tar.gz") {
+        warn "chromTrf.tar.gz present, using it\n" if (defined $verbose);
+        chdir 'TRF' or die "cannot move to TRF directory\n";
+
+    }
+    else {
+        warn "obtaining TRF files from $ucsc\n" if (defined $verbose);
+        mkdir 'TRF' unless (-e 'TRF' and -d 'TRF');
+        chdir 'TRF' or die "cannot move to TRF directory\n";
+        system ("$get $ucsc_trf");
+        die "cannot find TRF output in $ucsc_trf" unless (-e 'chromTrf.tar.gz' and -s 'chromTrf.tar.gz');
+    }
+    
     warn "unpacking TAR\n" if (defined $verbose);
     system ("$unpack chromTrf.tar.gz");
     chdir '..';
@@ -238,11 +252,19 @@ sub getUCSC_trf {
 }
 
 sub getUCSC_repeat {
-    warn "obtaining RepeatMasker files from $ucsc\n" if (defined $verbose);
-    mkdir 'RM' unless (-e 'RM' and -d 'RM');
-    chdir 'RM' or die "cannot move to RM directory\n";
-    system ("$get $ucsc_repeat");
-    die "cannot find RepeatMasker output in $ucsc_repeat" unless (-e 'chromOut.tar.gz' and -s 'chromOut.tar.gz');
+    if (-e "RM/chromOut.tar.gz") {
+        warn "chromOut.tar.gz present, using it\n" if (defined $verbose);
+        chdir 'RM' or die "cannot move to RM directory\n";
+
+    }
+    else {
+        warn "obtaining RepeatMasker files from $ucsc\n" if (defined $verbose);
+        mkdir 'RM' unless (-e 'RM' and -d 'RM');
+        chdir 'RM' or die "cannot move to RM directory\n";
+        system ("$get $ucsc_repeat");
+        die "cannot find RepeatMasker output in $ucsc_repeat" unless (-e 'chromOut.tar.gz' and -s 'chromOut.tar.gz');
+    }
+    
     warn "unpacking TAR\n" if (defined $verbose);
     system ("$unpack chromOut.tar.gz");
     chdir '..';
@@ -252,11 +274,18 @@ sub getUCSC_repeat {
 }
 
 sub getUCSC_fasta {
-    warn "obtaining fasta files from $ucsc\n" if (defined $verbose);
-    mkdir 'fasta' unless (-e 'fasta' and -d 'fasta');
-    chdir 'fasta' or die "cannot move to fasta directory\n";
-    system ("$get $ucsc_genome");
-    die "cannot find genomic sequences in $ucsc_genome" unless (-e 'chromFa.tar.gz' and -s 'chromFa.tar.gz');
+    if (-e "fasta/chromFa.tar.gz") {
+        warn "chromFa.tar.gz present, using it\n" if (defined $verbose);
+        chdir 'fasta' or die "cannot move to fasta directory\n";
+    }
+    else {
+        warn "obtaining fasta files from $ucsc\n" if (defined $verbose);
+        mkdir 'fasta' unless (-e 'fasta' and -d 'fasta');
+        chdir 'fasta' or die "cannot move to fasta directory\n";
+        system ("$get $ucsc_genome");
+        die "cannot find genomic sequences in $ucsc_genome" unless (-e 'chromFa.tar.gz' and -s 'chromFa.tar.gz');
+    }
+    
     warn "unpacking TAR\n" if (defined $verbose);
     system ("$unpack chromFa.tar.gz");
     chdir '..';
@@ -500,6 +529,7 @@ sub profileTRF {
 
 sub profileRM {
     warn "parsing RepeatMasker files\n" if (defined $verbose);
+    my %repdata = ();
     foreach my $file (@repeat) {
         open T, "$file" or die "cannot open $file\n";
         while (<T>) {
@@ -516,22 +546,36 @@ sub profileRM {
             my $del       = $line[3];
             my $dir       = $line[8];
             my $type      = $line[9];
-            my $class     = $line[10];
+            my $fam       = $line[10];
             my $rini      = $line[11];
             my $rend      = $line[12];
+            my $rid       = "$seq_id:$fam:$line[-1]";
             if ($dir eq 'C') {
                 $rini = $line[13];
                 $rend = $line[12];
                 $dir  = '-';
             }
-            my $label     = "$class:$type:$dir:$div:$ins:$del:$rini:$rend";
+            my $label     = "$fam:$type:$dir:$div:$ins:$del:$rini:$rend";
             next unless (defined $seq{$seq_id});
             my $left      = substr ($seq{$seq_id}, $ini - $win, $win);
             my $right     = substr ($seq{$seq_id}, $end, $win);
-            my $gc        = calcGC("$left$right");
-            push @{ $repeat{$gc} }, $label;
+                
+            if (defined $repdata{$rid}) {
+                $repdata{$rid}{'rseq'}   = $right;
+                $repdata{$rid}{'label'} .= ";$div:$ins:$del:$rini:$rend";
+            }
+            else {
+                $repdata{$rid}{'label'} = $label;
+                $repdata{$rid}{'lseq'}  = $left;
+                $repdata{$rid}{'rseq'}  = $right;
+            }
         }
         close T;
+    }
+    
+    foreach my $rid (keys %repdata) {
+        my $gc = calcGC($repdata{$rid}{'lseq'} . $repdata{$rid}{'rseq'});
+        push @{ $repeat{$gc} }, $repdata{$rid}{'label'};
     }
 }
 sub removeTmp {
