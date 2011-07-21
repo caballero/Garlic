@@ -230,8 +230,9 @@ sub getUCSC_gene {
 }
 
 sub getUCSC_trf {
-    if (-e "TRF/chromTrf.tar.gz") {
-        warn "chromTrf.tar.gz present, using it\n" if (defined $verbose);
+    my $target_file = 'chromTrf.tar.gz';
+    if (-e "TRF/$target_file") {
+        warn "$target_file present, using it\n" if (defined $verbose);
         chdir 'TRF' or die "cannot move to TRF directory\n";
 
     }
@@ -240,11 +241,11 @@ sub getUCSC_trf {
         mkdir 'TRF' unless (-e 'TRF' and -d 'TRF');
         chdir 'TRF' or die "cannot move to TRF directory\n";
         system ("$get $ucsc_trf");
-        die "cannot find TRF output in $ucsc_trf" unless (-e 'chromTrf.tar.gz' and -s 'chromTrf.tar.gz');
+        die "cannot find TRF output in $ucsc_trf" unless (-e $target_file);
     }
     
     warn "unpacking TAR\n" if (defined $verbose);
-    system ("$unpack chromTrf.tar.gz");
+    system ("$unpack $target_file");
     chdir '..';
     warn "searching TRF files\n" if (defined $verbose);
     $trf = searchFiles('.bed$', 'TRF');
@@ -252,8 +253,9 @@ sub getUCSC_trf {
 }
 
 sub getUCSC_repeat {
-    if (-e "RM/chromOut.tar.gz") {
-        warn "chromOut.tar.gz present, using it\n" if (defined $verbose);
+    my $target_file = 'chromOut.tar.gz';
+    if (-e "RM/$target_file") {
+        warn "$target_file present, using it\n" if (defined $verbose);
         chdir 'RM' or die "cannot move to RM directory\n";
 
     }
@@ -262,11 +264,11 @@ sub getUCSC_repeat {
         mkdir 'RM' unless (-e 'RM' and -d 'RM');
         chdir 'RM' or die "cannot move to RM directory\n";
         system ("$get $ucsc_repeat");
-        die "cannot find RepeatMasker output in $ucsc_repeat" unless (-e 'chromOut.tar.gz' and -s 'chromOut.tar.gz');
+        die "cannot find RepeatMasker output in $ucsc_repeat" unless (-e $target_file);
     }
     
     warn "unpacking TAR\n" if (defined $verbose);
-    system ("$unpack chromOut.tar.gz");
+    system ("$unpack $target_file");
     chdir '..';
     warn "searching RM files\n" if (defined $verbose);
     $repeat = searchFiles('.out$', 'RM');
@@ -274,8 +276,9 @@ sub getUCSC_repeat {
 }
 
 sub getUCSC_fasta {
-    if (-e "fasta/chromFa.tar.gz") {
-        warn "chromFa.tar.gz present, using it\n" if (defined $verbose);
+    my $target_file = 'chromFa.tar.gz';
+    if (-e "fasta/$target_file") {
+        warn "$target_file present, using it\n" if (defined $verbose);
         chdir 'fasta' or die "cannot move to fasta directory\n";
     }
     else {
@@ -283,11 +286,11 @@ sub getUCSC_fasta {
         mkdir 'fasta' unless (-e 'fasta' and -d 'fasta');
         chdir 'fasta' or die "cannot move to fasta directory\n";
         system ("$get $ucsc_genome");
-        die "cannot find genomic sequences in $ucsc_genome" unless (-e 'chromFa.tar.gz' and -s 'chromFa.tar.gz');
+        die "cannot find genomic sequences in $ucsc_genome" unless (-e $target_file);
     }
     
     warn "unpacking TAR\n" if (defined $verbose);
-    system ("$unpack chromFa.tar.gz");
+    system ("$unpack $target_file");
     chdir '..';
     warn "searching fasta files\n" if (defined $verbose);
     $fasta = searchFiles('.fa$', 'fasta');
