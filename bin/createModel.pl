@@ -328,12 +328,16 @@ sub readFasta {
 sub maskRepeat {
     warn "masking repeats\n" if (defined $verbose);
     foreach my $file (@repeat) {
+        if (defined $exclude) {
+            next if ($file =~ m/$exclude/);
+        }
         my $fileh = $file;
         $fileh = "gunzip  -c $file | " if ($file =~ m/\.gz$/);
         $fileh = "bunzip2 -c $file | " if ($file =~ m/\.bz2$/);
         open FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
             s/^\s*//;
+            next unless (m/^\d+/); # skip headers
             my @arr = split (/\s+/, $_);
             $seq_id = $arr[4];
             next unless (defined $seq{$seq_id});
@@ -349,6 +353,9 @@ sub maskRepeat {
 sub maskTRF {
     warn "masking simple repeats\n" if (defined $verbose);
     foreach my $file (@trf) {
+        if (defined $exclude) {
+            next if ($file =~ m/$exclude/);
+        }
         my $fileh = $file;
         $fileh = "gunzip  -c $file | " if ($file =~ m/\.gz$/);
         $fileh = "bunzip2 -c $file | " if ($file =~ m/\.bz2$/);
@@ -612,7 +619,7 @@ sub profileRM {
     }
 }
 
-sub writeMaskedSeqs {
+sub writeMaskSeq {
     my $file = shift @_;
     warn "writing sequence in $file\n" if (defined $verbose);
     open F, ">$file" or die "cannot write $file\n";
