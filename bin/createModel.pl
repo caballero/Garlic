@@ -218,14 +218,14 @@ sub searchFiles {
 }
 
 sub getUCSC_gene {
-    if (-e 'ensGene.txt.gz') {
-        warn "ensGene.txt.gz present, using it\n" if (defined $verbose);
+    $gene = 'ensGene.txt.gz';
+    if (-e $gene) {
+        warn "$gene present, using it\n" if (defined $verbose);
     }
     else {
         warn "obtaining Gene files from $ucsc\n" if (defined $verbose);
         system ("$get $ucsc_gene");
-        die "cannot find Gene output in $ucsc_gene" unless (-e 'ensGene.txt.gz' and -s 'ensGene.txt.gz');
-        $gene = 'ensGene.txt.gz';
+        die "cannot find Gene output in $ucsc_gene" unless (-e $gene and -s $gene);
     }
 }
 
