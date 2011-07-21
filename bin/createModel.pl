@@ -622,6 +622,12 @@ sub profileRM {
 sub writeMaskSeq {
     my $file = shift @_;
     warn "writing sequence in $file\n" if (defined $verbose);
+    my $good_bases = 0;
+    my $null_bases = 0;
+    my $rep_bases  = 0;
+    my $low_bases  = 0;
+    my $func_bases = 0;
+    my $unk_bases  = 0;
     open F, ">$file" or die "cannot write $file\n";
     foreach my $id (keys %seq) {
         my $seq = $seq{$id};
@@ -630,9 +636,24 @@ sub writeMaskSeq {
             my $s = substr ($seq, 0, 70);
             print F "$s\n";
             substr ($seq, 0, 70) = '';
+            $good_bases += $s =~ tr/ACGT//;
+            $null_bases += $s =~ tr/N//;
+            $rep_bases  += $s =~ tr/R//;
+            $low_bases  += $s =~ tr/S//;
+            $func_bases += $s =~ tr/X//;
+            $unk_bases  += length $s;
         }
     }
     close F;
+    warn <<__RES__
+    Effective bases            = $good_bases
+    Null bases (N)             = $null_bases
+    Interspersed repeats bases = $rep_bases
+    Low complexity bases       = $low_bases
+    Functional bases (genes)   = $func_bases
+    Unclassified bases         = $unk_bases
+__RES__
+if (defined $verbose);
 }
 
 sub removeTmp {
