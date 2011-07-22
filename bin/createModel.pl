@@ -595,7 +595,7 @@ sub profileRM {
                 $rend = $line[12];
                 $dir  = '-';
             }
-            my $label     = "$fam:$type:$dir:$div:$ins:$del:$rini:$rend";
+            my $label     = "$type:$fam:$dir:$div:$ins:$del:$rini:$rend";
             next unless (defined $seq{$seq_id});
             my $left      = substr ($seq{$seq_id}, $ini - $win, $win);
             my $right     = substr ($seq{$seq_id}, $end, $win);
@@ -627,7 +627,7 @@ sub writeMaskSeq {
     my $rep_bases  = 0;
     my $low_bases  = 0;
     my $func_bases = 0;
-    my $unk_bases  = 0;
+    my $tot_bases  = 0;
     open F, ">$file" or die "cannot write $file\n";
     foreach my $id (keys %seq) {
         my $seq = $seq{$id};
@@ -641,7 +641,7 @@ sub writeMaskSeq {
             $rep_bases  += $s =~ tr/R//;
             $low_bases  += $s =~ tr/S//;
             $func_bases += $s =~ tr/X//;
-            $unk_bases  += length $s;
+            $tot_bases  += length $s;
         }
     }
     close F;
@@ -651,7 +651,7 @@ sub writeMaskSeq {
     Interspersed repeats bases = $rep_bases
     Low complexity bases       = $low_bases
     Functional bases (genes)   = $func_bases
-    Unclassified bases         = $unk_bases
+    Total bases                = $tot_bases
 __RES__
 if (defined $verbose);
 }
