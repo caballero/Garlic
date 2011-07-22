@@ -343,8 +343,8 @@ sub maskRepeat {
             next unless (defined $seq{$seq_id});
             $ini = $arr[5];
             $end = $arr[6];
-            $len = $end - $ini;
-            substr ($seq{$seq_id}, $ini, $len) = 'R' x $len;
+            $len = $end - $ini + 1;
+            substr ($seq{$seq_id}, $ini - 1, $len) = 'R' x $len;
         }
         close FH;
     }
@@ -386,7 +386,7 @@ sub maskGene {
             next unless (defined $seq{$seq_id});
             $ini = $arr[4];
             $end = $arr[5];
-            $len = $end - $ini;
+            $len = $end - $ini - 1;
             substr ($seq{$seq_id}, $ini, $len) = 'X' x $len;
         }
         close FH;
