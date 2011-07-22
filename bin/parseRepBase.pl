@@ -93,10 +93,10 @@ foreach my $file (@files) {
     while (<F>) {
         chomp;
         s/>//;
-        my @seq = split (/\n/, $_);
+        my @seq  = split (/\n/, $_);
         my $name = shift @seq;
-        $name =~ m/^(.+?)\t/;
-        $id   = $1;
+        my @name = split (/\t/, $name);
+        $id      = shift @name;
         next if (defined $seq{$id});
         $seq{$id} = join "\n", ">$id", @seq;
     }
