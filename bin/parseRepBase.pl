@@ -81,8 +81,8 @@ else {
 }
 
 my @files = split (/,/, searchFiles('.ref', $dir));
-my %seq   = ();
-$exclude  = s/,/|/g;
+my %seq   =  ();
+$exclude  =~ s/,/|/g;
 
 foreach my $file (@files) {
     next if ($file =~ m/$exclude/);
