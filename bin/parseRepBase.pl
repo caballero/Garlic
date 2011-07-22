@@ -98,6 +98,9 @@ foreach my $file (@files) {
         $name =~ m/(.+?)\t(.+?)\t/;
         my $type = $1;
         my $fam  = $2;
+        
+        warn "$_\n" unless (defined $type and defined $fam); 
+        
         $id = "$type:$fam";
         next if (defined $seq{$id});
         $seq{$id} = join "\n", ">$id", @seq;
@@ -111,7 +114,7 @@ if (defined $output) {
 
 my $cnt = 0;
 while ( my ($rep, $seq) = each %seq ) {
-    print $seq;
+    print "$seq\n";
     $cnt++;
 }
 warn "$cnt sequences found\n" if (defined $verbose);
