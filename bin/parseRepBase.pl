@@ -86,7 +86,7 @@ $exclude  =~ s/,/|/g;
 
 foreach my $file (@files) {
     next if ($file =~ m/$exclude/);
-    warn "loading sequence in $file\n" if (defined $verbose);
+    warn "loading sequences in $file\n" if (defined $verbose);
     open F, "$file" or die "cannot read $file\n";
     my $id = undef;
     $/ = "\n>"; # slurp mode per sequence
@@ -94,6 +94,7 @@ foreach my $file (@files) {
         chomp;
         s/>//;
         my @seq  = split (/\n/, $_);
+        # we use the sequence name as ID
         my $name = shift @seq;
         my @name = split (/\t/, $name);
         $id      = shift @name;
@@ -107,6 +108,7 @@ if (defined $output) {
     open STDOUT, ">$output" or die "Cannot write file $output\n";
 }
 
+# printing the output
 my $cnt = 0;
 while ( my ($rep, $seq) = each %seq ) {
     print "$seq\n";
@@ -114,6 +116,7 @@ while ( my ($rep, $seq) = each %seq ) {
 }
 warn "$cnt sequences found\n" if (defined $verbose);
 
+# SUBROUTINES
 sub searchFiles {
     my ($pat, $dir) = @_;
     my $files = undef;
