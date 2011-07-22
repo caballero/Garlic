@@ -99,7 +99,7 @@ foreach my $file (@files) {
         my $type = $1;
         my $fam  = $2;
         
-        warn "$_\n" unless (defined $type and defined $fam); 
+        warn "$name\n" unless (defined $type and defined $fam); 
         
         $id = "$type:$fam";
         next if (defined $seq{$id});
