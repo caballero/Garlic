@@ -95,13 +95,8 @@ foreach my $file (@files) {
         s/>//;
         my @seq = split (/\n/, $_);
         my $name = shift @seq;
-        $name =~ m/(.+?)\t(.+?)\t/;
-        my $type = $1;
-        my $fam  = $2;
-        
-        warn "$name\n" unless (defined $type and defined $fam); 
-        
-        $id = "$type:$fam";
+        $name =~ m/^(.+?)\t/;
+        $id   = $1;
         next if (defined $seq{$id});
         $seq{$id} = join "\n", ">$id", @seq;
     }
