@@ -86,6 +86,7 @@ $exclude  = s/,/|/g;
 
 foreach my $file (@files) {
     next if ($file =~ m/$exclude/);
+    warn "loading sequence in $file\n" if (defined $verbose);
     open F, "$file" or die "cannot read $file\n";
     my $id = undef;
     $/ = "\n>"; # slurp mode per sequence
@@ -108,9 +109,12 @@ if (defined $output) {
     open STDOUT, ">$output" or die "Cannot write file $output\n";
 }
 
+my $cnt = 0;
 while ( my ($rep, $seq) = each %seq ) {
     print $seq;
+    $cnt++;
 }
+warn "$cnt sequences found\n" if (defined $verbose);
 
 sub searchFiles {
     my ($pat, $dir) = @_;
