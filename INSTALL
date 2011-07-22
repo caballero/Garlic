@@ -12,6 +12,20 @@ a) Unpacking a TAR-ball
 
 b) Clonning the repository from GitHub:
    > git clone git://github.com/caballero/FakeSequence.git
+   
+REPBASE DATA
+
+The RepBase consensus sequences can be obtained from GIRI 
+[http://www.girinst.org/server/RepBase/index.php], download and unpack the
+Fasta format of RepBase, then run parseRepBase.pl to create one Fasta file.
+  
+  > cd data/RepBase
+  > tar zxvf /PATH/TO/RepBaseXXXX.fasta.tar.gz
+  > ../../bin/parseRepBase.pl > RepBaseXXXX.fa
+  
+  where XXXX is the version number of RepBase.
+
+OTHER
 
 The scripts must work out-of-the-box, but minor changes might be required:
 
