@@ -12,15 +12,15 @@ the model used. The models are described in parts:
 a) The composition background with Markov models from 0 to 5 in fixed windows.
 b) The repeats parsed from the alignements described by RepeatMasker and 
 consensus bases acording to RepBase.
-c) Transitional frecuencies for fixed windows in GC% classes (0-95).
-d) Pseudogenes from the genome annotation.
+c) Transitional frecuencies for fixed windows in GC% classes (0-90).
 
 To create the new sequence first we need to retrieve the elements to insert 
 and calculate the length of the base DNA. Then, the elements are "bombarded"
-in random positions and orientation.
+in random positions.
 
 The main idea is to recreate a sequence generator without limits of size and
 sequences as real as the intergenic regions of a genome.
+
 =head1 USAGE
 
 perl createFakeSequence.pl [OPTIONS]
@@ -67,7 +67,7 @@ my $nsim    =    undef; # Number of simple repeats to insert
 my $out     =   'fake'; # Filename to use
 my $size    =    undef; # Final size of the sequence
 my $mask    =    undef; # Flag to mask repeats
-my $win     =      200; # Window size for sequence GC transition
+my $win     =     1000; # Window size for sequence GC transition
 my $help    =    undef; # Variable to activate help
 my $debug   =    undef; # Variable to activate verbose mode
 my $baseseq =    undef; # Size of the sequence to generate
@@ -207,10 +207,10 @@ Parameters:
   -n --name      Output files to create [*.fasta and *.log].
 	
 Optional or automatic parameters:
-  -w --win       Window size for base generation profile.     Default =   200
+  -w --win       Window size for base generation profile.     Default =  1000
   -k --kmer      Seed size to use [available: 1,2,3,4,5,6].   Default =     4
-  -g --mingc     Minimal GC content to use [0,5,10,..,95].    Default =     0
-  -c --maxgc     Maximal GC content to use [0,5,10,..,95].    Default =    90
+  -g --mingc     Minimal GC content to use [0,10,..,90].      Default =     0
+  -c --maxgc     Maximal GC content to use [0,10,..,90].      Default =    90
   -r --repeats   Number of total repeats to insert.           Default =  Auto
   -s --simple    Number of total simple repeats to insert.    Default =  Auto
   -m --mask      Mask repeats in final sequence.              Default = False
