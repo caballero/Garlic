@@ -21,7 +21,7 @@ OPTIONS
     -m --model         Create model                  String
     -d --dir           Write model in directory      Directory      ./data
     -k --kmer          Profile k-mer size            Integer        4
-    -w --win           Profile window size           Integer        200
+    -w --win           Profile window size           Integer        1000
     
     -f --fasta         Fasta sequences               FileName*
     -r --repeats       RepeatMasker output           FileName*
@@ -99,24 +99,24 @@ use Pod::Usage;
 use File::Find;
 
 # Parameters initialization
-my $model           = undef;      # Model definition
-my $dir             = 'data';     # Output directory
-my $kmer            = 4;          # K-mer size
-my $win             = 200;        # Window size (non-overlapping)
-my $fasta           = undef;      # Sequences in fasta files
-my $repeat          = undef;      # RepeatMasker output
-my $trf             = undef;      # TRF output
-my $gene            = undef;      # Gene annotation
-my $help            = undef;      # Help flag
-my $verbose         = undef;      # Verbose mode flag
-my $rm_tmp          = undef;      # Remove downloaded files
-my $exclude         = undef;      # Exclude sequence name pattern
-my $mask_repeat     = undef;      # Repeat masking flag
-my $mask_trf        = undef;      # TRF masking flag
-my $no_mask_gene    = undef;      # Gene masking flag
-my $no_repeat_table = undef;      # No repeats profile flag
-my $no_kmer_table   = undef;      # No kmer profile flag
-my $write_mask_seq  = undef;      # Write fasta flag
+my $model           =  undef;      # Model definition
+my $dir             = 'data';      # Output directory
+my $kmer            =      4;      # K-mer size
+my $win             =   1000;      # Window size (non-overlapping)
+my $fasta           =  undef;      # Sequences in fasta files
+my $repeat          =  undef;      # RepeatMasker output
+my $trf             =  undef;      # TRF output
+my $gene            =  undef;      # Gene annotation
+my $help            =  undef;      # Help flag
+my $verbose         =  undef;      # Verbose mode flag
+my $rm_tmp          =  undef;      # Remove downloaded files
+my $exclude         =  undef;      # Exclude sequence name pattern
+my $mask_repeat     =  undef;      # Repeat masking flag
+my $mask_trf        =  undef;      # TRF masking flag
+my $no_mask_gene    =  undef;      # Gene masking flag
+my $no_repeat_table =  undef;      # No repeats profile flag
+my $no_kmer_table   =  undef;      # No kmer profile flag
+my $write_mask_seq  =  undef;      # Write fasta flag
 
 # Fetch options
 GetOptions(
@@ -217,6 +217,7 @@ warn "Done\n" if (defined $verbose);
 #################################################
 
 sub searchFiles {
+    # deep search of files/patterns in a directory
     my ($pat, $dir) = @_;
     my $files = undef;
     find ( sub { $files .= $File::Find::name . ',' if (m/$pat/) }, $dir );
@@ -224,6 +225,8 @@ sub searchFiles {
 }
 
 sub getUCSC_gene {
+    # annotation also can be 'knownGene.txt.gz' but only includes coding 
+    # genes, we prefer Ensemble annotation for that reason
     $gene = 'ensGene.txt.gz';
     if (-e $gene) {
         warn "$gene present, using it\n" if (defined $verbose);
@@ -236,6 +239,7 @@ sub getUCSC_gene {
 }
 
 sub getUCSC_trf {
+    # TRF output is used for simple repeat annotation
     my $target_file = 'chromTrf.tar.gz';
     if (-e "TRF/$target_file") {
         warn "$target_file present, using it\n" if (defined $verbose);
@@ -259,6 +263,7 @@ sub getUCSC_trf {
 }
 
 sub getUCSC_repeat {
+    # RepeatMasker output
     my $target_file = 'chromOut.tar.gz';
     if (-e "RM/$target_file") {
         warn "$target_file present, using it\n" if (defined $verbose);
@@ -282,6 +287,7 @@ sub getUCSC_repeat {
 }
 
 sub getUCSC_fasta {
+    # Chromosomal sequences
     my $target_file = 'chromFa.tar.gz';
     if (-e "fasta/$target_file") {
         warn "$target_file present, using it\n" if (defined $verbose);
@@ -304,6 +310,7 @@ sub getUCSC_fasta {
 }
 
 sub readFasta {
+    # read tha fasta files, apply filters if required
     warn "loading fasta sequences\n" if (defined $verbose);
     foreach my $file (@fasta) {
         if (defined $exclude) {
@@ -329,6 +336,7 @@ sub readFasta {
 }
 
 sub maskRepeat {
+    # mask sequences with RepeatMasker annotation
     warn "masking repeats\n" if (defined $verbose);
     foreach my $file (@repeat) {
         if (defined $exclude) {
@@ -354,6 +362,7 @@ sub maskRepeat {
 }
 
 sub maskTRF {
+    # mask sequences with TRF annotation
     warn "masking simple repeats\n" if (defined $verbose);
     foreach my $file (@trf) {
         if (defined $exclude) {
@@ -377,6 +386,7 @@ sub maskTRF {
 }
 
 sub maskGene {
+    # mask sequences with gene annotation
     warn "masking genes\n" if (defined $verbose);
     foreach my $file (@gene) {
         my $fileh = $file;
@@ -397,6 +407,7 @@ sub maskGene {
 }
 
 sub profileSeqs {
+    # compute Kmer frequencies and GC transitions observed
     warn "profiling sequences, kmer=$kmer and window=$win\n" if (defined $verbose);
     my $bp_slices = 0;
     my @kmer      = createKmer($kmer - 1, @dna);
@@ -486,6 +497,7 @@ sub profileSeqs {
 }
 
 sub createKmer {
+    # fill a vector with all k-mer combinations
     my $k = shift @_; $k--;
 	my @old = @_;
 	my @new = ();
@@ -498,11 +510,12 @@ sub createKmer {
 				push @new, "$e$n"; # add new element
 			}
 		}
-		createKmer($k, @new);
+		createKmer($k, @new); # recursive!
 	}
 }
 
 sub profileRepeats {
+    # call the repeat parsers and write the final table
     warn "profiling repeats\n" if (defined $verbose);
     profileTRF() if (defined $trf);
     profileRM()  if (defined $repeat);
@@ -521,6 +534,7 @@ sub profileRepeats {
 }
 
 sub profileTRF {
+    # parse TRF output, remove overlapping repeats 
     warn "  parsing TRF files\n" if (defined $verbose);
     foreach my $file (@trf) {
         if (defined $exclude) {
@@ -568,6 +582,7 @@ sub profileTRF {
 }
 
 sub profileRM {
+    # parse TRF output, mix spliced repeats
     warn "  parsing RepeatMasker files\n" if (defined $verbose);
     my %repdata = ();
     foreach my $file (@repeat) {
@@ -623,6 +638,8 @@ sub profileRM {
 }
 
 sub writeMaskSeq {
+    # write the masked sequence: [ACGT]=effective bases, N=ambigous bases,
+    # S=simple repeat bases, R=interspersed repeats, X=gene bases
     my $file = shift @_;
     warn "writing sequence in $file\n" if (defined $verbose);
     my $good_bases = 0;
@@ -660,6 +677,7 @@ if (defined $verbose);
 }
 
 sub writeModelInfo {
+    # write basic model description and related files created
     my $tot_bases = 0;
     foreach my $id (keys %seq) {
         $tot_bases += length $seq{$id};
