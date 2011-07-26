@@ -678,16 +678,31 @@ if (defined $verbose);
 
 sub writeModelInfo {
     # write basic model description and related files created
-    my $tot_bases = 0;
+    my $tot_bases  = 0;
+    my $tot_null   = 0;
+    my $tot_repeat = 0;
+    my $tot_simple = 0;
+    # counting bases
     foreach my $id (keys %seq) {
         $tot_bases += length $seq{$id};
+        $tot_null += $seq{$id} =~ tr/N/N/;
     }
+    foreach my $gc (@gc) {
+        foreach my $rep (@{ $repeat{$gc} }) {
+            if ($repeat{$gc}{$rep} =~ m/^SIMPLE/) { $tot_simple++; }
+            else                                  { $tot_repeat++; }
+        }
+    }
+    
     open  M, ">$model.model" or die "cannot open $model.model\n";
     print M "model=$model\n";
     print M "bases=$tot_bases\n";
-    print M "repeats=$model.repeats.W$win.data\n" unless (defined $no_repeat_table);
-    print M "gctrans=$model.GCt.W$win.data\n"     unless (defined $no_kmer_table);
-    print M "kmers=$model.K$kmer.W$win.data\n"    unless (defined $no_kmer_table);
+    print M "undefined=$tot_null\n";
+    print M "num_repeat=$tot_repeat\n" unless (defined $no_repeat_table);
+    print M "num_simple=$tot_simple\n" unless (defined $no_repeat_table);
+    print M "repeat_file=$model.repeats.W$win.data\n" unless (defined $no_repeat_table);
+    print M "gct_file=$model.GCt.W$win.data\n"     unless (defined $no_kmer_table);
+    print M "kmer_file=$model.K$kmer.W$win.data\n"    unless (defined $no_kmer_table);
     close M;   
 }
 
