@@ -685,9 +685,9 @@ sub writeModelInfo {
     open  M, ">$model.model" or die "cannot open $model.model\n";
     print M "model=$model\n";
     print M "bases=$tot_bases\n";
-    print M "repeats=$model.repeats.W$win.data" unless (defined $no_repeat_table);
-    print M "gctrans=$model.GCt.W$win.data" unless (defined $no_kmer_table);
-    print M "kmers=$model.K$kmer.W$win.data" unless (defined $no_kmer_table);
+    print M "repeats=$model.repeats.W$win.data\n" unless (defined $no_repeat_table);
+    print M "gctrans=$model.GCt.W$win.data\n"     unless (defined $no_kmer_table);
+    print M "kmers=$model.K$kmer.W$win.data\n"    unless (defined $no_kmer_table);
     close M;   
 }
 
