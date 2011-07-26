@@ -204,6 +204,9 @@ profileSeqs() unless (defined $no_kmer_table);
 # Create the Repeat Table
 profileRepeats() unless (defined $no_repeat_table);
 
+# Create the model info file
+writeModelInfo();
+
 # Clean up
 removeTmp() if (defined $rm_tmp);
 
@@ -654,6 +657,20 @@ sub writeMaskSeq {
     Total bases                = $tot_bases
 __RES__
 if (defined $verbose);
+}
+
+sub writeModelInfo {
+    my $tot_bases = 0;
+    foreach my $id (keys %seq) {
+        $tot_bases += length $seq{$id};
+    }
+    open  M, ">$model.model" or die "cannot open $model.model\n";
+    print M "model=$model\n";
+    print M "bases=$tot_bases\n";
+    print M "repeats=$model.repeats.W$win.data" unless (defined $no_repeat_table);
+    print M "gctrans=$model.GCt.W$win.data" unless (defined $no_kmer_table);
+    print M "kmers=$model.K$kmer.W$win.data" unless (defined $no_kmer_table);
+    close M;   
 }
 
 sub removeTmp {
