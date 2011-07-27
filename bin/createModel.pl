@@ -59,9 +59,9 @@ The model names are according to UCSC:
   - ...
 
 This script will download the required files and process it. Caution, the files
-are really big and the download time could be large.
+are really big and the download time may be large.
 
-Also you can use your own sequences and annotations to create a model:
+Alternatively, you can use your own sequences and annotations to create a model:
 
   perl createModel.pl -m myOrg -f myOrg.fa -r RM.out -t TRF.out -g Genes.table
 
@@ -160,10 +160,11 @@ my @repeat   = ();
 my @trf      = ();
 my @gene     = ();
 my %seq      = ();
-my %simple   = ();
 my %repeat   = ();
+my %genes    = ();
 my @dna      = qw/A C G T/;
 my ($seq, $ss, $seq_id, $ini, $end, $len);
+# GC content bins, if you change this array, change the calGC() subroutine too.
 my @gc = qw/0-10 10-20 20-30 30-40 40-50 50-60 60-70 70-80 80-90 90-100/;
 
 # Check directories, create them if required
@@ -191,7 +192,7 @@ getUCSC_gene()   unless (defined $gene   or defined $no_mask_gene);
 @gene    = split (/,/, $gene);
 $exclude =~ s/,/|/g if (defined $exclude);
 
-# Load sequences and mask them
+# Load sequences and mask it
 readFasta();
 maskGene() unless (defined $no_mask_gene);
 maskRepeat()   if (defined $mask_repeat);
@@ -225,7 +226,7 @@ sub searchFiles {
 }
 
 sub getUCSC_gene {
-    # annotation also can be 'knownGene.txt.gz' but only includes coding 
+    # annotation also can be 'knownGene.txt.gz' but it only includes coding 
     # genes, we prefer Ensemble annotation for that reason
     $gene = 'ensGene.txt.gz';
     if (-e $gene) {
@@ -401,6 +402,7 @@ sub maskGene {
             $end = $arr[5];
             $len = $end - $ini - 1;
             substr ($seq{$seq_id}, $ini, $len) = 'X' x $len;
+            $genes{$seq_id}{"$ini-$end"} = 1;
         }
         close FH;
     }
@@ -530,7 +532,7 @@ sub profileRepeats {
         }
     }
     close R;
-    %repeat = ();
+    #%repeat = ();
 }
 
 sub profileTRF {
@@ -557,6 +559,7 @@ sub profileTRF {
             my $consensus = $line[-1];
             my $label     = "SIMPLE:$consensus:$period:$div:$indel";
             next unless (defined $seq{$seq_id});
+            next if (checkGene($seq_id, $ini, $end));
             
             # Check for overlaping repeats
             if ($ini >= $last_ini and $ini <= $last_end) {
@@ -615,6 +618,7 @@ sub profileRM {
             }
             my $label     = "$type:$fam:$dir:$div:$ins:$del:$rini:$rend";
             next unless (defined $seq{$seq_id});
+            next if (checkGene($seq_id, $ini, $end));
             my $left      = substr ($seq{$seq_id}, $ini - $win, $win);
             my $right     = substr ($seq{$seq_id}, $end, $win);
                 
@@ -637,8 +641,21 @@ sub profileRM {
     }
 }
 
+sub checkGene {
+    my ($c, $i, $e) = @_;
+    my $res = undef;
+    foreach my $coord (keys %{$genes{$c} }) {
+        my ($gi, $ge) = split (/-/, $coord);
+        if ($i >= $gi and $e <= $ge) {
+            $res = 1;
+            last;
+        }
+    }
+    return $res;
+}
+
 sub writeMaskSeq {
-    # write the masked sequence: [ACGT]=effective bases, N=ambigous bases,
+    # write the masked sequence: [ACGT]=effective bases, N=ambiguous bases,
     # S=simple repeat bases, R=interspersed repeats, X=gene bases
     my $file = shift @_;
     warn "writing sequence in $file\n" if (defined $verbose);
@@ -689,8 +706,8 @@ sub writeModelInfo {
     }
     foreach my $gc (@gc) {
         foreach my $rep (@{ $repeat{$gc} }) {
-            if ($repeat{$gc}{$rep} =~ m/^SIMPLE/) { $tot_simple++; }
-            else                                  { $tot_repeat++; }
+            if ($rep =~ m/^SIMPLE/) { $tot_simple++; }
+            else                    { $tot_repeat++; }
         }
     }
     
