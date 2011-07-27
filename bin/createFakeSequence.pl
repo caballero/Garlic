@@ -70,7 +70,6 @@ my $mask    =    undef; # Flag to mask repeats
 my $win     =     1000; # Window size for sequence GC transition
 my $help    =    undef; # Variable to activate help
 my $debug   =    undef; # Variable to activate verbose mode
-my $baseseq =    undef; # Size of the sequence to generate
 my %model   =       (); # Hash to store model parameters
 my %inserts =       (); # Hash to store the insert sequences data
 my %gct     =       (); # Hash for GC transitions GC(n-1) -> GC(n)
@@ -85,6 +84,7 @@ my %rep_seq =       (); # Hash with consensus sequences from RepBase
 my $max_cyc =     1000; # Max number of cycles in loops
 my $mut_cyc =       10;
 my @dna     = qw/A C G T/; # yes, the DNA alphabet
+my $repbase = './data/RepBase/RepBase16.06.fa';
 
 ## Parameters extraction
 usage() if (!GetOptions( 
@@ -103,7 +103,7 @@ usage() if (!GetOptions(
 );
 
 usage() if (defined $help);
-usage() unless (defined $model and defined $size and defined $out);
+usage() unless (defined $model and defined $size);
 
 # Loading model parameters
 %model = readConfig($dir, $model);
@@ -120,40 +120,29 @@ print "Generating a $size sequence with $model model, output in $out\n" if (defi
 # Checking the size (conversion of symbols)
 $size = checkSize($size);
 errorExit("$size isn't a number") unless($size =~ /^\d+$/ and $size > 1);
-my $portion = 1;
-$portion = $model{'base_portion'} if (defined $model{'base_portion'});
-$baseseq = $size * $portion;
 
 # Loading background models
-loadGCt($dir, $model{'model'}, $win);
-print "GC transitions in windows size $win, loaded\n" if(defined $debug);
+loadGCt($dir, $model{'gct_file'});
+print "GC transitions in ", $model{'gct_file'}, " loaded\n" if(defined $debug);
 
-loadKmers($dir, $model{'model'}, $kmer, $win);
-print "$kmer-mers in windows size $win, loaded\n" if(defined $debug);
+loadKmers($dir, $model{'kmer_file'});
+print "k-mers in ", $model{'kmer_file'}, " loaded\n" if(defined $debug);
 
 # Number of simple repeats to use
 unless (defined $nsim and $nsim >= 0) {
-	$nsim = calcInsertNum($size, $model{'simple_count'} / $model{'genome_size'});
+	$nsim = calcInsertNum($size, $model{'num_simple'} / ($model{'bases'} - $model{'undefined'}));
 }
 print "$nsim simple repeats to select\n" if(defined $debug);
-if ($nsim > 0) {
-	%{ $inserts{'simple'} } = ();
-	my $sim_size = selectSimple($dir, $model{'model'}, $model{'simple_file'}, $model{'simple_count'}, $nsim);
-	print "Selected $nsim simple repeats ($sim_size bp)\n" if(defined $debug);
-}
 
 # Number of interspearsed repeats to use
 unless (defined $nrep and $nrep >= 0) {
-	$nrep = calcInsertNum($size, $model{'repeats_count'} / $model{'genome_size'});
+	$nrep = calcInsertNum($size, $model{'num_repeat'} / ($model{'bases'} - $model{'undefined'}));
 }
 print "$nrep interspersed repeats to select\n" if(defined $debug);
 
 if ($nrep > 0) {
 	# loading repeats consensus
-	loadRepeatConsensus("$dir/repbase/RepeatMaskerLib.embl");
-	%{ $inserts{'repeat'} } = ();
-	my $rep_size = selectRepeat($dir, $model{'model'}, $model{'repeats_file'}, $model{'repeats_count'}, $nrep);
-	print "Selected $nrep interspersed repeats ($rep_size bp)\n" if(defined $debug);
+	loadRepeatConsensus($repbase);
 }
 
 # Generation of base sequence
@@ -161,8 +150,8 @@ my $fgc    = newGC();
 my @fseeds = keys %{ $elemk{$fgc} };
 my $fseed  = $fseeds[int(rand @fseeds)];
 
-$seq = createSeq($kmer, $fgc, $baseseq, $win, $fseed);
-print "Base sequence generated ($baseseq bases)\n" if(defined $debug);
+$seq = createSeq($kmer, $fgc, $size, $win, $fseed);
+print "Base sequence generated ($size bases)\n" if(defined $debug);
 
 # Adding new elements
 if ($nsim + $nrep > 0) {
@@ -182,17 +171,19 @@ open  FAS, ">$out.fasta" or errorExit("cannot open $out.fasta");
 print FAS  ">artificial_sequence MODEL=$model KMER=$kmer WIN=$win LENGTH=$size\n$fseq";
 close FAS;
 
-open  INS, ">$out.inserts" or errorExit("cannot open $out.inserts");
-print INS  "TYPE\tID\tPOS\tTAG\tSEQ\n";
-foreach my $type (keys %inserts) {
-	foreach my $nid (keys %{ $inserts{$type} }) {
-		my $p = $inserts{$type}{$nid}{'pos'};
-		my $t = $inserts{$type}{$nid}{'tag'};
-		my $s = $inserts{$type}{$nid}{'seq'};
-		print INS "$type\t$nid\t$p\t$t\t$s\n";	
-	}
+if ($nsim + $nrep > 0) {
+    open  INS, ">$out.inserts" or errorExit("cannot open $out.inserts");
+    print INS  "TYPE\tID\tPOS\tTAG\tSEQ\n";
+    foreach my $type (keys %inserts) {
+	    foreach my $nid (keys %{ $inserts{$type} }) {
+		    my $p = $inserts{$type}{$nid}{'pos'};
+		    my $t = $inserts{$type}{$nid}{'tag'};
+		    my $s = $inserts{$type}{$nid}{'seq'};
+		    print INS "$type\t$nid\t$p\t$t\t$s\n";	
+	    }
+    }
+    close INS;
 }
-close INS;
 
 #################################################
 ##      S  U  B  R  O  U  T  I  N  E  S        ##
