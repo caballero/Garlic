@@ -402,7 +402,7 @@ sub maskGene {
             $end = $arr[5];
             $len = $end - $ini - 1;
             substr ($seq{$seq_id}, $ini, $len) = 'X' x $len;
-            $genes{$seq_id}{"$ini-$end"} = 1;
+            push @{ $genes{$seq_id} }, "$ini-$end";
         }
         close FH;
     }
@@ -644,12 +644,13 @@ sub profileRM {
 sub checkGene {
     my ($c, $i, $e) = @_;
     my $res = undef;
-    foreach my $coord (keys %{$genes{$c} }) {
+    foreach my $coord (@{ $genes{$c} }) {
         my ($gi, $ge) = split (/-/, $coord);
         if ($i >= $gi and $e <= $ge) {
             $res = 1;
             last;
         }
+        last if ($gi > $e);
     }
     return $res;
 }
