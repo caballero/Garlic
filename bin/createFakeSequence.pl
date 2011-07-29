@@ -73,7 +73,7 @@ my $debug   =    undef; # Variable to activate verbose mode
 my %model   =       (); # Hash to store model parameters
 my %simple  =       (); # Hash to store repeats info
 my %repeat  =       (); # Hash to store repeats info
-my %inserts =       (); # Hash to store the insert sequences data
+my @inserts =       (); # Array to store the insert sequences data
 my %gct     =       (); # Hash for GC transitions GC(n-1) -> GC(n)
 my %elemk   =       (); # Hash for kmers probabilities
 my %gc      =       (); # Hash for GC content probabilities
@@ -745,7 +745,7 @@ sub insertElements {
 	my @ins  = ();
 	for (my $i = 1; $i <= $nrep; $i++) { push @ins, 'rep'; }
 	for (my $i = 1; $i <= $nsim; $i++) { push @ins, 'sim'; }
-	@ins = shuffle(@ins)
+	@ins = shuffle(@ins);
 	foreach my $pos (keys %pos) {
 	    my $zone = substr ($s, $pos, $win);
 	    my $gc   = calcGC($zone);
@@ -754,11 +754,11 @@ sub insertElements {
 	    my $seq  = '';
 	    
 	    if ($ins eq 'sim') {
-	        $new = $simple{$gc}[int(rand @{ $simple{$gc} }];
+	        $new = $simple{$gc}[int(rand @{ $simple{$gc} })];
 	        $seq = evolveSimple($new, $gc);
 	    }
 	    else {
-	        $new = $repeat{$gc}[int(rand @{ $repeat{$gc} }];
+	        $new = $repeat{$gc}[int(rand @{ $repeat{$gc} })];
 	        $seq = evolveRepeat($new, $gc);
 	    }
 	    
@@ -766,7 +766,7 @@ sub insertElements {
 	        my @frag = split (/X/, $seq);
 	        foreach my $frag (@frag) {
 	            substr ($s, $pos, length $frag) = $frag;
-	            $pos += (length $frag) + int(rand (length $frag) + int(rand (length $frag));
+	            $pos += (length $frag) + int(rand (length $frag)) + int(rand (length $frag));
 	        }
 	    }
 	    else {
@@ -782,12 +782,12 @@ sub evolveSimple {
     my $sim   = shift @_;
     my $gc    = shift @_;
     my $seq   = '';
-    my ($lab, $seed, $exp, $div, $indel) = split (/:/, $rep);
+    my ($lab, $seed, $exp, $div, $indel) = split (/:/, $sim);
     $seq      = $seed x (int($exp) + 1);
     $seq      = substr ($seq, 0, int($exp * length $seed));
     my $mut   = int($div * (length $seq) / 100);
     my $nsit  = int($mut / 2);
-    my $nver  = $mut - $trs;
+    my $nver  = $mut - $nsit;
     my $nid   = int($indel * (length $seq) / 100);
     my $ndel  = int(rand $nid);
     my $nins  = $nid - $ndel;
@@ -813,7 +813,7 @@ sub evolveRepeat {
         $sseq = revcomp($seq) if ($dir eq '-');
         $mut  = int($div * (length $seq) / 100);
         $nsit = int($mut / 2);
-        $nver = $mut - $trs;
+        $nver = $mut - $nsit;
         $nins = int($ins * (length $seq) / 100);
         $ndel = int($ins * (length $seq) / 100);
         $sseq = addDeletions(    $seq, $ndel, $gc) if($ndel > 0);
@@ -827,7 +827,7 @@ sub evolveRepeat {
             $sseq  = revcomp($seq) if ($dir eq '-');
             $mut  = int($div * (length $seq) / 100);
             $nsit = int($mut / 2);
-            $nver = $mut - $trs;
+            $nver = $mut - $nsit;
             $nins = int($ins * (length $seq) / 100);
             $ndel = int($ins * (length $seq) / 100);
             $sseq  = addDeletions(    $seq, $ndel, $gc) if($ndel > 0);
@@ -843,7 +843,7 @@ sub evolveRepeat {
         $seq  = revcomp($seq) if ($dir eq '-');
         $mut  = int($div * (length $seq) / 100);
         $nsit = int($mut / 2);
-        $nver = $mut - $trs;
+        $nver = $mut - $nsit;
         $nins = int($ins * (length $seq) / 100);
         $ndel = int($ins * (length $seq) / 100);
         $seq  = addDeletions(    $seq, $ndel, $gc) if($ndel > 0);
@@ -852,22 +852,6 @@ sub evolveRepeat {
         $seq  = addInsertions(   $seq, $nins, $gc) if($nins > 0);
     }
     return $seq;
-}
-
-# selPosition => choose the most mutable positions in a seq (based in GC)
-sub selPosition {
-        my $seq = shift @_;
-        my $gc  = shift @_;
-        my @pos = ();
-        my %dat = ();
-        for (my $i = 0; $i <= ((length $seq) - $kmer); $i++) {
-                my $seed = substr($seq, $i, $kmer);
-                $dat{$i} = $elemk{$gc}{$seed};
-        }
-        foreach my $pos (sort { $dat{$a} <=> $dat{$b} } keys %dat) {
-                push (@pos, $pos);
-        }
-        return @pos;
 }
 
 # randSel => select a random numbers in a finite range
