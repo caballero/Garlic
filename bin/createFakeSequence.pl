@@ -663,10 +663,17 @@ sub calcGC {
 	my $tot = length $seq;
 	my $ngc = $seq =~ tr/GCgc//;
 	my $pgc = int($ngc * 100 / $tot);
-	my $new_gc = $classgc[0];
-	for (my $i = 0; $i <= @classgc; $i++) {
-	    $new_gc = $classgc[$i] if ($pgc < $classgc[$i] and $pgc >= $classgc[$i + 1]);  
-	}
+	my $new_gc = 0;
+	if    ($pgc < 10) { $new_gc = 10; }
+	elsif ($pgc < 20) { $new_gc = 20; }
+	elsif ($pgc < 30) { $new_gc = 30; }
+	elsif ($pgc < 40) { $new_gc = 40; }
+	elsif ($pgc < 50) { $new_gc = 50; }
+	elsif ($pgc < 60) { $new_gc = 60; }
+	elsif ($pgc < 70) { $new_gc = 70; }
+	elsif ($pgc < 80) { $new_gc = 80; }
+	elsif ($pgc < 90) { $new_gc = 90; }
+	else              { $new_gc = 100; }
 	return $new_gc;
 }
 
