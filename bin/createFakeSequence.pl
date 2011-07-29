@@ -343,22 +343,18 @@ sub readConfig {
 # checkSize => decode kb, Mb and Gb symbols
 sub checkSize{
 	my $sz = shift @_;
-	   $sz = lc $sz;
-	if ($sz =~ m/kb*/) { 
-	    $sz  =~ s/\D//; 
-	    $sz *=  1000;       
+	my $fc = 1;
+	if ($sz =~ m/k/i) { 
+	    $fc =  1e3;       
 	}
-	elsif ($sz =~ m/mb*/) { 
-	    $sz  =~ s/\D//; 
-	    $sz *=  1000000;    
+	elsif ($sz =~ m/m/i) {
+	    $fc = 1e6;
 	}
-	elsif ($sz =~ m/gb*/) { 
-	    $sz  =~ s/\D//; 
-	    $sz *=  1000000000; 
+	elsif ($sz =~ m/g/i) { 
+	    $fc =  1e9; 
 	}
-	else { 
-	    $sz =~ s/\D//g;                   
-	}
+    $sz  =~ s/\D//g;
+    $sz *=  $fc;
 	return $sz;
 }
 
