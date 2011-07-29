@@ -109,7 +109,7 @@ usage() if (defined $help);
 usage() unless (defined $model and defined $size);
 
 # Loading model parameters
-readConfig($dir, "$model.model");
+readConfig($dir . "$model.model");
 $model{'gtc_file'}    = "$model.GCt.W$win.data.gz";
 $model{'kmer_file'}   = "$model.kmer.K$kmer.W$win.data.gz";
 $model{'repeat_file'} = "$model.repeats.W$win.data.gz";
