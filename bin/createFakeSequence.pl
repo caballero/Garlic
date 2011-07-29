@@ -753,13 +753,15 @@ sub insertElements {
 	    my $ins  = shift @ins;
 	    my $new  = '';
 	    my $seq  = '';
-	    
+	    my @bag  = ();
 	    if ($ins eq 'sim') {
-	        $new = $simple{$gc}[int(rand @{ $simple{$gc} })];
+	        @bag = @{ $simple{$gc} };
+	        $new = $bag[int(rand @bag)];
 	        $seq = evolveSimple($new, $gc);
 	    }
 	    else {
-	        $new = $repeat{$gc}[int(rand @{ $repeat{$gc} })];
+	        @bag = @{ $repeat{$gc} };
+	        $new = $bag[int(rand @bag)];
 	        $seq = evolveRepeat($new, $gc);
 	    }
 	    
