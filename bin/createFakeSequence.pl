@@ -662,9 +662,9 @@ sub calcGC {
 	my $seq = shift @_;
 	my $tot = length $seq;
 	my $ngc = $seq =~ tr/GCgc//;
-	my $pgc = int($gc * 100 / $tot);
+	my $pgc = int($ngc * 100 / $tot);
 	my $new_gc = $classgc[0];
-	for (my $i = 0; $i <= @classgc; $i++;) {
+	for (my $i = 0; $i <= @classgc; $i++) {
 	    $new_gc = $classgc[$i] if ($pgc < $classgc[$i] and $pgc >= $classgc[$i + 1]);  
 	}
 	return $new_gc;
