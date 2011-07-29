@@ -440,6 +440,8 @@ sub loadRepeats {
     my $file  = shift @_;
     my $fileh = defineFH($file);
     my $gc    = undef;
+    my $nsim  = 0;
+    my $nrep  = 0;
     open R, "$fileh" or die "cannot open $file\n";
     while (<R>) {
         chomp;
@@ -450,13 +452,16 @@ sub loadRepeats {
             next unless (defined $classgc{$gc});
             if (m/^SIMPLE/) {
                 push @{ $simple{$gc} }, $_;
+                $nsim++;
             }
             else {
                 push @{ $repeat{$gc} }, $_;
+                $nrep++;
             }
         }
     }
     close R;
+    print "readed SIMPLE=$nsim REPEAT=$nrep\n"; 
 }
 
 # selPosition => find where to put an insert
