@@ -71,20 +71,20 @@ my $win     =     1000; # Window size for sequence GC transition
 my $help    =    undef; # Variable to activate help
 my $debug   =    undef; # Variable to activate verbose mode
 my %model   =       (); # Hash to store model parameters
+my %repeat  =       (); # Hash to store repeats info
 my %inserts =       (); # Hash to store the insert sequences data
 my %gct     =       (); # Hash for GC transitions GC(n-1) -> GC(n)
 my %elemk   =       (); # Hash for kmers probabilities
 my %gc      =       (); # Hash for GC content probabilities
 my @classgc =       (); # Array for class GC
 my %classgc =       (); # Hash for class GC
-my $mingc   =        0; # Minimal GC content to use
-my $maxgc   =       90; # Maximal GC content to use
+my $mingc   =       10; # Minimal GC content to use
+my $maxgc   =      100; # Maximal GC content to use
 my $dir     = './data'; # Path to models/RebBase directories
 my %rep_seq =       (); # Hash with consensus sequences from RepBase
 my $max_cyc =     1000; # Max number of cycles in loops
 my $mut_cyc =       10;
 my @dna     = qw/A C G T/; # yes, the DNA alphabet
-my $repbase = './data/RepBase/RepBase16.06.fa';
 
 ## Parameters extraction
 usage() if (!GetOptions( 
@@ -99,14 +99,20 @@ usage() if (!GetOptions(
 				'mingc|g:i'     => \$mingc,
 				'maxgc|c:i'     => \$maxgc,
 				'mask|m'     	=> \$mask,
-				'debug|d'   	=> \$debug)
+				'verbose|v'   	=> \$debug,
+				'dir:s'         => \$dir
+				)
 );
 
 usage() if (defined $help);
 usage() unless (defined $model and defined $size);
 
 # Loading model parameters
-%model = readConfig($dir, $model);
+readConfig($dir, "$model.model");
+$model{'gtc_file'}    = "$model.GCt.W$win.data.gz";
+$model{'kmer_file'}   = "$model.kmer.K$kmer.W$win.data.gz";
+$model{'repeat_file'} = "$model.repeats.W$win.data.gz";
+$model{'repbase'}     = "$dir/RepBase/RepBase16.06.fa.gz";    # point to RepBase fasta file
 
 # GC classes creation
 for (my $i = $mingc; $i <= $maxgc; $i += 10) { 
@@ -114,35 +120,37 @@ for (my $i = $mingc; $i <= $maxgc; $i += 10) {
 	$classgc{$i}++;
 }
 
-
 print "Generating a $size sequence with $model model, output in $out\n" if (defined $debug);
 
 # Checking the size (conversion of symbols)
 $size = checkSize($size);
-errorExit("$size isn't a number") unless($size =~ /^\d+$/ and $size > 1);
+errorExit("$size isn't a number") unless ($size > 1);
 
 # Loading background models
-loadGCt($dir, $model{'gct_file'});
+loadGCt($dir . $model{'gct_file'});
 print "GC transitions in ", $model{'gct_file'}, " loaded\n" if(defined $debug);
 
-loadKmers($dir, $model{'kmer_file'});
+loadKmers($dir . $model{'kmer_file'});
 print "k-mers in ", $model{'kmer_file'}, " loaded\n" if(defined $debug);
 
 # Number of simple repeats to use
-unless (defined $nsim and $nsim >= 0) {
-	$nsim = calcInsertNum($size, $model{'num_simple'} / ($model{'bases'} - $model{'undefined'}));
+unless (defined $nsim) {
+	$nsim = calcInsertNum($size, $model{'num_simple'} / $model{'intergenic'});
 }
 print "$nsim simple repeats to select\n" if(defined $debug);
 
 # Number of interspearsed repeats to use
-unless (defined $nrep and $nrep >= 0) {
-	$nrep = calcInsertNum($size, $model{'num_repeat'} / ($model{'bases'} - $model{'undefined'}));
+unless (defined $nrep) {
+	$nrep = calcInsertNum($size, $model{'num_repeat'} / $model{'intergenic'});
 }
 print "$nrep interspersed repeats to select\n" if(defined $debug);
 
 if ($nrep > 0) {
-	# loading repeats consensus
-	loadRepeatConsensus($repbase);
+	loadRepeatConsensus($model{'repbase'});
+}
+
+if (($nrep + $nsim) > 0) {
+    loadRepeats($dir . $model{'repeat_file'});
 }
 
 # Generation of base sequence
@@ -173,15 +181,10 @@ close FAS;
 
 if ($nsim + $nrep > 0) {
     open  INS, ">$out.inserts" or errorExit("cannot open $out.inserts");
-    print INS  "TYPE\tID\tPOS\tTAG\tSEQ\n";
-    foreach my $type (keys %inserts) {
-	    foreach my $nid (keys %{ $inserts{$type} }) {
-		    my $p = $inserts{$type}{$nid}{'pos'};
-		    my $t = $inserts{$type}{$nid}{'tag'};
-		    my $s = $inserts{$type}{$nid}{'seq'};
-		    print INS "$type\t$nid\t$p\t$t\t$s\n";	
-	    }
-    }
+    print INS  "POS\tREPEAT\n";
+    foreach my $rep (@inserts) {
+        print INS "$rep\n";	
+	}
     close INS;
 }
 
@@ -213,6 +216,7 @@ __HELP__
 exit 1;
 }
 
+# formatFasta => break a sequence in blocks (80 col/line default)
 sub formatFasta {
 	my $sseq  = shift @_;
 	my $col   = shift @_;
@@ -231,6 +235,16 @@ sub formatFasta {
 	return $fseq;
 }
 
+# defineFH => check if the file is compressed (gzip/bzip2), return the handler
+sub defineFH {
+    my ($fo) = @_;
+    my $fh = $fo;
+    $fh = "gunzip  -c $fo | " if ($fo =~ m/gz$/);
+    $fh = "bunzip2 -c $fo | " if ($fo =~ m/bz2$/);
+    return $fh;
+}
+
+# checkBases => verify a sequence, change unclassified bases
 sub checkBases {
 	my $cseq = shift @_;
 	$cseq =  uc $cseq;
@@ -258,12 +272,14 @@ sub checkBases {
 	return $cseq;
 }
 
+# revcomp => return the reverse complementary chain
 sub revcomp {
 	my $rseq =  shift @_;
 	$rseq    =~ tr/ACGTacgt/TGCAtgca/;
 	return reverse $rseq;
 }
 
+# checkSeqSize => verify the sequence length
 sub checkSeqSize {
 	my $size     = shift @_;
 	my $seq      = shift @_;
@@ -285,63 +301,88 @@ sub checkSeqSize {
 	checkSeqSize($size, $seq); # Recursion!
 }
 
+# calcInsertNum => return a number of inserts with some variation
 sub calcInsertNum {
 	my $size = shift @_;
 	my $freq = shift @_;
-	my $avg = int($size * $freq);
+	my $avg  = int($size * $freq);
 	$avg++;
-	my $num = 0;
-	my @op  = qw/plus minus none/;
-	my $op  = $op[int(rand(@op))];
-	my $dif = int(rand($avg) * int(rand(2)));
-	if    ($op eq 'plus')    { $num = $avg + $dif; }
-	elsif ($op eq 'minus')   { $num = $avg - $dif; }
-	else                     { $num = $avg;        }
+	my $num  = 0;
+	my @op   = qw/plus minus none/;
+	my $op   = $op[int(rand(@op))];
+	my $dif  = int(rand($avg) * int(rand(2)));
+	if ($op eq 'plus') { 
+	    $num = $avg + $dif; 
+	}
+	elsif ($op eq 'minus') { 
+	    $num = $avg - $dif; 
+	}
+	else { 
+	    $num = $avg; 
+	}
 	$num = 0 if ($num < 0);
 	return $num;
 }
 
+# readConfig => well, read the configuration file
 sub readConfig {
-	my $path = shift @_;
-	my $mod  = shift @_;
-	my %mod  = ();
-	open C, "$path/$mod/$mod.conf" or errorExit("cannot open $path/$mod/$mod.conf");
+	my $file  = shift @_;
+	my $fileh = defineFH($file);
+	open C, "$fileh" or errorExit("cannot open $file");
 	while (<C>) {
 		chomp;
-		next if(/^#/);
-		my($param,$value) = split (/=/, $_);
-		$mod{$param} = $value;
+		next if(m/^#/);
+		next unless (m/=/);
+		my ($param, $value) = split (/=/, $_);
+		$model{$param} = $value;
 	}
 	close G;
-	return %mod;
 }
 
+# checkSize => decode kb, Mb and Gb symbols
 sub checkSize{
 	my $sz = shift @_;
-	$sz = lc $sz;
-	if    ( $sz =~ /kb/ ) { $sz =~ s/kb//; $sz *= 1000;       }
-	elsif ( $sz =~ /mb/ ) { $sz =~ s/mb//; $sz *= 1000000;    }
-	elsif ( $sz =~ /gb/ ) { $sz =~ s/gb//; $sz *= 1000000000; }
-	else                  { $sz =~ s/\D//g;                   }
+	   $sz = lc $sz;
+	if ($sz =~ m/kb*/) { 
+	    $sz  =~ s/\D//; 
+	    $sz *=  1000;       
+	}
+	elsif ($sz =~ m/mb*/) { 
+	    $sz  =~ s/\D//; 
+	    $sz *=  1000000;    
+	}
+	elsif ($sz =~ m/gb*/) { 
+	    $sz  =~ s/\D//; 
+	    $sz *=  1000000000; 
+	}
+	else { 
+	    $sz =~ s/\D//g;                   
+	}
 	return $sz;
 }
 
+# loadGCt => load the GC transitions values
 sub loadGCt {
-	my $path   = shift @_;
-	my $mod    = shift @_;
-	my $win    = shift @_;
+	my $file   = shift @_;
+	my $fileh  = defineFH($file);
 	my %gc_sum = ();
-	open G, "$path/$mod/$mod.GCt.W$win" or errorExit("cannot open $path/$mod/$mod.GCt.W$win");
+	open G, "$fileh" or errorExit("cannot open $file");
 	while (<G>) {
 		chomp;
-		next if (/#/);
-		my($pre,$post,$p, $num) = split (/\t/, $_);
+		next if (m/#/);
+		my($pre, $post, $p, $num) = split (/\t/, $_);
+		$num++; # give a chance to zero values
+		my ($a, $b) = split (/-/, $pre);
+		$pre  = $b;
+		($a, $b) = split (/-/, $post);
+		$post = $b;
 		next unless($pre  >= $mingc and $pre  <= $maxgc);
 		next unless($post >= $mingc and $post <= $maxgc);
 		$gct{$pre}{$post} = $num;
 		$gc_sum{$pre} += $num;
 	}
 	close G;
+	# Adjust the probability of GC
 	foreach my $pre (keys %gct) {
 		foreach my $post (keys %{ $gct{$pre} }) {
 			$gct{$pre}{$post} /= $gc_sum{$pre};
@@ -349,260 +390,73 @@ sub loadGCt {
 	}
 }
 
+# loadKmers => load the kmers frequencies
 sub loadKmers {
-	my $path = shift @_;
-	my $mod  = shift @_;
-	my $kmer = shift @_;
-	my $win  = shift @_;
-	my $gc   = undef; 
-	my $tot  = 0;
-	my $file = "$path/$mod/$mod.K$kmer.W$win.data";
-	open K, "$file" or errorExit("cannot open $file");
+	my $file  = shift @_;
+	my $gc    = undef; 
+	my $tot   = 0;
+	my $fileh = defineFH($file);
+	open K, "$fileh" or errorExit("cannot open $fileh");
 	while (<K>) {
-		if (/#.*N=(\d+), GC=(\d+)-/) {
-			$gc      = $2;
-			$gc{$gc} = $1 + 1 if(defined $classgc{$gc});
-			$tot    += $1 + 1 if(defined $classgc{$gc});
+		if (m/#GC=\d+-(\d+)/) {
+			$gc = $1;
 		}
 		else {
 			chomp;
-			my ($b, $v, $f) = split (/\t/, $_);
+			my ($b, $f, $v) = split (/\t/, $_);
 			$elemk{$gc}{$b} = $f;
+			$v++; # give a chance to zero values
+			if (defined $classgc{$gc}) {
+			    $gc{$gc} += $v;
+			    $tot     += $v;
+			}
 		}
 	}
 	close K;
 	# Adjust the probability of GC
-	foreach $gc (keys %classgc) { $gc{$gc} /= $tot; }
+	foreach $gc (keys %classgc) { 
+	    $gc{$gc} /= $tot; 
+	}
 }
 
+# loadRepeatConsensus => read the fasta file of RepBase consensus
 sub loadRepeatConsensus {
-	my $file = shift @_;
-	my $rep  = '';
-	open REF, "$file" or errorExit("Cannot open $file");
-	while (<REF>) {
+	my $file  = shift @_;
+	my $fileh = defineFH($file);
+	my $rep   = '';
+	open R, "$fileh" or errorExit("Cannot open $fileh");
+	while (<R>) {
 		chomp;
-		if (/^ID/) {
-			my @line = split (/\s+/, $_);
-			$rep = $line[1]; 
-		}
-		elsif (/^\s+/) {
-			chomp;
-			s/\s+//g;
-			s/\d+//g;
-			$rep_seq{$rep} .= $_; 
+		if (m/>/) {
+		    s/>//;
+			$rep = $_; 
 		}
 		else {
-			# Nothing
+			$rep_seq{$rep} .= checkBases($_);
 		}
 	}
-	close REF;
+	close R;
 }
 
-sub selectSimple {
-	my $path   = shift @_;
-	my $mod    = shift @_;
-	my $file   = shift @_;
-	my $total  = shift @_;
-	my $wanted = shift @_;
-	my %sel    = randSel($total, $wanted);
-	my $line   = 1;
-	my $cnt    = 0;
-	my $size   = 0;
-	
-	open F, "$path/$mod/$file.W$win" or errorExit("cannot open $path/$mod/$file.W$win");
-	while (<F>) {
-		next unless(defined $sel{$line++});
-		my $gc     = newGC();
-		
-		chomp;
-		my @line   = split (/\t/, $_);
-		my $tag = join ":", @line;
-		print "Simple repeat selected: $tag (GC=$gc)\n" if(defined $debug);
-		my $copy   = $line[5];
-		my $match  = $line[7];
-		my $indel  = $line[8];
-		my $mer    = $line[15];
-		my $pre_gc = $line[16];
-		my $post_gc= $line[17];
-		my $simple = $mer x int($copy);
-		my $len    = length $simple;
-		
-		# Avoid small sequences
-		unless ((length $repeat) > 4 * $kmer) {
-			print "Too short sequence in repeat $tag - $repeat\n" if(defined $debug);
-			$sel{$line + int(rand $max_cyc)}++;
-			next;
-		}
-		
-		# Null values in flanking sequences GC
-		if ($pre_gc =~ /NA/) { 
-			if ($post_gc =~ /NA/) {
-				$pre_gc = $classgc[int(rand @classgc)];
-				$post_gc = $pre_gc;
-			}
-			else {
-				$pre_gc = $post_gc;
-			}
-		}
-		else {
-			if ($post_gc =~ /NA/) {
-				$post_gc = $pre_gc;
-			}
-		}
-		
-		unless (($pre_gc >= $classgc[0] and $pre_gc <= $classgc[-1]) or ($post_gc >= $classgc[0] and $post_gc <= $classgc[-1])) {
-			print "Flanking sequence for $tag isn't in range! skipping this\n" if(defined $debug);
-			$sel{$line + 1}++;
-			next;
-		}
-		
-		print "Original: $simple\n" if (defined $debug);
-		if ($match < 100) {
-			$match = int($len * (100 - $match) / 100);
-			$indel = int($len * $indel / 100);
-			my $ndel = int(rand $indel);
-			my $nins = $indel - $ndel;
-			my $nsit = int($match / 2);
-			my $nver = $match - $nsit;
-			print "  Evolving: Deletions=$ndel, Insertions=$nins, Transitions=$nsit, Transversions=$nver\n" if (defined $debug);
-			
-			$simple = addDeletions(    $simple, $ndel, $gc) if($ndel > 0);
-			$simple = addTransitions(  $simple, $nsit, $gc) if($nsit > 0);
-			$simple = addTransversions($simple, $nver, $gc) if($nver > 0);
-			$simple = addInsertions(   $simple, $nins, $gc) if($nins > 0);
-			print "Evolved: $simple\n" if (defined $debug);
-		}
-		else {
-			print "\tno mutations\n" if(defined $debug);
-		}
-		
-		$inserts{'simple'}{$cnt}{'seq'} = $simple;
-		$inserts{'simple'}{$cnt}{'tag'} = $tag;
-		$inserts{'simple'}{$cnt}{'gcf'} = "$pre_gc-$post_gc";
-
-		$cnt++;
-		$size += length $simple;
-	}
-	close F;
-	return $size;
+# loadRepeats => read the repeats info
+sub loadRepeats {
+    my $file  = shift @_;
+    my $fileh = defineFH($file);
+    my $gc    = undef;
+    open R, "$fileh" or die "cannot open $file\n";
+    while (<R>) {
+        chomp;
+        if (m/#GC=\d+-(\d+)/) {
+            $gc = $1;
+        }
+        else {
+            push @{ $repeat{$gc} }, $_ if (defined $classgc{$gc});
+        }
+    }
+    close R;
 }
 
-sub selectRepeat {
-	my $path   = shift @_;
-	my $mod    = shift @_;
-	my $file   = shift @_;
-	my $total  = shift @_;
-	my $wanted = shift @_;
-	my %sel    = randSel($total, $wanted + 1);
-	my $line   = 1;
-	my $cnt    = 0;
-	my $size   = 0;
-		
-	open F, "$path/$mod/$file.W$win" or errorExit("cannot open $path/$mod/$file.W$win");
-	while (<F>) {
-		$line++;
-		next unless(defined $sel{$line});
-		my $gc     = newGC();
-		
-		chomp;
-		my @line   = split (/\t/, $_);
-		my $pdiv   = $line[1];
-		my $pdel   = $line[2];
-		my $pins   = $line[3];
-		my $dir    = $line[7];
-		my $rep    = $line[8];
-		my $fam    = $line[9];
-		my $rini   = $line[10];
-		my $rend   = $line[11];
-		my $pre_gc = $line[13];
-		my $post_gc= $line[14];
-		
-		# Null values in flanking sequences GC
-		if ($pre_gc =~ /NA/) { 
-			if ($post_gc =~ /NA/) {
-				$pre_gc = $classgc[int(rand @classgc)];
-				$post_gc = $pre_gc;
-			}
-			else {
-				$pre_gc = $post_gc;
-			}
-		}
-		else {
-			if ($post_gc =~ /NA/) {
-				$post_gc = $pre_gc;
-			}
-		}
-		
-		unless (($pre_gc >= $classgc[0] and $pre_gc <= $classgc[-1]) or ($post_gc >= $classgc[0] and $post_gc <= $classgc[-1])) {
-			print "Flanking sequence for $rep isn't in range! skipping this\n" if(defined $debug);
-			$sel{$line + 1}++;
-			next;
-		}
-		
-		# Direction switch
-		#my @dir = qw/+ C/;
-		#$dir = $dir[int(rand @dir)];
-		
-		# Swap coordinates if required
-		if ($rini > $rend) {
-			my $tmp = $rini;
-			$rini   = $rend;
-			$rend   = $tmp;
-		}
-		my $tag = join ":", @line;
-		
-		unless (defined $rep_seq{$rep}) {
-			print "Cannot find a sequence for $rep! skipping this\n" if(defined $debug);
-			$sel{$line + int(rand $max_cyc)}++;
-			next;
-		}
-		
-		my $consensus = checkBases($rep_seq{$rep});
-		unless (length $consensus >= $rend) {
-			print "End coordinate larger than consensus in $rep! skipping this\n" if(defined $debug);
-			$sel{$line + int(rand $max_cyc)}++;
-			next;
-
-		}
-		
-		my $repeat = substr($consensus, $rini - 1, $rend - $rini);
-		$repeat = revcomp($repeat) if ($dir eq 'C' or $dir eq '-');
-		
-		# If I cannot extract a valid sequence, use the next in line
-		# I detected some bad sequences in the RepBase consensus
-		unless ((length $repeat) > 4 * $kmer) {
-			print "Too short sequence in repeat $tag - $repeat\n" if(defined $debug);
-			$sel{$line + int(rand $max_cyc)}++;
-			next;
-		}
-		
-		print "Interspersed repeat selected: $tag (GC=$gc)\nOriginal: $repeat\n" if(defined $debug);
-		
-		my $len    = length $repeat;
-		my $ndiv   = int($len * $pdiv / 100);
-		my $ndel   = int($len * $pdel / 100);
-		my $nins   = int($len * $pins / 100);
-		my $nsit   = int($ndiv / 2);
-		my $nver   = $ndiv - $nsit;
-
-		print "  Evolving: Deletions=$ndel, Insertions=$nins, Transitions=$nsit, Transversions=$nver\n" if (defined $debug);
-
-		$repeat = addDeletions(    $repeat, $ndel, $gc) if($ndel > 0);
-		$repeat = addTransitions(  $repeat, $nsit, $gc) if($nsit > 0);
-		$repeat = addTransversions($repeat, $nver, $gc) if($nver > 0);
-		$repeat = addInsertions(   $repeat, $nins, $gc) if($nins > 0);
-		
-		$inserts{'repeat'}{$cnt}{'seq'} = $repeat;
-		$inserts{'repeat'}{$cnt}{'tag'} = $tag;
-		$inserts{'repeat'}{$cnt}{'gcf'} = "$pre_gc-$post_gc";
-		$cnt++;
-		$size += length $repeat;
-		print "Evolved: $repeat\n" if(defined $debug);
-	}
-	close F;
-	return $size;
-}
-
+# selPosition => find where to put an insert
 sub selPosition {
 	my $seq = shift @_;
 	my $gc  = shift @_;
@@ -618,6 +472,7 @@ sub selPosition {
 	return @pos;
 }
 
+# addDeletions => remove bases
 sub addDeletions {
 	my $seq  = shift @_;
 	my $ndel = shift @_;
@@ -626,8 +481,7 @@ sub addDeletions {
 	my $tdel = 0;
 	my $skip = 0;
 	my @pos  = selPosition($seq, $gcl);
-	#print "PreDeletions: $seq\n" if(defined $debug);
-	#print "\t\tDeleting $ndel bases in: " if(defined $debug);
+	
 	while ($ndel > 0) {
 		my $bite = 1;
 		last unless(defined $pos[0]);
@@ -637,7 +491,6 @@ sub addDeletions {
 		my $pre  = substr($seq, $pos, $kmer - 1);
 		my $old  = substr($seq, $pos, $kmer);
 		my $new  = substr($seq, $pos + $kmer, 1);
-		#print "      changing $pos: $old -> $pre$new\n" if(defined $debug);
 		if ($eval < $mut_cyc) {
 			next unless(defined $elemk{$gcl}{"$pre$new"} and defined $elemk{$gcl}{"$old"});
 			next if($elemk{$gcl}{"$old"} >= $elemk{$gcl}{"$pre$new"} + 1e-15);
@@ -646,7 +499,6 @@ sub addDeletions {
 		substr($seq, $pos, $bite) = '';
 		$ndel -= $bite;
 		$tdel++;
-		#print " $pos" if(defined $debug);
 	}
 	$skip = $ndel;
 	print "  Added $tdel deletions ($skip skipped, GC=$gcl)\n" if(defined $debug);
@@ -657,6 +509,7 @@ sub addDeletions {
 	return $seq;
 }
 
+# addInsertions => add bases
 sub addInsertions {
 	my $seq  = shift @_;
 	my $nins = shift @_;
@@ -692,13 +545,12 @@ sub addInsertions {
 		substr($seq, $pos, 1) = $n;
 		$nins -= $ins;
 		$tins++;
-		#print "      changing $pos: $seed + $n + $post\n" if(defined $debug);
-		#print "\t\tAdding $ins ($n) bases in $pos position\n" if(defined $debug);
 	}
 	print "  Added $tins insertions, GC=$gcl\n" if(defined $debug);
 	return $seq;	
 }
 
+# addTransitions => do transitions (A<=>G, T<=>C)
 sub addTransitions {
 	my $seq  = shift @_;
 	my $nsit = shift @_;
@@ -707,8 +559,6 @@ sub addTransitions {
 	my $tsit = 0;
 	my $skip = 0;
 	my @pos  = selPosition($seq, $gcl);
-	#print "\t\tTransitions in: " if(defined $debug);
-	#print "PreTransitions: $seq\n" if(defined $debug);
 	while ($nsit > 0) {
 		last unless(defined $pos[0]);
 		my $pos = shift @pos;
@@ -737,7 +587,6 @@ sub addTransitions {
 		}
 		
 		substr($seq, $pos - 1 , 1) = $new;
-		#print "$      changing $pos: $pre_old->$pre_new | $post_old -> $post_new\n" if (defined $debug);
 		$nsit--;
 		$tsit++;
 	}
@@ -750,6 +599,7 @@ sub addTransitions {
 	return $seq;
 }
 
+# addTransversions => do transversions (A<=>T, C<=>G)
 sub addTransversions {
 	my $seq  = shift @_;
 	my $nver = shift @_;
@@ -758,9 +608,7 @@ sub addTransversions {
 	my $tver = 0;
 	my $skip = 0;
 	my @pos  = selPosition($seq, $gcl);
-	#print "\t\tTransversions in: " if(defined $debug);
-	#print "PreTransversions: $seq\n" if(defined $debug);
-
+	
 	while ($nver > 0) {
 		last unless(defined $pos[0]);
 		my $pos = shift @pos;
@@ -789,7 +637,6 @@ sub addTransversions {
 		}
 
 		substr($seq, $pos - 1, 1) = $new;
-		#print "$      changing $pos: $pre_old->$pre_new | $post_old -> $post_new\n" if (defined $debug);
 		$nver--;
 		$tver++;
 	}
@@ -802,6 +649,7 @@ sub addTransversions {
 	return $seq;
 }
 
+# calGC => calculate the GC content
 sub calcGC {
 	my $seq    = shift @_;
 	my $tot    = length $seq;
@@ -810,10 +658,10 @@ sub calcGC {
 	return $new_gc;
 }
 
+# newGC => obtain a new GC based on probabilities
 sub newGC {
 	my $gc = $classgc[0];
 	if ($#classgc > 1) {
-		$gc        = $classgc[-1];
 		my $dice   = rand();
 		my $p      = 0;
 		foreach my $class (@classgc) {
@@ -826,34 +674,46 @@ sub newGC {
 	return $gc;
 }
 
+# transGC => get a new GC change based on probabilities
+sub transGC {
+    my $old_gc = shift @_;
+    my $new_gc = $old_gc;
+    my $dice   = rand();
+    my $p      = 0;
+    foreach my $gc (keys %{ $gct{$old_gc} }) {
+        my $q   = $p + $gct{$old_gc}{$gc};
+		$new_gc = $gc if($dice >= $p);
+		last if($dice >= $p and $dice <= $q);
+		$p      = $q;
+	}
+    return $new_gc;
+}
+
+# createSeq => first step to create a new sequence (major loop)
 sub createSeq {
 	my $k     = shift @_;
 	my $gc    = shift @_;
 	my $len   = shift @_;
 	my $win   = shift @_;
 	my $seq   = shift @_;
-	my $tries = 0;
-	my $max   = $max_cyc;
 	
 	for (my $i = length $seq; $i <= $len; $i += $win) {
 		print "creating new sequence " if (defined $debug);
 		my $seed   = substr($seq, 1 - $k);
 		my $subseq = createSubSeq($k, $gc, $win - $k + 1, $seed);
 		$seq      .= $subseq;
-		print "param=$k, $gc, $win, $seed, GC=", calcGC($subseq), "\n" if(defined $debug);
-		
-		# Transition of GC
-		$gc = newGC();
+		#print "param=$k, $gc, $win, $seed, GC=", calcGC($subseq), "\n" if(defined $debug);
+		$gc = transGC($gc);
 	}
 	return $seq;
 }
 
+# createSeq => second step to create a new sequence (minor loop)
 sub createSubSeq {
 	my $k = shift @_;
 	my $g = shift @_; 
 	my $w = shift @_; 
 	my $s = shift @_;
-	my $max   = $max_cyc;
 
 	# Extent to the window
 	for (my $i = length $s; $i <= $w; $i++) {
@@ -878,45 +738,52 @@ sub createSubSeq {
 	return $s;
 }
 
-sub insertElements{
-	my $s = shift @_;
-	foreach my $type (keys %inserts) {
-		foreach my $elem (keys %{ $inserts{$type} }) {
-			my $insert       = $inserts{$type}{$elem}{'seq'};
-			my $tag          = $inserts{$type}{$elem}{'tag'};
-			$insert          = lc $insert if(defined $mask);
-			my $gc_range     = $inserts{$type}{$elem}{'gcf'};
-			my ($pre, $post) = split (/-/, $gc_range);
-			if ($pre > $post) {
-				my $tmp = $pre;
-				$pre    = $post;
-				$post   = $tmp;
-			}
-			
-			my $elem_ready   = 0;
-			my $tries        = 0;
-			my $pos          = 0;
-			my $frag_gc      = 0;
-			while ($elem_ready == 0) {
-				$pos      = int(rand((length $s) - $win));
-				next if ($pos < ($win / 2));
-				my $frag     = substr($s, $pos - ($win / 2), $win);
-				$frag_gc  = calcGC($frag);
-				$elem_ready = 1 if ($frag_gc >= $pre and $frag_gc <= $post);
-				$inserts{$type}{$elem}{'pos'} = $pos;
-				if ($tries > $max_cyc) {
-					print "Too much tries in insertion, random choice\n" if (defined $debug);
-					last;
-				}
-				$tries++;
-			}
-			print "Inserted $tag in $pos (GC=$frag_gc:$pre-$post)\n" if (defined $debug);
-			substr($s, $pos, 1) = $insert;
-		}
-	}
+# insertElements => insert the elements
+sub insertElements {
+	my $s    = shift @_;
+	my %pos  = randSel((length $s) - $win, $nins);
+	foreach my $pos (keys %pos) {
+	    my $zone = substr ($s, $pos, $win);
+	    my $gc   = calcGC($zone);
+	    my $rep  = $repeat{$gc}[int(rand @{ $repeat{$gc} }];
+	    my $rseq = evolveRepeat($rep);
+	    substr ($s, $pos, length ($rseq)) = $rseq;
+	    push @inserts, "$pos\t$rep";
+	}	
 	return $s;
 }
 
+# evolveRepeat => return the evolved repeat
+sub evolveRepeat {
+    my $rep = shift @_;
+    my $seq = '';
+    if ($rep =~ m/SIMPLE/) {
+        my ($lab, $seed, $exp, $div, $indel) = split (/:/, $rep);
+        
+    }
+    else {
+        
+    }
+    return $seq;
+}
+
+# selPosition => choose the most mutable positions in a seq (based in GC)
+sub selPosition {
+        my $seq = shift @_;
+        my $gc  = shift @_;
+        my @pos = ();
+        my %dat = ();
+        for (my $i = 0; $i <= ((length $seq) - $kmer); $i++) {
+                my $seed = substr($seq, $i, $kmer);
+                $dat{$i} = $elemk{$gc}{$seed};
+        }
+        foreach my $pos (sort { $dat{$a} <=> $dat{$b} } keys %dat) {
+                push (@pos, $pos);
+        }
+        return @pos;
+}
+
+# randSel => select a random numbers in a finite range
 sub randSel {
 	my $total = shift @_;
 	my $want  = shift @_;
@@ -927,12 +794,13 @@ sub randSel {
 			$i--;
 		}
 		else {
-			$select{$num}++;
+			$select{$num} = 1;
 		}
 	}
 	return %select;
 }
 
+# errorExit => print an error message and finish the program (return signal: 1)
 sub errorExit {
 	my $err_message = shift @_;
 	print "ABORTED: $err_message\n";
