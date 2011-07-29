@@ -110,7 +110,7 @@ usage() unless (defined $model and defined $size);
 
 # Loading model parameters
 readConfig("$dir/$model/$model.model");
-$model{'gtc_file'}    = "$model.GCt.W$win.data.gz";
+$model{'gct_file'}    = "$model.GCt.W$win.data.gz";
 $model{'kmer_file'}   = "$model.kmer.K$kmer.W$win.data.gz";
 $model{'repeat_file'} = "$model.repeats.W$win.data.gz";
 $model{'repbase'}     = "$dir/RepBase/RepBase16.06.fa.gz";    # point to RepBase fasta file
@@ -128,10 +128,10 @@ $size = checkSize($size);
 errorExit("$size isn't a number") unless ($size > 1);
 
 # Loading background models
-loadGCt("$dir/$model" . $model{'gct_file'});
+loadGCt("$dir/$model/" . $model{'gct_file'});
 print "GC transitions in ", $model{'gct_file'}, " loaded\n" if(defined $debug);
 
-loadKmers("$dir/$model" . $model{'kmer_file'});
+loadKmers("$dir/$model/" . $model{'kmer_file'});
 print "k-mers in ", $model{'kmer_file'}, " loaded\n" if(defined $debug);
 
 # Number of simple repeats to use
