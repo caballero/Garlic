@@ -151,7 +151,7 @@ if ($nrep > 0) {
 }
 
 if (($nrep + $nsim) > 0) {
-    loadRepeats("$dir/model/" . $model{'repeat_file'});
+    loadRepeats("$dir/$model/" . $model{'repeat_file'});
 }
 
 # Generation of base sequence
