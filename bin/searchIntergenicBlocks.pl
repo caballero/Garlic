@@ -136,3 +136,9 @@ foreach $id (keys %seq) {
     }
 }
 
+sub calcGC {
+    my $seq_ref = shift @_;
+    my $ngc = $$seq_ref =~ tr/GC/GC/;
+    my $pgc = $ngc * 100 / length $$seq_ref;
+    return $pgc;
+}
