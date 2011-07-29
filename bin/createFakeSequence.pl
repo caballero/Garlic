@@ -760,10 +760,13 @@ sub insertElements {
 	    
 	    if ($seq =~ m/X/) {
 	        my @frag = split (/X/, $seq);
+	        my @pos  = ();
 	        foreach my $frag (@frag) {
+	            push @pos, $pos;
 	            substr ($s, $pos, length $frag) = $frag;
 	            $pos += (length $frag) + int(rand (length $frag)) + int(rand (length $frag));
 	        }
+	        $pos = join ":", @pos;
 	    }
 	    else {
 	        substr ($s, $pos, length $seq) = $seq;
