@@ -71,6 +71,7 @@ my $win     =     1000; # Window size for sequence GC transition
 my $help    =    undef; # Variable to activate help
 my $debug   =    undef; # Variable to activate verbose mode
 my %model   =       (); # Hash to store model parameters
+my %simple  =       (); # Hash to store repeats info
 my %repeat  =       (); # Hash to store repeats info
 my %inserts =       (); # Hash to store the insert sequences data
 my %gct     =       (); # Hash for GC transitions GC(n-1) -> GC(n)
@@ -203,8 +204,8 @@ Parameters:
 Optional or automatic parameters:
   -w --win       Window size for base generation profile.     Default =  1000
   -k --kmer      Seed size to use [available: 1,2,3,4,5,6].   Default =     4
-  -g --mingc     Minimal GC content to use [0,10,..,90].      Default =     0
-  -c --maxgc     Maximal GC content to use [0,10,..,90].      Default =    90
+  -g --mingc     Minimal GC content to use [0,10,..,90].      Default =    10
+  -c --maxgc     Maximal GC content to use [0,10,..,90].      Default =   100
   -r --repeats   Number of total repeats to insert.           Default =  Auto
   -s --simple    Number of total simple repeats to insert.    Default =  Auto
   -m --mask      Mask repeats in final sequence.              Default = False
@@ -450,7 +451,13 @@ sub loadRepeats {
             $gc = $1;
         }
         else {
-            push @{ $repeat{$gc} }, $_ if (defined $classgc{$gc});
+            next unless (defined $classgc{$gc});
+            if (m/^SIMPLE/) {
+                push @{ $simple{$gc} }, $_;
+            }
+            else {
+                push @{ $repeat{$gc} }, $_;
+            }
         }
     }
     close R;
@@ -702,8 +709,7 @@ sub createSeq {
 		my $seed   = substr($seq, 1 - $k);
 		my $subseq = createSubSeq($k, $gc, $win - $k + 1, $seed);
 		$seq      .= $subseq;
-		#print "param=$k, $gc, $win, $seed, GC=", calcGC($subseq), "\n" if(defined $debug);
-		$gc = transGC($gc);
+		$gc        = transGC($gc);
 	}
 	return $seq;
 }
@@ -721,17 +727,11 @@ sub createSubSeq {
 		my $dice = rand();
 		my $n    = $dna[$#dna];
 		my $p    =  0;
-		unless (defined $elemk{$g}{"$seed$n"}) {
-			print "Bad seed ($seed) in seq ($seq)\n" if (defined $debug);
-			$n = $dna[int(rand @dna)];
-		}
-		else {
-			foreach my $b (@dna) {
-				my $q = $p + $elemk{$g}{"$seed$b"};
-				$n    = $b if ($dice >= $p);
-				last if($dice >= $p and $dice <= $q);
-				$p    = $q;
-			}
+		foreach my $b (@dna) {
+		    my $q = $p + $elemk{$g}{"$seed$b"};
+			$n    = $b if ($dice >= $p);
+			last if($dice >= $p and $dice <= $q);
+			$p    = $q;
 		}
 		$s .= $n;
 	}
@@ -741,28 +741,115 @@ sub createSubSeq {
 # insertElements => insert the elements
 sub insertElements {
 	my $s    = shift @_;
-	my %pos  = randSel((length $s) - $win, $nins);
+	my %pos  = randSel((length $s) - $win, $nrep + $nsim);
+	my @ins  = ();
+	for (my $i = 1; $i <= $nrep; $i++) { push @ins, 'rep'; }
+	for (my $i = 1; $i <= $nsim; $i++) { push @ins, 'sim'; }
+	@ins = shuffle(@ins)
 	foreach my $pos (keys %pos) {
 	    my $zone = substr ($s, $pos, $win);
 	    my $gc   = calcGC($zone);
-	    my $rep  = $repeat{$gc}[int(rand @{ $repeat{$gc} }];
-	    my $rseq = evolveRepeat($rep);
-	    substr ($s, $pos, length ($rseq)) = $rseq;
-	    push @inserts, "$pos\t$rep";
-	}	
+	    my $ins  = shift @ins;
+	    my $new  = '';
+	    my $seq  = '';
+	    
+	    if ($ins eq 'sim') {
+	        $new = $simple{$gc}[int(rand @{ $simple{$gc} }];
+	        $seq = evolveSimple($new, $gc);
+	    }
+	    else {
+	        $new = $repeat{$gc}[int(rand @{ $repeat{$gc} }];
+	        $seq = evolveRepeat($new, $gc);
+	    }
+	    
+	    if ($seq =~ m/X/) {
+	        my @frag = split (/X/, $seq);
+	        foreach my $frag (@frag) {
+	            substr ($s, $pos, length $frag) = $frag;
+	            $pos += (length $frag) + int(rand (length $frag) + int(rand (length $frag));
+	        }
+	    }
+	    else {
+	        substr ($s, $pos, length $seq) = $seq;
+	    }
+	    push @inserts, "$pos\t$new";
+	}
 	return $s;
+}
+
+# evolveSimple => return the evolved repeat
+sub evolveSimple {
+    my $sim   = shift @_;
+    my $gc    = shift @_;
+    my $seq   = '';
+    my ($lab, $seed, $exp, $div, $indel) = split (/:/, $rep);
+    $seq      = $seed x (int($exp) + 1);
+    $seq      = substr ($seq, 0, int($exp * length $seed));
+    my $mut   = int($div * (length $seq) / 100);
+    my $nsit  = int($mut / 2);
+    my $nver  = $mut - $trs;
+    my $nid   = int($indel * (length $seq) / 100);
+    my $ndel  = int(rand $nid);
+    my $nins  = $nid - $ndel;
+    $seq = addDeletions(    $seq, $ndel, $gc) if($ndel > 0);
+    $seq = addTransitions(  $seq, $nsit, $gc) if($nsit > 0);
+    $seq = addTransversions($seq, $nver, $gc) if($nver > 0);
+    $seq = addInsertions(   $seq, $nins, $gc) if($nins > 0);
+    return $seq;
 }
 
 # evolveRepeat => return the evolved repeat
 sub evolveRepeat {
-    my $rep = shift @_;
-    my $seq = '';
-    if ($rep =~ m/SIMPLE/) {
-        my ($lab, $seed, $exp, $div, $indel) = split (/:/, $rep);
-        
+    my $rep   = shift @_;
+    my $gc    = shift @_;
+    my $seq   = '';
+    my ($type, $fam, $dir, $div, $ins, $del, $ini, $end, $mut, $nins, $ndel, $nsit, $nver);
+    if ($rep  =~ m/;/) {
+        my $sseq = '';
+        my @frag  = split (/;/, $rep);
+        my $first = shift @frag;
+        ($type, $fam, $dir, $div, $ins, $del, $ini, $end) = split (/:/, $first);
+        $sseq = substr ($rep_seq{$type}, $ini - 1, $end - $ini);
+        $sseq = revcomp($seq) if ($dir eq '-');
+        $mut  = int($div * (length $seq) / 100);
+        $nsit = int($mut / 2);
+        $nver = $mut - $trs;
+        $nins = int($ins * (length $seq) / 100);
+        $ndel = int($ins * (length $seq) / 100);
+        $sseq = addDeletions(    $seq, $ndel, $gc) if($ndel > 0);
+        $sseq = addTransitions(  $seq, $nsit, $gc) if($nsit > 0);
+        $sseq = addTransversions($seq, $nver, $gc) if($nver > 0);
+        $sseq = addInsertions(   $seq, $nins, $gc) if($nins > 0);
+        $seq  = $sseq;
+        foreach my $frag (@frag) {
+            ($div, $ins, $del, $ini, $end) = split (/:/, $frag);
+            $sseq  = substr ($rep_seq{$type}, $ini - 1, $end - $ini);
+            $sseq  = revcomp($seq) if ($dir eq '-');
+            $mut  = int($div * (length $seq) / 100);
+            $nsit = int($mut / 2);
+            $nver = $mut - $trs;
+            $nins = int($ins * (length $seq) / 100);
+            $ndel = int($ins * (length $seq) / 100);
+            $sseq  = addDeletions(    $seq, $ndel, $gc) if($ndel > 0);
+            $sseq  = addTransitions(  $seq, $nsit, $gc) if($nsit > 0);
+            $sseq  = addTransversions($seq, $nver, $gc) if($nver > 0);
+            $sseq  = addInsertions(   $seq, $nins, $gc) if($nins > 0);
+            $seq  .= "X$sseq";
+        }
     }
     else {
-        
+        ($type, $fam, $dir, $div, $ins, $del, $ini, $end) = split (/:/, $rep);
+        $seq  = substr ($rep_seq{$type}, $ini - 1, $end - $ini);
+        $seq  = revcomp($seq) if ($dir eq '-');
+        $mut  = int($div * (length $seq) / 100);
+        $nsit = int($mut / 2);
+        $nver = $mut - $trs;
+        $nins = int($ins * (length $seq) / 100);
+        $ndel = int($ins * (length $seq) / 100);
+        $seq  = addDeletions(    $seq, $ndel, $gc) if($ndel > 0);
+        $seq  = addTransitions(  $seq, $nsit, $gc) if($nsit > 0);
+        $seq  = addTransversions($seq, $nver, $gc) if($nver > 0);
+        $seq  = addInsertions(   $seq, $nins, $gc) if($nins > 0);
     }
     return $seq;
 }
