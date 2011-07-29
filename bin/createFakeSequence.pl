@@ -659,10 +659,14 @@ sub addTransversions {
 
 # calGC => calculate the GC content
 sub calcGC {
-	my $seq    = shift @_;
-	my $tot    = length $seq;
-	my $gc     = $seq =~ tr/GCgc//;
-	my $new_gc = int($gc * 100 / $tot);
+	my $seq = shift @_;
+	my $tot = length $seq;
+	my $ngc = $seq =~ tr/GCgc//;
+	my $pgc = int($gc * 100 / $tot);
+	my $new_gc = $classgc[0];
+	for (my $i = 0; $i <= @classgc; $i++;) {
+	    $new_gc = $classgc[$i] if ($pgc < $classgc[$i] and $pgc >= $classgc[$i + 1]);  
+	}
 	return $new_gc;
 }
 
