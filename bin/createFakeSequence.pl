@@ -755,8 +755,8 @@ sub insertElements {
 	my $s    = shift @_;
 	my %pos  = randSel((length $s) - $win, $nrep + $nsim);
 	my @ins  = ();
-	for (my $i = 1; $i <= $nrep; $i++) { push @ins, 'rep'; }
-	for (my $i = 1; $i <= $nsim; $i++) { push @ins, 'sim'; }
+	for (my $i = 0; $i <= $nrep; $i++) { push @ins, 'rep'; }
+	for (my $i = 0; $i <= $nsim; $i++) { push @ins, 'sim'; }
 	@ins = shuffle(@ins);
 	foreach my $pos (keys %pos) {
 	    my $zone = substr ($s, $pos, $win);
