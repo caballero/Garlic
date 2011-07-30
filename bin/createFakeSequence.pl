@@ -470,7 +470,7 @@ sub selPosition {
 	my $gc  = shift @_;
 	my @pos = ();
 	my %dat = ();
-	for (my $i = 0; $i <= ((length $seq) - $kmer); $i++) {
+	for (my $i = 0; $i <= ((length $seq) - $kmer - 1); $i++) {
 		my $seed = substr($seq, $i, $kmer);
 		$dat{$i} = $elemk{$gc}{$seed};
 	}
@@ -488,7 +488,7 @@ sub addDeletions {
 	my $eval = shift @_; $eval ||= 0;
 	my $tdel = 0;
 	my $skip = 0;
-	my @pos  = selPosition($seq - $kmer, $gcl);
+	my @pos  = selPosition($seq, $gcl);
 	
 	while ($ndel > 0) {
 		my $bite = 1;
@@ -523,7 +523,7 @@ sub addInsertions {
 	my $nins = shift @_;
 	my $gcl  = shift @_;
 	my $tins = 0;
-	my @pos  = selPosition($seq - $kmer, $gcl);
+	my @pos  = selPosition($seq, $gcl);
 	#print "PreInsert: $seq\n" if(defined $debug);
 	while ($nins > 0) {
 		my $ins  = 1;
@@ -566,7 +566,7 @@ sub addTransitions {
 	my $eval = shift @_; $eval ||= 0;
 	my $tsit = 0;
 	my $skip = 0;
-	my @pos  = selPosition($seq  - $kmer, $gcl);
+	my @pos  = selPosition($seq, $gcl);
 	while ($nsit > 0) {
 		last unless(defined $pos[0]);
 		my $pos = shift @pos;
@@ -615,7 +615,7 @@ sub addTransversions {
 	my $eval = shift @_; $eval ||= 0;
 	my $tver = 0;
 	my $skip = 0;
-	my @pos  = selPosition($seq - $kmer, $gcl);
+	my @pos  = selPosition($seq, $gcl);
 	
 	while ($nver > 0) {
 		last unless(defined $pos[0]);
