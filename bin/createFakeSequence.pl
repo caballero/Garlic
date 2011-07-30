@@ -776,6 +776,7 @@ sub insertElements {
 	        @bag = @{ $repeat{$gc} };
 	        $new = $bag[int(rand @bag)];
 	        $seq = evolveRepeat($new, $gc);
+	        next if ($seq eq 'BAD');
 	    }
 	    
 	    $seq = lc $seq if (defined $mask);
@@ -824,7 +825,14 @@ sub evolveRepeat {
     my $rep   = shift @_;
     my $gc    = shift @_;
     my $seq   = '';
-    my ($type, $fam, $dir, $div, $ins, $del, $ini, $end, $mut, $nins, $ndel, $nsit, $nver);
+    my ($type, $fam, $dir, $div, $ins, $del, $ini, $end) = split (/:/, $rep);
+    my ($mut, $nins, $ndel, $nsit, $nver);
+    
+    unless (defined $rep_seq{$type}) {
+        warn "sequence for $type ($fam) not found!";
+        return "BAD";
+    }
+    
     if ($rep  =~ m/;/) {
         my $sseq = '';
         my @frag  = split (/;/, $rep);
@@ -859,7 +867,6 @@ sub evolveRepeat {
         }
     }
     else {
-        ($type, $fam, $dir, $div, $ins, $del, $ini, $end) = split (/:/, $rep);
         $seq  = substr ($rep_seq{$type}, $ini - 1, $end - $ini);
         $seq  = revcomp($seq) if ($dir eq '-');
         $mut  = int($div * (length $seq) / 100);
