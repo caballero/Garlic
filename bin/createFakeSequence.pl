@@ -504,7 +504,7 @@ sub addDeletions {
 			next if($elemk{$gcl}{"$old"} >= $elemk{$gcl}{"$pre$new"} + 1e-15);
 		}
 		
-		substr($seq, $pos, $bite) = '';
+		substr($seq, $pos, $bite) = 'D' x $bite;
 		$ndel -= $bite;
 		$tdel++;
 	}
@@ -514,6 +514,8 @@ sub addDeletions {
 		$gcl = newGC();
 		$seq = addDeletions($seq, $skip, $gcl, ++$eval);
 	}
+	
+	$seq =~ s/D//g;
 	return $seq;
 }
 
