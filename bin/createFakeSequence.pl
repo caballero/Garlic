@@ -776,8 +776,10 @@ sub insertElements {
 	        $seq = evolveRepeat($new, $gc);
 	    }
 	    
-	    if ($seq =~ m/X/) {
-	        my @frag = split (/X/, $seq);
+	    $seq = lc $seq if (defined $mask);
+	    
+	    if ($seq =~ m/X/i) {
+	        my @frag = split (/X/i, $seq);
 	        my @pos  = ();
 	        foreach my $frag (@frag) {
 	            push @pos, $pos;
