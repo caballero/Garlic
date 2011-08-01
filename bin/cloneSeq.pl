@@ -122,7 +122,8 @@ while (($id, $seq) = each %seq) {
     print ">$id\n";
     my $new_seq = undef;
     for (my $i = 0; $i <= (length $seq) - $block; $i += $block) {
-        my ($min, $max) = minmaxGC(substr ($seq, $i, $block));
+        my $slice = substr ($seq, $i, $block);
+        my ($min, $max) = minmaxGC(\$slice);
         system ("perl $creator -o $model -k $kmer -w $win -g $min -c $max -l $block -n fake");
         if (-e 'fake.fasta' and -z 'fake.fasta') {
             open F, "fake.fasta" or die "cannot open fake.fasta\n";
