@@ -123,7 +123,7 @@ while (($id, $seq) = each %seq) {
     my $new_seq = undef;
     for (my $i = 0; $i <= (length $seq) - $block; $i += $block) {
         my $slice = substr ($seq, $i, $block);
-        my ($min, $max) = minmaxGC(\$slice);
+        my ($min, $max) = minmaxGC($slice);
         system ("perl $creator -o $model -k $kmer -w $win -g $min -c $max -l $block -n fake");
         if (-e 'fake.fasta' and -z 'fake.fasta') {
             open F, "fake.fasta" or die "cannot open fake.fasta\n";
@@ -145,11 +145,11 @@ while (($id, $seq) = each %seq) {
 ##      S  U  B  R  O  U  T  I  N  E  S        ##
 #################################################
 sub minmaxGC {
-    my $seq_ref = shift @_;
+    my $seq     = shift @_;
     my $min_gc  = 1000;
     my $max_gc  = -1;
-    for (my $i = 0; $i <= (length $$seq_ref) - $win; $i += $win) {
-        my $s = substr ($$seq_ref, $i, $win);
+    for (my $i = 0; $i <= (length $seq) - $win; $i += $win) {
+        my $s = substr ($seq, $i, $win);
         my $gc = calcGC($s);
         $min_gc = $gc if ($gc < $min_gc);
         $max_gc = $gc if ($gc > $max_gc);
@@ -157,9 +157,9 @@ sub minmaxGC {
     return ($min_gc, $max_gc);
 }
 sub calcGC {
-    my $seq_ref = shift @_;
-    my $ngc     = $$seq_ref =~ tr/GCgc/GCgc/;
-    my $pgc     = 100 * $ngc / length ($$seq_ref);
+    my $seq     = shift @_;
+    my $ngc     = $seq_ref =~ tr/GCgc/GCgc/;
+    my $pgc     = 100 * $ngc / length ($seq);
     my $new_gc  = 30;
 	if    ($pgc < 10) { $new_gc = 10; }
 	elsif ($pgc < 20) { $new_gc = 20; }
