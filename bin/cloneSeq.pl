@@ -158,7 +158,7 @@ sub minmaxGC {
 }
 sub calcGC {
     my $seq     = shift @_;
-    my $ngc     = $seq_ref =~ tr/GCgc/GCgc/;
+    my $ngc     = $seq =~ tr/GCgc/GCgc/;
     my $pgc     = 100 * $ngc / length ($seq);
     my $new_gc  = 30;
 	if    ($pgc < 10) { $new_gc = 10; }
