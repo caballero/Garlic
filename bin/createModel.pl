@@ -152,6 +152,7 @@ loadFiles();
 my $get           = 'wget -c'; # command to fetch files from internet
    $get          .= ' -q' unless (defined $verbose);
 my $unpack        = 'tar zxf'; # command to unpack the files downloaded
+my $unzip         = 'gunzip';  # command to decompress the files downloaded
 my $ucsc          = 'http://hgdownload.cse.ucsc.edu/goldenPath'; # UCSC url
 my $ucsc_genome   = "$ucsc/$model/bigZips/" . $files{$model}{'FAS'};
 my $ucsc_repeat   = "$ucsc/$model/bigZips/" . $files{$model}{'RMO'};
@@ -259,8 +260,18 @@ sub getUCSC_trf {
         die "cannot find TRF output in $ucsc_trf" unless (-e $target_file);
     }
     
-    warn "unpacking TAR\n" if (defined $verbose);
-    system ("$unpack $target_file");
+    if ($target_file =~ m/tar.gz$/) {
+        warn "unpacking TAR\n" if (defined $verbose);
+        system ("$unpack $target_file");
+    }
+    elsif($target_file =~ m/.gz$/) {
+        warn "unzipping GZ\n" if (defined $verbose);
+        system ("$unzip $target_file");
+    }
+    else {
+        die "cannot recognize the file format of $target_file\n";
+    }
+    
     chdir '..';
     warn "searching TRF files\n" if (defined $verbose);
     $trf = searchFiles('.bed$', 'TRF');
@@ -283,8 +294,18 @@ sub getUCSC_repeat {
         die "cannot find RepeatMasker output in $ucsc_repeat" unless (-e $target_file);
     }
     
-    warn "unpacking TAR\n" if (defined $verbose);
-    system ("$unpack $target_file");
+    if ($target_file =~ m/tar.gz$/) {
+        warn "unpacking TAR\n" if (defined $verbose);
+        system ("$unpack $target_file");
+    }
+    elsif($target_file =~ m/.gz$/) {
+        warn "unzipping GZ\n" if (defined $verbose);
+        system ("$unzip $target_file");
+    }
+    else {
+        die "cannot recognize the file format of $target_file\n";
+    }
+    
     chdir '..';
     warn "searching RM files\n" if (defined $verbose);
     $repeat = searchFiles('.out$', 'RM');
@@ -306,8 +327,18 @@ sub getUCSC_fasta {
         die "cannot find genomic sequences in $ucsc_genome" unless (-e $target_file);
     }
     
-    warn "unpacking TAR\n" if (defined $verbose);
-    system ("$unpack $target_file");
+    if ($target_file =~ m/tar.gz$/) {
+        warn "unpacking TAR\n" if (defined $verbose);
+        system ("$unpack $target_file");
+    }
+    elsif($target_file =~ m/.gz$/) {
+        warn "unzipping GZ\n" if (defined $verbose);
+        system ("$unzip $target_file");
+    }
+    else {
+        die "cannot recognize the file format of $target_file\n";
+    }
+    
     chdir '..';
     warn "searching fasta files\n" if (defined $verbose);
     $fasta = searchFiles('.fa$', 'fasta');
