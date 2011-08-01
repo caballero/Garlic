@@ -456,7 +456,8 @@ sub profileSeqs {
         $seq = $seq{$seq_id};
 	    $seq =~ s/[^ACGT]/N/g;
 	    my $last_gc = undef;
-	    for (my $i = 0; $i <= (length $seq) - $win; $i += $win) {
+	    my $len = length $seq;
+	    for (my $i = 0; $i <= $len - $win; $i += $win) {
 	        $ss = substr ($seq, $i, $win);
 	        my $num_N = $ss =~ tr/N/N/;
 	        my $frq_N = $num_N / (length $ss);
