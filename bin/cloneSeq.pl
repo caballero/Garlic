@@ -96,6 +96,14 @@ my $creator = 'bin/createFakeSequence.pl';
 my %seq = ();
 my ($id, $seq, $gc_min, $gc_max);
 
+# size adjustment
+my $fac = 1;
+if    ($block =~ m/k/i) { $fac = 1e3; }
+elsif ($block =~ m/m/i) { $fac = 1e6; }
+elsif ($block =~ m/g/i) { $fac = 1e9; } 
+$block =~ s/\D//g;
+$block *= $fac;
+
 # processing sequences
 warn "loading sequences\n" if (defined $verbose);
 while (<>) {
