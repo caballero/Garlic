@@ -144,14 +144,18 @@ GetOptions(
 pod2usage(-verbose => 2) if (defined $help);
 pod2usage(-verbose => 2) unless (defined $model);
 
+# UCSC model files
+my %files = ();
+loadFiles();
+
 # Configurable parameters
 my $get           = 'wget -c'; # command to fetch files from internet
    $get          .= ' -q' unless (defined $verbose);
 my $unpack        = 'tar zxf'; # command to unpack the files downloaded
 my $ucsc          = 'http://hgdownload.cse.ucsc.edu/goldenPath'; # UCSC url
-my $ucsc_genome   = "$ucsc/$model/bigZips/chromFa.tar.gz";
-my $ucsc_repeat   = "$ucsc/$model/bigZips/chromOut.tar.gz";
-my $ucsc_trf      = "$ucsc/$model/bigZips/chromTrf.tar.gz";
+my $ucsc_genome   = "$ucsc/$model/bigZips/" . $files{$model}{'FAS'};
+my $ucsc_repeat   = "$ucsc/$model/bigZips/" . $files{$model}{'RMO'};
+my $ucsc_trf      = "$ucsc/$model/bigZips/" . $files{$model}{'TRF'};
 my $ucsc_gene     = "$ucsc/$model/database/ensGene.txt.gz"; 
 
 # Main variables
@@ -760,4 +764,129 @@ sub calcGC {
     
     return $gc;
 }
-    
+
+sub loadFiles {
+    # Human
+    $files{'hg19'   }{'FAS'} = 'chromOut.tar.gz';
+    $files{'hg19'   }{'RMO'} = 'chromFa.tar.gz';
+    $files{'hg19'   }{'TRF'} = 'chromTrf.tar.gz';
+    $files{'hg18'   }{'FAS'} = 'chromOut.tar.gz';
+    $files{'hg18'   }{'RMO'} = 'chromFa.tar.gz';
+    $files{'hg18'   }{'TRF'} = 'chromTrf.tar.gz';
+    # Cat
+    $files{'felCat4'}{'FAS'} = 'felCat4.fa.gz';
+    $files{'felCat4'}{'RMO'} = 'felCat4.fa.out.gz';
+    $files{'felCat4'}{'TRF'} = 'felCat4.trf.bed.gz';
+    # Chicken
+    $files{'galGal3'}{'FAS'} = 'chromOut.tar.gz';
+    $files{'galGal3'}{'RMO'} = 'chromFa.tar.gz';
+    $files{'galGal3'}{'TRF'} = 'chromTrf.tar.gz';
+    # Chimpanzee
+    $files{'panTro3'}{'FAS'} = 'panTro3.fa.gz';
+    $files{'panTro3'}{'RMO'} = 'panTro3.fa.out.gz';
+    $files{'panTro3'}{'TRF'} = 'panTro3.trf.bed.gz';
+    # Cow
+    $files{'bosTau4'}{'FAS'} = 'bosTau4.fa.gz';
+    $files{'bosTau4'}{'RMO'} = 'bosTau4.fa.out.gz';
+    $files{'bosTau4'}{'TRF'} = 'bosTau4.trf.bed.gz';
+    # Dog
+    $files{'canFam2'}{'FAS'} = 'chromOut.tar.gz';
+    $files{'canFam2'}{'RMO'} = 'chromFa.tar.gz';
+    $files{'canFam2'}{'TRF'} = 'chromTrf.tar.gz';
+    # Elephant
+    $files{'loxAfr3'}{'FAS'} = 'loxAfr3.fa.gz';
+    $files{'loxAfr3'}{'RMO'} = 'loxAfr3.fa.out.gz';
+    $files{'loxAfr3'}{'TRF'} = 'loxAfr3.trf.bed.gz';
+    # Fugu
+    $files{'fr2'    }{'FAS'} = 'chromOut.tar.gz';
+    $files{'fr2'    }{'RMO'} = 'chromFa.tar.gz';
+    $files{'fr2'    }{'TRF'} = 'chromTrf.tar.gz';
+    # Guinea Pig
+    $files{'cavPor3'}{'FAS'} = 'cavPor3.fa.gz';
+    $files{'cavPor3'}{'RMO'} = 'cavPor3.fa.out.gz';
+    $files{'cavPor3'}{'TRF'} = 'cavPor3.trf.bed.gz';
+    # Horse
+    $files{'equCab2'}{'FAS'} = 'chromOut.tar.gz';
+    $files{'equCab2'}{'RMO'} = 'chromFa.tar.gz';
+    $files{'equCab2'}{'TRF'} = 'chromTrf.tar.gz';
+    # Lamprey
+    $files{'petMar1'}{'FAS'} = 'petMar1.fa.gz';
+    $files{'petMar1'}{'RMO'} = 'petMar1.fa.out.gz';
+    $files{'petMar1'}{'TRF'} = 'petMar1.trf.bed.gz';
+    # Lancelet
+    $files{'braFlo1'}{'FAS'} = 'chromOut.tar.gz';
+    $files{'braFlo1'}{'RMO'} = 'chromFa.tar.gz';
+    $files{'braFlo1'}{'TRF'} = 'chromTrf.tar.gz';
+    # Lizard
+    $files{'anoCar2'}{'FAS'} = 'anoCar2.fa.gz';
+    $files{'anoCar2'}{'RMO'} = 'anoCar2.fa.out.gz';
+    $files{'anoCar2'}{'TRF'} = 'anoCar2.trf.bed.gz';
+    # Marmoset
+    $files{'calJac3'}{'FAS'} = 'calJac3.fa.gz';
+    $files{'calJac3'}{'RMO'} = 'calJac3.fa.out.gz';
+    $files{'calJac3'}{'TRF'} = 'calJac3.trf.bed.gz';
+    # Medaka
+    $files{'oryLat2'}{'FAS'} = 'oryLat2.fa.gz';
+    $files{'oryLat2'}{'RMO'} = 'oryLat2.fa.out.gz';
+    $files{'oryLat2'}{'TRF'} = 'oryLat2.trf.bed.gz';
+    # Mouse
+    $files{'mm9'    }{'FAS'} = 'chromOut.tar.gz';
+    $files{'mm9'    }{'RMO'} = 'chromFa.tar.gz';
+    $files{'mm9'    }{'TRF'} = 'chromTrf.tar.gz';
+    # Oposum
+    $files{'monDom5'}{'FAS'} = 'chromOut.tar.gz';
+    $files{'monDom5'}{'RMO'} = 'chromFa.tar.gz';
+    $files{'monDom5'}{'TRF'} = 'chromTrf.tar.gz';
+    # Orangutan
+    $files{'ponAbe2'}{'FAS'} = 'chromOut.tar.gz';
+    $files{'ponAbe2'}{'RMO'} = 'chromFa.tar.gz';
+    $files{'ponAbe2'}{'TRF'} = 'chromTrf.tar.gz';
+    # Panda
+    $files{'ailMel1'}{'FAS'} = 'ailMel1.fa.gz';
+    $files{'ailMel1'}{'RMO'} = 'ailMel1.fa.out.gz';
+    $files{'ailMel1'}{'TRF'} = 'ailMel1.trf.bed.gz';
+    # Pig
+    $files{'susScr2'}{'FAS'} = 'chromOut.tar.gz';
+    $files{'susScr2'}{'RMO'} = 'chromFa.tar.gz';
+    $files{'susScr2'}{'TRF'} = 'chromTrf.tar.gz';
+    # Platypus
+    $files{'ornAna1'}{'FAS'} = 'ornAna1.fa.gz';
+    $files{'ornAna1'}{'RMO'} = 'ornAna1.fa.out.gz';
+    $files{'ornAna1'}{'TRF'} = 'ornAna1.trf.bed.gz';
+    # Rabbit
+    $files{'oryCun2'}{'FAS'} = 'oryCun2.fa.gz';
+    $files{'oryCun2'}{'RMO'} = 'oryCun2.fa.out.gz';
+    $files{'oryCun2'}{'TRF'} = 'oryCun2.trf.bed.gz';
+    # Rat
+    $files{'rn4'    }{'FAS'} = 'chromOut.tar.gz';
+    $files{'rn4'    }{'RMO'} = 'chromFa.tar.gz';
+    $files{'rn4'    }{'TRF'} = 'chromTrf.tar.gz';
+    # Rhesus
+    $files{'rheMac2'}{'FAS'} = 'chromOut.tar.gz';
+    $files{'rheMac2'}{'RMO'} = 'chromFa.tar.gz';
+    $files{'rheMac2'}{'TRF'} = 'chromTrf.tar.gz';
+    # Sheep
+    $files{'oviAri1'}{'FAS'} = 'oviAri1.fa.gz';
+    $files{'oviAri1'}{'RMO'} = 'oviAri1.fa.out.gz';
+    $files{'oviAri1'}{'TRF'} = 'oviAri1.trf.bed.gz';
+    # Stickleback
+    $files{'gasAcu1'}{'FAS'} = 'chromOut.tar.gz';
+    $files{'gasAcu1'}{'RMO'} = 'chromFa.tar.gz';
+    $files{'gasAcu1'}{'TRF'} = 'chromTrf.tar.gz';
+    # Tetraodon
+    $files{'tetNig2'}{'FAS'} = 'chromOut.tar.gz';
+    $files{'tetNig2'}{'RMO'} = 'chromFa.tar.gz';
+    $files{'tetNig2'}{'TRF'} = 'chromTrf.tar.gz';
+    # X. tropicalis
+    $files{'xenTro2'}{'FAS'} = 'xenTro2.fa.gz';
+    $files{'xenTro2'}{'RMO'} = 'xenTro2.rmsk.out.gz';
+    $files{'xenTro2'}{'TRF'} = 'xenTro2.trf.bed.gz';
+    # Zebra finch
+    $files{'taeGut1'}{'FAS'} = 'chromOut.tar.gz';
+    $files{'taeGut1'}{'RMO'} = 'chromFa.tar.gz';
+    $files{'taeGut1'}{'TRF'} = 'chromTrf.tar.gz';
+    # Zefrafish
+    $files{'danRer7'}{'FAS'} = 'danRer7.fa.gz';
+    $files{'danRer7'}{'RMO'} = 'danRer7.fa.out.gz';
+    $files{'danRer7'}{'TRF'} = 'danRer7.trf.bed.gz';
+}
