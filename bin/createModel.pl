@@ -245,7 +245,7 @@ sub getUCSC_gene {
 
 sub getUCSC_trf {
     # TRF output is used for simple repeat annotation
-    my $target_file = 'chromTrf.tar.gz';
+    my $target_file = $files{$model}{'TRF'};
     if (-e "TRF/$target_file") {
         warn "$target_file present, using it\n" if (defined $verbose);
         chdir 'TRF' or die "cannot move to TRF directory\n";
@@ -269,7 +269,7 @@ sub getUCSC_trf {
 
 sub getUCSC_repeat {
     # RepeatMasker output
-    my $target_file = 'chromOut.tar.gz';
+    my $target_file = $files{$model}{'RMO'};
     if (-e "RM/$target_file") {
         warn "$target_file present, using it\n" if (defined $verbose);
         chdir 'RM' or die "cannot move to RM directory\n";
@@ -293,7 +293,7 @@ sub getUCSC_repeat {
 
 sub getUCSC_fasta {
     # Chromosomal sequences
-    my $target_file = 'chromFa.tar.gz';
+    my $target_file = $files{$model}{'FAS'};
     if (-e "fasta/$target_file") {
         warn "$target_file present, using it\n" if (defined $verbose);
         chdir 'fasta' or die "cannot move to fasta directory\n";
@@ -563,7 +563,7 @@ sub profileTRF {
             my $consensus = $line[-1];
             my $label     = "SIMPLE:$consensus:$period:$div:$indel";
             next unless (defined $seq{$seq_id});
-            next if (checkGene($seq_id, $ini, $end));
+            #next if (checkGene($seq_id, $ini, $end));
             
             # Check for overlaping repeats
             if ($ini >= $last_ini and $ini <= $last_end) {
@@ -622,7 +622,7 @@ sub profileRM {
             }
             my $label     = "$type:$fam:$dir:$div:$ins:$del:$rini:$rend";
             next unless (defined $seq{$seq_id});
-            next if (checkGene($seq_id, $ini, $end));
+            #next if (checkGene($seq_id, $ini, $end));
             my $left      = substr ($seq{$seq_id}, $ini - $win, $win);
             my $right     = substr ($seq{$seq_id}, $end, $win);
                 
@@ -725,9 +725,6 @@ sub writeModelInfo {
     print M "undefined=$tot_null\n";
     print M "num_repeat=$tot_repeat\n"                  unless (defined $no_repeat_table);
     print M "num_simple=$tot_simple\n"                  unless (defined $no_repeat_table);
-#   print M "repeat_file=$model.repeats.W$win.data\n"   unless (defined $no_repeat_table);
-#   print M "gct_file=$model.GCt.W$win.data\n"          unless (defined $no_kmer_table);
-#   print M "kmer_file=$model.kmer.K$kmer.W$win.data\n" unless (defined $no_kmer_table);
     close M;   
 }
 
