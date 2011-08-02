@@ -502,7 +502,7 @@ sub profileSeqs {
 	        $bp_slices += (length $ss) - $num_N; # Effective bases
 	        
 	        # GC in the window and transition
-	        my $gc = calcGC($ss);
+	        my $gc = classGC(calcGC($ss));
 	        $gct{$last_gc}{$gc}++ if (defined $last_gc);
 	        $last_gc = $gc;   
 	    }
@@ -829,10 +829,15 @@ sub calcGC {
     $seq =~ s/[^ACGTacgt]//;
     my $len = length $seq;
     return 'NA' if ($len < 1);
-    
     my $ngc = $seq =~ tr/CGcg/CGcg/;
-
     my $gc  = $ngc / $len;
+    return $gc;
+}
+
+sub classGC {
+    my $gc = shift @_;
+    return $gc if ($gc eq 'NA');
+    
     if    ($gc <= 0.10) { $gc =  '0-10' ; }
     elsif ($gc <= 0.20) { $gc = '10-20' ; }   
     elsif ($gc <= 0.30) { $gc = '20-30' ; }
@@ -851,22 +856,42 @@ sub calcBinGC {
     warn "computing GC bins\n" if (defined $verbose);
 	while ( ($seq_id, $seq) = each %seq) {
 		my $len  = length $seq;
-		my $half = int($binsize / 2);
 		my $gc   = undef;
-		for (my $i = $half; $i <= $len; $i += $half) {
-			my $s  = substr ($seq, $i - $half, $binsize);
+		my $last = $len - $win;
+		my @gc   = ();
+		for (my $i = 0; $i <= $last; $i += $win) {
+			my $s  = substr ($seq, $i, $win);
 			$gc = calcGC($s);
-			push @{ $bingc{$seq_id} }, $gc;
+			push @gc, $gc;
 		}
-		push @{ $bingc{$seq_id} }, $gc; # last fragment with length < binsize
+		push @gc, $gc; # last fragment with length < win
+		
+		my $blk = int(($binsize / $win) / 2);
+		for (my $i = 0; $i <= $#gc; $i++) {
+		    my $sum = 0;
+		    my $num = 0;
+		       $gc  = 'NA';
+		    my $ini = $i - $blk; 
+		       $ini = 0    if ($ini <    0);
+		    my $end = $i + $blk; 
+		       $end = $#gc if ($end > $#gc);
+		    for (my $j = $ini; $j <= $end; $j++) {
+		        next if ($gc[$j] eq 'NA');
+		        $sum += $gc[$j];
+		        $num++;
+		    }
+		    if ($num > 0) {
+		        $gc = classGC($sum / $num); # average GC
+		    }
+		    push @{ $bingc{$seq_id} }, $gc;
+		}
 	}			
 }
 
 sub getBinGC {
 	my $id  = shift @_;
 	my $pos = shift @_;
-	my $bin = int($binsize / 2);
-	my $gc  = $bingc{$id}[int($pos / $bin)];
+	my $gc  = $bingc{$id}[int($pos / $win)];
 	return $gc;
 }
 
