@@ -35,6 +35,8 @@ OPTIONS
     --no_mask_gene     Don't mask genes
     --no_repeat_table  Don't create repeats table
     --no_kmer_table    Don't compute k-mer composition
+    --rm_tmp           Remove temp files
+    --keep_dw_files    Keep downloaded files (overrules --rm_tmp)
 
   * File can be compressed (.gz/.bz2), if you are passing more than one file 
     separate them with ',' Example: "-f chr1.fa,chr2.fa,chr3.fa"
@@ -119,6 +121,7 @@ my $no_mask_gene    =  undef;      # Gene masking flag
 my $no_repeat_table =  undef;      # No repeats profile flag
 my $no_kmer_table   =  undef;      # No kmer profile flag
 my $write_mask_seq  =  undef;      # Write fasta flag
+my $keep_dw_files   =  undef;
 
 # Fetch options
 GetOptions(
@@ -140,7 +143,8 @@ GetOptions(
     'no_mask_gene|nG'    => \$no_mask_gene,
     'no_repeat_table|nR' => \$no_repeat_table,
     'no_kmer_table|nK'   => \$no_kmer_table,
-    'write_mask_seq'     => \$write_mask_seq
+    'write_mask_seq'     => \$write_mask_seq,
+    'keep_dw_files'      => \$keep_dw_files
 ) or pod2usage(-verbose => 2);
 
 # Call help if required
@@ -795,11 +799,25 @@ sub writeModelInfo {
 
 sub removeTmp {
     warn "removing temporary files\n" if (defined $verbose);
-    my @files = @repeat;
-	push @files, @trf;
-	push @files, @fasta;
-    foreach my $file (@files) {
-        system ("rm -rf $file"); 
+    my %keep = ();
+    if (defined $keep_dw_files) {
+        $keep{ $files{$model}{'FAS'} } = 1;
+        $keep{ $files{$model}{'RMO'} } = 1;
+        $keep{ $files{$model}{'TRF'} } = 1;
+        $keep{ $files{$model}{'GEN'} } = 1;
+    }
+    
+    my @dirs = qw/fasta RM TRF/;
+    
+    foreach my $dir (@dirs) {
+        chdir $dir;
+        opendir D, "." or die "cannot open directory $dir\n";
+        while (my $file = readdir D) {
+            next if (defined $keep{$file});
+            system ("rm -rf $file");
+        }
+        closedir D;
+        chdir "..";
     }
 }
 
