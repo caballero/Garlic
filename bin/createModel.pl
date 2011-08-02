@@ -832,14 +832,14 @@ sub calcBinGC {
 	while ( ($seq_id, $seq) = each %seq) {
 		my $len  = length $seq;
 		my $half = int($binsize / 2);
+		my $gc   = undef;
 		for (my $i = $half; $i <= $len; $i += $half) {
 			my $s  = substr ($seq, $i - $half, $binsize);
-			my $gc = calcGC($s);
+			$gc = calcGC($s);
 			push @{ $bingc{$seq_id} }, $gc;
-			print "$seq_id ($len) $i $gc\n";
 		}
-	}
-	die;
+	}			
+	push @{ $bingc{$seq_id} }, $gc; # last fragment with length < binsize
 }
 
 sub getBinGC {
