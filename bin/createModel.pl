@@ -751,7 +751,7 @@ sub writeMaskSeq {
     }
     close F;
 	warn "compressing $file\n" if (defined $verbose);
-	system ("gzip $file");
+	system ("gzip -f $file");
     warn <<__RES__
     Effective bases            = $good_bases
     Null bases (N)             = $null_bases
@@ -832,8 +832,7 @@ sub calcBinGC {
 	while ( ($seq_id, $seq) = each %seq) {
 		my $len  = length $seq;
 		my $half = int($binsize / 2);
-		my $last = $len - $half + 1;
-		for (my $i = $half; $i <= $last; $i += $half) {
+		for (my $i = $half; $i <= $len; $i += $half) {
 			my $s = substr ($seq, $i - $half, $binsize);
 			push @{ $bingc{$seq_id} }, calcGC($s);
 		}
