@@ -506,8 +506,7 @@ sub profileSeqs {
 	        my $word = substr ($seq, $j, $kmer);
 			next if ($word =~ m/[^ACGT]/);
 			my $bingc = getBinGC($seq_id, $j);
-			print "$seq_id\t$j\t$word\t$bingc\n";
-	        $kmer{$bingc}{$word}++;
+			$kmer{$bingc}{$word}++;
 	    }
     }
     
@@ -831,7 +830,7 @@ sub calcBinGC {
 	while ( ($seq_id, $seq) = each %seq) {
 		my $len = length $seq;
 		my $half = int($binsize / 2);
-		for (my $i = $half; $i <= $len - $binsize; $i += $half) {
+		for (my $i = $half; $i <= $len - $binsize + 1; $i += $half) {
 			my $s = substr ($seq, $i - $half, $binsize);
 			push @{ $bingc{$seq_id} }, calcGC($s);
 		}
