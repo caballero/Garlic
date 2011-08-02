@@ -482,7 +482,7 @@ sub profileSeqs {
 		for (my $j = 0; $j <= $len - $kmer; $j++) {
 	        my $word = substr ($seq, $j, $kmer);
 			next if ($word =~ m/[^ACGT]/);
-			my $bingc = getBinGC($j);
+			my $bingc = getBinGC($seq_id, $j);
 	        $kmer{$bingc}{$word}++;
 	    }
     }
