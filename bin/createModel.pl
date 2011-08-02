@@ -167,7 +167,7 @@ my @fasta    = ();
 my @repeat   = ();
 my @trf      = ();
 my @gene     = ();
-my @bingc    = ();
+my %bingc    = ();
 my %seq      = ();
 my %repeat   = ();
 my %genes    = ();
@@ -813,7 +813,7 @@ sub calcGC {
 }
 
 sub calcBinGC {
-	while ( my ($id, $seq) = each %seqs) {
+	while ( my ($id, $seq) = each %seq) {
 		my $len = length $seq;
 		my $half = int($binsize / 2);
 		for (my $i = $half; $i <= $len - $binsize; $i += $half) {
