@@ -833,8 +833,10 @@ sub calcBinGC {
 		my $len  = length $seq;
 		my $half = int($binsize / 2);
 		for (my $i = $half; $i <= $len; $i += $half) {
-			my $s = substr ($seq, $i - $half, $binsize);
-			push @{ $bingc{$seq_id} }, calcGC($s);
+			my $s  = substr ($seq, $i - $half, $binsize);
+			my $gc = calcGC($s);
+			push @{ $bingc{$seq_id} }, $gc;
+			print "$seq_id ($len) $i $gc\n";
 		}
 	}
 }
