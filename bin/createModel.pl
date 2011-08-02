@@ -480,10 +480,10 @@ sub profileSeqs {
 	    }
 		# Kmer counts
 		for (my $j = 0; $j <= $len - $kmer; $j++) {
-	        my $kmer = substr ($seq, $j, $kmer);
-			next if ($kmer =~ m/[^ACGT]/);
+	        my $word = substr ($seq, $j, $kmer);
+			next if ($word =~ m/[^ACGT]/);
 			my $bingc = getBinGC($j);
-	        $kmer{$bingc}{$kmer}++;
+	        $kmer{$bingc}{$word}++;
 	    }
     }
     
