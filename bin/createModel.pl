@@ -844,8 +844,7 @@ sub getBinGC {
 	my $id  = shift @_;
 	my $pos = shift @_;
 	my $bin = int($binsize / 2);
-	$pos    = int($pos / $bin);
-	my $gc  = $bingc{$id}[$pos];
+	my $gc  = $bingc{$id}[int($pos / $bin)];
 	return $gc;
 }
 
