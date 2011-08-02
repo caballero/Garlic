@@ -507,8 +507,12 @@ sub profileSeqs {
 	            }
 	        }
 	        else {
+				my ($g, $c) = split (/-/, $gc);
+				my $p = ($c - 5) / 100;
+				my $q = 1 - $p;
 	            foreach my $b (@dna) {
-	                my $frq = sprintf ("%.8f", 1 / @dna);
+	                my $frq = sprintf ("%.8f", $p / 2);
+					 $frq   = sprintf ("%.8f", $q / 2) if ($b =~ m/[AT]/);
 	                print K "$word$b\t$frq\t0\n";
 	            }
 	        }
