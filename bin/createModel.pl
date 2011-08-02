@@ -839,6 +839,7 @@ sub calcBinGC {
 			print "$seq_id ($len) $i $gc\n";
 		}
 	}
+	die;
 }
 
 sub getBinGC {
