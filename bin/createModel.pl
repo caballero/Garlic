@@ -814,13 +814,13 @@ sub calcGC {
 
 sub calcBinGC {
     warn "computing GC bins\n" if (defined $verbose)
-	while ( my ($id, $seq) = each %seq) {
+	while ( ($seq_id, $seq) = each %seq) {
 		my $len = length $seq;
 		my $half = int($binsize / 2);
 		for (my $i = $half; $i <= $len - $binsize; $i += $half) {
 			my $s = substr ($seq, $i - $half, $binsize);
 			my $bingc = calcGC($s);
-			push @{ $bingc{$id} }, $bingc;
+			push @{ $bingc{$seq_id} }, $bingc;
 		}
 	}
 }
