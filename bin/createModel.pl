@@ -152,10 +152,11 @@ my %files = ();
 loadFiles();
 
 # Configurable parameters
-my $get           = 'wget -c'; # command to fetch files from internet
+my $get           = 'wget -c';           # command to fetch files from internet
    $get          .= ' -q' unless (defined $verbose);
-my $unpack        = 'tar zxf'; # command to unpack the files downloaded
-my $unzip         = 'gunzip -c';  # command to decompress the files downloaded
+my $unpack        = 'tar zxf';           # command to unpack the files downloaded
+my $unzip         = 'unzip';             # command to decompress the files downloaded
+my $gunzip        = 'gunzip -c';         # command to decompress the files downloaded
 my $ucsc          = 'http://hgdownload.cse.ucsc.edu/goldenPath'; # UCSC url
 my $ucsc_genome   = "$ucsc/$model/bigZips/"  . $files{$model}{'FAS'};
 my $ucsc_repeat   = "$ucsc/$model/bigZips/"  . $files{$model}{'RMO'};
