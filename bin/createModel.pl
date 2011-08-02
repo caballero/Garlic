@@ -838,6 +838,11 @@ sub calcBinGC {
 			push @{ $bingc{$seq_id} }, calcGC($s);
 		}
 	}
+	
+	# debug
+	foreach my $id (keys %bingc) {
+	    print join ":", $id, @{ $bingc{$id} }, "\n";
+	}
 }
 
 sub getBinGC {
