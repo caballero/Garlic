@@ -506,6 +506,7 @@ sub profileSeqs {
 	        my $word = substr ($seq, $j, $kmer);
 			next if ($word =~ m/[^ACGT]/);
 			my $bingc = getBinGC($seq_id, $j);
+			print "$seq_id\t$j\t$word\t$bingc\n";
 	        $kmer{$bingc}{$word}++;
 	    }
     }
@@ -796,9 +797,6 @@ sub removeTmp {
     my @files = @repeat;
 	push @files, @trf;
 	push @files, @fasta;
-    #push @files, 'fasta';
-    #push @files, 'RM';
-    #push @files, 'TRF';
     foreach my $file (@files) {
         system ("rm -rf $file"); 
     }
@@ -837,11 +835,6 @@ sub calcBinGC {
 			my $s = substr ($seq, $i - $half, $binsize);
 			push @{ $bingc{$seq_id} }, calcGC($s);
 		}
-	}
-	
-	# debug
-	foreach my $id (keys %bingc) {
-	    print join ":", $id, @{ $bingc{$id} }, "\n";
 	}
 }
 
