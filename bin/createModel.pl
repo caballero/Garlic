@@ -489,7 +489,8 @@ sub profileSeqs {
 	    my $last_gc = undef;
 	    my $len = length $seq;
 		# GC windows transitions
-	    for (my $i = 0; $i <= $len - $win; $i += $win) {
+		my $last = $len - $win;
+	    for (my $i = 0; $i <= $last; $i += $win) {
 	        $ss = substr ($seq, $i, $win);
 	        my $num_N = $ss =~ tr/N/N/;
 	        my $frq_N = $num_N / (length $ss);
@@ -502,7 +503,8 @@ sub profileSeqs {
 	        $last_gc = $gc;   
 	    }
 		# Kmer counts
-		for (my $j = 0; $j <= $len - $kmer; $j++) {
+		$last = $len - $kmer;
+		for (my $j = 0; $j <= $last; $j++) {
 	        my $word = substr ($seq, $j, $kmer);
 			next if ($word =~ m/[^ACGT]/);
 			my $bingc = getBinGC($seq_id, $j);
@@ -828,9 +830,10 @@ sub calcGC {
 sub calcBinGC {
     warn "computing GC bins\n" if (defined $verbose);
 	while ( ($seq_id, $seq) = each %seq) {
-		my $len = length $seq;
+		my $len  = length $seq;
 		my $half = int($binsize / 2);
-		for (my $i = $half; $i <= $len - $binsize + 1; $i += $half) {
+		my $last = $len - $half + 1;
+		for (my $i = $half; $i <= $last; $i += $half) {
 			my $s = substr ($seq, $i - $half, $binsize);
 			push @{ $bingc{$seq_id} }, calcGC($s);
 		}
