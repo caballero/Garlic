@@ -157,10 +157,10 @@ my $get           = 'wget -c'; # command to fetch files from internet
 my $unpack        = 'tar zxf'; # command to unpack the files downloaded
 my $unzip         = 'gunzip -c';  # command to decompress the files downloaded
 my $ucsc          = 'http://hgdownload.cse.ucsc.edu/goldenPath'; # UCSC url
-my $ucsc_genome   = "$ucsc/$model/bigZips/" . $files{$model}{'FAS'};
-my $ucsc_repeat   = "$ucsc/$model/bigZips/" . $files{$model}{'RMO'};
-my $ucsc_trf      = "$ucsc/$model/bigZips/" . $files{$model}{'TRF'};
-my $ucsc_gene     = "$ucsc/$model/database/ensGene.txt.gz"; 
+my $ucsc_genome   = "$ucsc/$model/bigZips/"  . $files{$model}{'FAS'};
+my $ucsc_repeat   = "$ucsc/$model/bigZips/"  . $files{$model}{'RMO'};
+my $ucsc_trf      = "$ucsc/$model/bigZips/"  . $files{$model}{'TRF'};
+my $ucsc_gene     = "$ucsc/$model/database/" . $files{$model}{'GEN'}; 
 
 # Main variables
 my @fasta    = ();
@@ -236,9 +236,10 @@ sub searchFiles {
 }
 
 sub getUCSC_gene {
-    # annotation also can be 'knownGene.txt.gz' but it only includes coding 
-    # genes, we prefer Ensemble annotation for that reason
-    $gene = 'ensGene.txt.gz';
+    # Gene models to mask functional regions
+    $gene = $files{$model}{'GEN'};
+    die "Sorry, $model don't have annotation registrated\n" unless (defined $gene);
+
     if (-e $gene) {
         warn "$gene present, using it\n" if (defined $verbose);
     }
@@ -252,6 +253,8 @@ sub getUCSC_gene {
 sub getUCSC_trf {
     # TRF output is used for simple repeat annotation
     my $target_file = $files{$model}{'TRF'};
+    die "Sorry, $model don't have TRF registrated\n" unless (defined $target_file);
+
     if (-e "TRF/$target_file") {
         warn "$target_file present, using it\n" if (defined $verbose);
         chdir 'TRF' or die "cannot move to TRF directory\n";
@@ -269,11 +272,15 @@ sub getUCSC_trf {
         warn "unpacking TAR\n" if (defined $verbose);
         system ("$unpack $target_file");
     }
+    elsif ($target_file =~ m/.zip$/) {
+        warn "unpacking ZIP\n" if (defined $verbose);
+        system ("$unzip $target_file");
+    }
     elsif($target_file =~ m/.gz$/) {
         warn "unzipping GZ\n" if (defined $verbose);
 		my $out_file = $target_file;
 		$out_file =~ s/.gz$//;
-        system ("$unzip $target_file > $out_file");
+        system ("$gunzip $target_file > $out_file");
     }
     else {
         die "cannot recognize the file format of $target_file\n";
@@ -288,6 +295,8 @@ sub getUCSC_trf {
 sub getUCSC_repeat {
     # RepeatMasker output
     my $target_file = $files{$model}{'RMO'};
+    die "Sorry, $model don't have RepeatMasker registrated\n" unless (defined $target_file);
+
     if (-e "RM/$target_file") {
         warn "$target_file present, using it\n" if (defined $verbose);
         chdir 'RM' or die "cannot move to RM directory\n";
@@ -305,11 +314,15 @@ sub getUCSC_repeat {
         warn "unpacking TAR\n" if (defined $verbose);
         system ("$unpack $target_file");
     }
+    elsif ($target_file =~ m/.zip$/) {
+        warn "unpacking ZIP\n" if (defined $verbose);
+        system ("$unzip $target_file");
+    }
     elsif($target_file =~ m/.gz$/) {
         warn "unzipping GZ\n" if (defined $verbose);
 		my $out_file = $target_file;
 		$out_file =~ s/.gz$//;
-        system ("$unzip $target_file > $out_file");
+        system ("$gunzip $target_file > $out_file");
     }
     else {
         die "cannot recognize the file format of $target_file\n";
@@ -324,6 +337,8 @@ sub getUCSC_repeat {
 sub getUCSC_fasta {
     # Chromosomal sequences
     my $target_file = $files{$model}{'FAS'};
+    die "Sorry, $model don't have Fasta registrated\n" unless (defined $target_file);
+
     if (-e "fasta/$target_file") {
         warn "$target_file present, using it\n" if (defined $verbose);
         chdir 'fasta' or die "cannot move to fasta directory\n";
@@ -340,11 +355,18 @@ sub getUCSC_fasta {
         warn "unpacking TAR\n" if (defined $verbose);
         system ("$unpack $target_file");
     }
-    elsif ($target_file =~ m/.gz$/) {
+    elsif ($target_file =~ m/.zip$/) {
+        warn "unpacking ZIP\n" if (defined $verbose);
+        system ("$unzip $target_file");
+    }
+    elsif($target_file =~ m/.gz$/) {
         warn "unzipping GZ\n" if (defined $verbose);
 		my $out_file = $target_file;
 		$out_file =~ s/.gz$//;
-        system ("$unzip $target_file > $out_file");
+        system ("$gunzip $target_file > $out_file");
+    }
+    else {
+        die "cannot recognize the file format of $target_file\n";
     }
     
     chdir '..';
@@ -512,7 +534,7 @@ sub profileSeqs {
 				my $q = 1 - $p;
 	            foreach my $b (@dna) {
 	                my $frq = sprintf ("%.8f", $p / 2);
-					 $frq   = sprintf ("%.8f", $q / 2) if ($b =~ m/[AT]/);
+					   $frq = sprintf ("%.8f", $q / 2) if ($b =~ m/[AT]/);
 	                print K "$word$b\t$frq\t0\n";
 	            }
 	        }
@@ -582,7 +604,6 @@ sub profileRepeats {
         }
     }
     close R;
-    #%repeat = ();
 }
 
 sub profileTRF {
@@ -621,9 +642,7 @@ sub profileTRF {
                 }
             }
              
-            my $left      = substr ($seq{$seq_id}, $ini - $win, $win);
-            my $right     = substr ($seq{$seq_id}, $end, $win);
-            my $gc        = calcGC("$left$right");
+            my $gc    = getBinGC($seq_id, $ini);
             push @{ $repeat{$gc} }, $label;
             $last_ini = $ini;
             $last_end = $end;
@@ -669,24 +688,19 @@ sub profileRM {
             my $label     = "$type:$fam:$dir:$div:$ins:$del:$rini:$rend";
             next unless (defined $seq{$seq_id});
             #next if (checkGene($seq_id, $ini, $end));
-            my $left      = substr ($seq{$seq_id}, $ini - $win, $win);
-            my $right     = substr ($seq{$seq_id}, $end, $win);
                 
             if (defined $repdata{$rid}) {
-                $repdata{$rid}{'rseq'}   = $right;
                 $repdata{$rid}{'label'} .= ";$div:$ins:$del:$rini:$rend";
             }
             else {
                 $repdata{$rid}{'label'} = $label;
-                $repdata{$rid}{'lseq'}  = $left;
-                $repdata{$rid}{'rseq'}  = $right;
             }
         }
         close T;
     }
     
     foreach my $rid (keys %repdata) {
-        my $gc = calcGC($repdata{$rid}{'lseq'} . $repdata{$rid}{'rseq'});
+        my $gc = getBinGC($seq_id, $ini);
         push @{ $repeat{$gc} }, $repdata{$rid}{'label'};
     }
 }
@@ -795,6 +809,7 @@ sub calcGC {
     $seq =~ s/[^ACGTacgt]//;
     my $len = length $seq;
     return 'NA' if ($len < 1);
+    
     my $ngc = $seq =~ tr/CGcg/CGcg/;
 
     my $gc  = $ngc / $len;
@@ -819,8 +834,7 @@ sub calcBinGC {
 		my $half = int($binsize / 2);
 		for (my $i = $half; $i <= $len - $binsize; $i += $half) {
 			my $s = substr ($seq, $i - $half, $binsize);
-			my $bingc = calcGC($s);
-			push @{ $bingc{$seq_id} }, $bingc;
+			push @{ $bingc{$seq_id} }, calcGC($s);
 		}
 	}
 }
@@ -839,153 +853,208 @@ sub loadFiles {
     $files{'hg19'   }{'FAS'} = 'chromFa.tar.gz';
     $files{'hg19'   }{'RMO'} = 'chromOut.tar.gz';
     $files{'hg19'   }{'TRF'} = 'chromTrf.tar.gz';
+    $files{'hg19'   }{'GEN'} = 'ensGene.txt.gz';
     
     $files{'hg18'   }{'FAS'} = 'chromFa.tar.gz';
     $files{'hg18'   }{'RMO'} = 'chromOut.tar.gz';
     $files{'hg18'   }{'TRF'} = 'chromTrf.tar.gz';
+    $files{'hg18'   }{'GEN'} = 'ensGene.txt.gz';
     
     # Cat
     $files{'felCat4'}{'FAS'} = 'felCat4.fa.gz';
     $files{'felCat4'}{'RMO'} = 'felCat4.fa.out.gz';
     $files{'felCat4'}{'TRF'} = 'felCat4.trf.bed.gz';
+    $files{'felCat4'}{'GEN'} = 'refGene.txt.gz';
     
     # Chicken
     $files{'galGal3'}{'FAS'} = 'chromFa.tar.gz';
     $files{'galGal3'}{'RMO'} = 'chromOut.tar.gz';
     $files{'galGal3'}{'TRF'} = 'chromTrf.tar.gz';
+    $files{'galGal3'}{'GEN'} = 'ensGene.txt.gz';
     
     # Chimpanzee
     $files{'panTro3'}{'FAS'} = 'panTro3.fa.gz';
     $files{'panTro3'}{'RMO'} = 'panTro3.fa.out.gz';
     $files{'panTro3'}{'TRF'} = 'panTro3.trf.bed.gz';
+    $files{'panTro3'}{'GEN'} = 'refGene.txt.gz';
     
     # Cow
     $files{'bosTau4'}{'FAS'} = 'bosTau4.fa.gz';
     $files{'bosTau4'}{'RMO'} = 'bosTau4.fa.out.gz';
     $files{'bosTau4'}{'TRF'} = 'bosTau4.trf.bed.gz';
+    $files{'bosTau4'}{'GEN'} = 'ensGene.txt.gz';
     
     # Dog
     $files{'canFam2'}{'FAS'} = 'chromFa.tar.gz';
     $files{'canFam2'}{'RMO'} = 'chromOut.tar.gz';
     $files{'canFam2'}{'TRF'} = 'chromTrf.tar.gz';
+    $files{'canFam2'}{'GEN'} = 'ensGene.txt.gz';
     
     # Elephant
     $files{'loxAfr3'}{'FAS'} = 'loxAfr3.fa.gz';
     $files{'loxAfr3'}{'RMO'} = 'loxAfr3.fa.out.gz';
     $files{'loxAfr3'}{'TRF'} = 'loxAfr3.trf.bed.gz';
+    $files{'loxAfr3'}{'GEN'} = 'ensGene.txt.gz';
     
     # Fugu
     $files{'fr2'    }{'FAS'} = 'chromFa.tar.gz';
     $files{'fr2'    }{'RMO'} = 'chromOut.tar.gz';
     $files{'fr2'    }{'TRF'} = 'chromTrf.tar.gz';
+    $files{'fr2'    }{'GEN'} = 'ensGene.txt.gz'; 
     
     # Guinea Pig
     $files{'cavPor3'}{'FAS'} = 'cavPor3.fa.gz';
     $files{'cavPor3'}{'RMO'} = 'cavPor3.fa.out.gz';
     $files{'cavPor3'}{'TRF'} = 'cavPor3.trf.bed.gz';
+    $files{'cavPor3'}{'GEN'} = 'ensGene.txt.gz'; 
     
     # Horse
     $files{'equCab2'}{'FAS'} = 'chromFa.tar.gz';
     $files{'equCab2'}{'RMO'} = 'chromOut.tar.gz';
     $files{'equCab2'}{'TRF'} = 'chromTrf.tar.gz';
-    
-    # Lamprey
-    $files{'petMar1'}{'FAS'} = 'petMar1.fa.gz';
-    $files{'petMar1'}{'RMO'} = 'petMar1.fa.out.gz';
-    $files{'petMar1'}{'TRF'} = 'petMar1.trf.bed.gz';
-    
-    # Lancelet
-    $files{'braFlo1'}{'FAS'} = 'chromFa.tar.gz';
-    $files{'braFlo1'}{'RMO'} = 'chromOut.tar.gz';
-    $files{'braFlo1'}{'TRF'} = 'chromTrf.tar.gz';
+    $files{'equCab2'}{'GEN'} = 'ensGene.txt.gz'; 
     
     # Lizard
     $files{'anoCar2'}{'FAS'} = 'anoCar2.fa.gz';
     $files{'anoCar2'}{'RMO'} = 'anoCar2.fa.out.gz';
     $files{'anoCar2'}{'TRF'} = 'anoCar2.trf.bed.gz';
+    $files{'anoCar2'}{'GEN'} = 'ensGene.txt.gz'; 
     
     # Marmoset
     $files{'calJac3'}{'FAS'} = 'calJac3.fa.gz';
     $files{'calJac3'}{'RMO'} = 'calJac3.fa.out.gz';
     $files{'calJac3'}{'TRF'} = 'calJac3.trf.bed.gz';
+    $files{'calJac3'}{'GEN'} = 'ensGene.txt.gz'; 
     
     # Medaka
     $files{'oryLat2'}{'FAS'} = 'oryLat2.fa.gz';
     $files{'oryLat2'}{'RMO'} = 'oryLat2.fa.out.gz';
     $files{'oryLat2'}{'TRF'} = 'oryLat2.trf.bed.gz';
-    
+    $files{'oryLat2'}{'GEN'} = 'ensGene.txt.gz'; 
+        
     # Mouse
     $files{'mm9'    }{'FAS'} = 'chromFa.tar.gz';
     $files{'mm9'    }{'RMO'} = 'chromOut.tar.gz';
     $files{'mm9'    }{'TRF'} = 'chromTrf.tar.gz';
-    
+    $files{'mm9'    }{'GEN'} = 'ensGene.txt.gz'; 
+
     # Oposum
     $files{'monDom5'}{'FAS'} = 'chromFa.tar.gz';
     $files{'monDom5'}{'RMO'} = 'chromOut.tar.gz';
     $files{'monDom5'}{'TRF'} = 'chromTrf.tar.gz';
+    $files{'monDom5'}{'GEN'} = 'ensGene.txt.gz'; 
     
     # Orangutan
     $files{'ponAbe2'}{'FAS'} = 'chromFa.tar.gz';
     $files{'ponAbe2'}{'RMO'} = 'chromOut.tar.gz';
     $files{'ponAbe2'}{'TRF'} = 'chromTrf.tar.gz';
+    $files{'ponAbe2'}{'GEN'} = 'ensGene.txt.gz'; 
     
     # Panda
     $files{'ailMel1'}{'FAS'} = 'ailMel1.fa.gz';
     $files{'ailMel1'}{'RMO'} = 'ailMel1.fa.out.gz';
     $files{'ailMel1'}{'TRF'} = 'ailMel1.trf.bed.gz';
+    $files{'ailMel1'}{'GEN'} = 'ensGene.txt.gz'; 
     
     # Pig
     $files{'susScr2'}{'FAS'} = 'chromFa.tar.gz';
     $files{'susScr2'}{'RMO'} = 'chromOut.tar.gz';
     $files{'susScr2'}{'TRF'} = 'chromTrf.tar.gz';
+    $files{'susScr2'}{'GEN'} = 'ensGene.txt.gz'; 
     
     # Platypus
     $files{'ornAna1'}{'FAS'} = 'ornAna1.fa.gz';
     $files{'ornAna1'}{'RMO'} = 'ornAna1.fa.out.gz';
     $files{'ornAna1'}{'TRF'} = 'ornAna1.trf.bed.gz';
+    $files{'ornAna1'}{'GEN'} = 'ensGene.txt.gz'; 
     
     # Rabbit
     $files{'oryCun2'}{'FAS'} = 'oryCun2.fa.gz';
     $files{'oryCun2'}{'RMO'} = 'oryCun2.fa.out.gz';
     $files{'oryCun2'}{'TRF'} = 'oryCun2.trf.bed.gz';
+    $files{'oryCun2'}{'GEN'} = 'ensGene.txt.gz'; 
     
     # Rat
     $files{'rn4'    }{'FAS'} = 'chromFa.tar.gz';
     $files{'rn4'    }{'RMO'} = 'chromOut.tar.gz';
     $files{'rn4'    }{'TRF'} = 'chromTrf.tar.gz';
+    $files{'rn4'    }{'GEN'} = 'ensGene.txt.gz'; 
     
     # Rhesus
     $files{'rheMac2'}{'FAS'} = 'chromFa.tar.gz';
     $files{'rheMac2'}{'RMO'} = 'chromOut.tar.gz';
     $files{'rheMac2'}{'TRF'} = 'chromTrf.tar.gz';
+    $files{'rheMac2'}{'GEN'} = 'ensGene.txt.gz'; 
     
     # Sheep
     $files{'oviAri1'}{'FAS'} = 'oviAri1.fa.gz';
     $files{'oviAri1'}{'RMO'} = 'oviAri1.fa.out.gz';
     $files{'oviAri1'}{'TRF'} = 'oviAri1.trf.bed.gz';
+    $files{'oviAri1'}{'GEN'} = 'refGene.txt.gz'; 
     
     # Stickleback
     $files{'gasAcu1'}{'FAS'} = 'chromFa.tar.gz';
     $files{'gasAcu1'}{'RMO'} = 'chromOut.tar.gz';
     $files{'gasAcu1'}{'TRF'} = 'chromTrf.tar.gz';
+    $files{'gasAcu1'}{'GEN'} = 'ensGene.txt.gz'; 
     
     # Tetraodon
     $files{'tetNig2'}{'FAS'} = 'chromFa.tar.gz';
     $files{'tetNig2'}{'RMO'} = 'chromOut.tar.gz';
     $files{'tetNig2'}{'TRF'} = 'chromTrf.tar.gz';
+    $files{'tetNig2'}{'GEN'} = 'ensGene.txt.gz'; 
     
     # X. tropicalis
     $files{'xenTro2'}{'FAS'} = 'xenTro2.fa.gz';
     $files{'xenTro2'}{'RMO'} = 'xenTro2.rmsk.out.gz';
     $files{'xenTro2'}{'TRF'} = 'xenTro2.trf.bed.gz';
+    $files{'xenTro2'}{'GEN'} = 'ensGene.txt.gz'; 
     
     # Zebra finch
     $files{'taeGut1'}{'FAS'} = 'chromFa.tar.gz';
     $files{'taeGut1'}{'RMO'} = 'chromOut.tar.gz';
     $files{'taeGut1'}{'TRF'} = 'chromTrf.tar.gz';
+    $files{'taeGut1'}{'GEN'} = 'ensGene.txt.gz'; 
     
     # Zefrafish
     $files{'danRer7'}{'FAS'} = 'danRer7.fa.gz';
     $files{'danRer7'}{'RMO'} = 'danRer7.fa.out.gz';
     $files{'danRer7'}{'TRF'} = 'danRer7.trf.bed.gz';
+    $files{'danRer7'}{'GEN'} = 'ensGene.txt.gz';
+    
+    # C. intestinalis
+    $files{'ci2'    }{'FAS'} = 'ScaffoldFa.zip';
+    $files{'ci2'    }{'RMO'} = 'Scaffold.out.zip';
+    $files{'ci2'    }{'TRF'} = 'ScaffoldTrf.zip';
+    $files{'ci2'    }{'GEN'} = 'ensGene.txt.gz';
+    
+    # S. purpuratus
+    $files{'strPur2'}{'FAS'} = 'strPur2.fa.gz';
+    $files{'strPur2'}{'RMO'} = 'strPur2.fa.out.gz';
+    $files{'strPur2'}{'TRF'} = 'strPur2.trf.bed.gz';
+    $files{'strPur2'}{'GEN'} = 'refGene.txt.gz';
+    
+    # A. gambiae
+    $files{'anoGam1'}{'FAS'} = 'chromFa.tar.gz';
+    $files{'anoGam1'}{'RMO'} = 'chromOut.tar.gz';
+    $files{'anoGam1'}{'TRF'} = 'chromTrf.tar.gz';
+    $files{'anoGam1'}{'GEN'} = 'ensGene.txt.gz';
+    
+    # A. mellifera
+    $files{'apiMel2'}{'FAS'} = 'GroupFa.zip';
+    $files{'apiMel2'}{'RMO'} = 'GroupOut.zip';
+    $files{'apiMel2'}{'TRF'} = 'GroupTrf.zip';
+    $files{'apiMel2'}{'GEN'} = 'ensGene.txt.gz';
+    
+    # D. melanogaster
+    $files{'dm3'    }{'FAS'} = 'chromFa.tar.gz';
+    $files{'dm3'    }{'RMO'} = 'chromOut.tar.gz';
+    $files{'dm3'    }{'TRF'} = 'chromTrf.tar.gz';
+    $files{'dm3'    }{'GEN'} = 'ensGene.txt.gz';
+    
+    # C. elegans
+    $files{'ce3'    }{'FAS'} = 'chromFa.tar.gz';
+    $files{'ce3'    }{'RMO'} = 'chromOut.tar.gz';
+    $files{'ce3'    }{'TRF'} = 'chromTrf.tar.gz';
+    $files{'ce3'    }{'GEN'} = 'ensGene.txt.gz';
 }
