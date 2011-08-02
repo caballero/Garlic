@@ -838,8 +838,8 @@ sub calcBinGC {
 			$gc = calcGC($s);
 			push @{ $bingc{$seq_id} }, $gc;
 		}
+		push @{ $bingc{$seq_id} }, $gc; # last fragment with length < binsize
 	}			
-	push @{ $bingc{$seq_id} }, $gc; # last fragment with length < binsize
 }
 
 sub getBinGC {
