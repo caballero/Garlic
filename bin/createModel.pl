@@ -208,11 +208,12 @@ $exclude =~ s/,/|/g if (defined $exclude);
 
 # Load sequences and mask it
 readFasta();
-calcBinGC();
+#calcBinGC();
 maskRepeat()   if (defined $mask_repeat);
 maskTRF()      if (defined $mask_trf);
 maskGene() unless (defined $no_mask_gene);
 writeMaskSeq("$model.masked.fa") if (defined $write_mask_seq);
+calcBinGC();
 
 # Create the K-mer/Window and GCt tables
 profileSeqs() unless (defined $no_kmer_table);
