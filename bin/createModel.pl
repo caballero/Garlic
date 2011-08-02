@@ -22,6 +22,7 @@ OPTIONS
     -d --dir           Write model in directory      Directory      ./data
     -k --kmer          Profile k-mer size            Integer        4
     -w --win           Profile window size           Integer        1000
+	-b --binsize       Bin size (for %GC)            Integer        20000
     
     -f --fasta         Fasta sequences               FileName*
     -r --repeats       RepeatMasker output           FileName*
@@ -103,6 +104,7 @@ my $model           =  undef;      # Model definition
 my $dir             = 'data';      # Output directory
 my $kmer            =      4;      # K-mer size
 my $win             =   1000;      # Window size (non-overlapping)
+my $binsize         =  20000;      # Bin size
 my $fasta           =  undef;      # Sequences in fasta files
 my $repeat          =  undef;      # RepeatMasker output
 my $trf             =  undef;      # TRF output
@@ -126,6 +128,7 @@ GetOptions(
     'd|dir:s'            => \$dir,
     'k|kmer:i'           => \$kmer,
     'w|win:i'            => \$win,
+	'b|binsize:i'        => \$binsize,
     'f|fasta:s'          => \$fasta,
     'r|repeat:s'         => \$repeat,
     't|trf:s'            => \$trf,
@@ -164,6 +167,7 @@ my @fasta    = ();
 my @repeat   = ();
 my @trf      = ();
 my @gene     = ();
+my @bingc    = ();
 my %seq      = ();
 my %repeat   = ();
 my %genes    = ();
@@ -199,6 +203,7 @@ $exclude =~ s/,/|/g if (defined $exclude);
 
 # Load sequences and mask it
 readFasta();
+calcBinGC();
 maskRepeat()   if (defined $mask_repeat);
 maskTRF()      if (defined $mask_trf);
 maskGene() unless (defined $no_mask_gene);
@@ -266,7 +271,9 @@ sub getUCSC_trf {
     }
     elsif($target_file =~ m/.gz$/) {
         warn "unzipping GZ\n" if (defined $verbose);
-        system ("$unzip $target_file");
+		my $out_file = $target_file;
+		$out_file =~ s/.gz$//;
+        system ("$unzip $target_file > $out_file");
     }
     else {
         die "cannot recognize the file format of $target_file\n";
@@ -300,7 +307,9 @@ sub getUCSC_repeat {
     }
     elsif($target_file =~ m/.gz$/) {
         warn "unzipping GZ\n" if (defined $verbose);
-        system ("$unzip $target_file");
+		my $out_file = $target_file;
+		$out_file =~ s/.gz$//;
+        system ("$unzip $target_file > $out_file");
     }
     else {
         die "cannot recognize the file format of $target_file\n";
@@ -331,12 +340,11 @@ sub getUCSC_fasta {
         warn "unpacking TAR\n" if (defined $verbose);
         system ("$unpack $target_file");
     }
-    elsif($target_file =~ m/.gz$/) {
+    elsif ($target_file =~ m/.gz$/) {
         warn "unzipping GZ\n" if (defined $verbose);
-        system ("$unzip $target_file");
-    }
-    else {
-        die "cannot recognize the file format of $target_file\n";
+		my $out_file = $target_file;
+		$out_file =~ s/.gz$//;
+        system ("$unzip $target_file > $out_file");
     }
     
     chdir '..';
@@ -345,6 +353,14 @@ sub getUCSC_fasta {
     die "cannot find fasta files!" unless (defined $fasta);
 }
 
+sub defineFH {
+	my $fi = shift @_;
+	my $fh = $fi;
+    $fh = "gunzip  -c $fi | " if ($fi =~ m/\.gz$/);
+    $fh = "bunzip2 -c $fi | " if ($fi =~ m/\.bz2$/);
+	return $fh;
+}
+		
 sub readFasta {
     # read tha fasta files, apply filters if required
     warn "loading fasta sequences\n" if (defined $verbose);
@@ -353,9 +369,7 @@ sub readFasta {
             next if ($file =~ m/$exclude/);
         }
         warn "  reading $file\n" if (defined $verbose);
-        my $fileh = $file;
-        $fileh = "gunzip  -c $file | " if ($file =~ m/\.gz$/);
-        $fileh = "bunzip2 -c $file | " if ($file =~ m/\.bz2$/);
+        my $fileh = defineFH($file);
         open FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
             chomp;
@@ -378,9 +392,7 @@ sub maskRepeat {
         if (defined $exclude) {
             next if ($file =~ m/$exclude/);
         }
-        my $fileh = $file;
-        $fileh = "gunzip  -c $file | " if ($file =~ m/\.gz$/);
-        $fileh = "bunzip2 -c $file | " if ($file =~ m/\.bz2$/);
+        my $fileh = defineFH($file);
         open FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
             s/^\s*//;
@@ -404,9 +416,7 @@ sub maskTRF {
         if (defined $exclude) {
             next if ($file =~ m/$exclude/);
         }
-        my $fileh = $file;
-        $fileh = "gunzip  -c $file | " if ($file =~ m/\.gz$/);
-        $fileh = "bunzip2 -c $file | " if ($file =~ m/\.bz2$/);
+        my $fileh = defineFH($file);
         open FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
             my @arr = split (/\t/, $_);
@@ -425,9 +435,7 @@ sub maskGene {
     # mask sequences with gene annotation
     warn "masking genes\n" if (defined $verbose);
     foreach my $file (@gene) {
-        my $fileh = $file;
-        $fileh = "gunzip  -c $file | " if ($file =~ m/\.gz$/);
-        $fileh = "bunzip2 -c $file | " if ($file =~ m/\.bz2$/);
+        my $fileh = defineFH($file);
         open FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
             my @arr = split (/\t/, $_);
@@ -457,6 +465,7 @@ sub profileSeqs {
 	    $seq =~ s/[^ACGT]/N/g;
 	    my $last_gc = undef;
 	    my $len = length $seq;
+		# GC windows transitions
 	    for (my $i = 0; $i <= $len - $win; $i += $win) {
 	        $ss = substr ($seq, $i, $win);
 	        my $num_N = $ss =~ tr/N/N/;
@@ -467,14 +476,15 @@ sub profileSeqs {
 	        # GC in the window and transition
 	        my $gc = calcGC($ss);
 	        $gct{$last_gc}{$gc}++ if (defined $last_gc);
-	        $last_gc = $gc;
-	       
-	        # Kmer count
-	        for (my $j = 0; $j <= $win - $kmer; $j++) {
-	            my $kmer = substr ($ss, $j, $kmer);
-	            $kmer{$gc}{$kmer}++;
-	        }
-        }
+	        $last_gc = $gc;   
+	    }
+		# Kmer counts
+		for (my $j = 0; $j <= $len - $kmer; $j++) {
+	        my $kmer = substr ($ss, $j, $kmer);
+			next if ($kmer =~ m/[^ACGT]/);
+			my $bingc = getBinGC($j);
+	        $kmer{$bingc}{$kmer}++;
+	    }
     }
     
     warn "  $bp_slices bases analyzed\n" if (defined $verbose);
@@ -719,6 +729,8 @@ sub writeMaskSeq {
         }
     }
     close F;
+	warn "compressing $file\n" if (defined $verbose);
+	system ("gzip $file");
     warn <<__RES__
     Effective bases            = $good_bases
     Null bases (N)             = $null_bases
@@ -762,10 +774,12 @@ sub writeModelInfo {
 
 sub removeTmp {
     warn "removing temporary files\n" if (defined $verbose);
-    my @files = @gene;
-    push @files, 'fasta';
-    push @files, 'RM';
-    push @files, 'TRF';
+    my @files = @repeat;
+	push @files, @trf;
+	push @files, @fasta;
+    #push @files, 'fasta';
+    #push @files, 'RM';
+    #push @files, 'TRF';
     foreach my $file (@files) {
         system ("rm -rf $file"); 
     }
@@ -792,6 +806,27 @@ sub calcGC {
     else                { $gc = '90-100'; }
     
     return $gc;
+}
+
+sub calcBinGC {
+	while ( my ($id, $seq) = each %seqs) {
+		my $len = length $seq;
+		my $half = int($binsize / 2);
+		for (my $i = $half; $i <= $len - $binsize; $i += $half) {
+			my $s = substr ($seq, $i - $half, $binsize);
+			my $bingc = calcGC($s);
+			push @{ $bingc{$id} }, $bingc;
+		}
+	}
+}
+
+sub getBinGC {
+	my $id  = shift @_;
+	my $pos = shift @_;
+	my $bin = int($binsize / 2);
+	$pos    = int($pos / $bin);
+	my $gc  = $bingc{$id}[$pos];
+	return $gc;
 }
 
 sub loadFiles {
