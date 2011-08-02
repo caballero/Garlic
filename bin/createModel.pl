@@ -809,11 +809,13 @@ sub removeTmp {
     
     my @dirs = qw/fasta RM TRF/;
     
+    unlink ($files{$model}{'GEN'}) unless (defined $keep{ $files{$model}{'GEN'} });
     foreach my $dir (@dirs) {
         chdir $dir;
         opendir D, "." or die "cannot open directory $dir\n";
         while (my $file = readdir D) {
             next if (defined $keep{$file});
+            next if ($file eq '.' or $file eq '..'); 
             system ("rm -rf $file");
         }
         closedir D;
