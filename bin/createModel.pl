@@ -813,7 +813,7 @@ sub calcGC {
 }
 
 sub calcBinGC {
-    warn "computing GC bins\n" if (defined $verbose)
+    warn "computing GC bins\n" if (defined $verbose);
 	while ( ($seq_id, $seq) = each %seq) {
 		my $len = length $seq;
 		my $half = int($binsize / 2);
