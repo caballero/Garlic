@@ -30,19 +30,20 @@ OPTIONS
     -g --genes         Gene annotation               FileName*
     -e --exclude       Exclude this sequences        Pattern**
     
-    --mask_repeat      Do intersersed repeats masking*** 
-    --mask_trf         Do simple repeats masking***
     --no_mask_gene     Don't mask genes
+    --no_mask_repeat   Don't mask repeats
+    --no_mask_trf      Don't mask simple repeats
     --no_repeat_table  Don't create repeats table
     --no_kmer_table    Don't compute k-mer composition
     --rm_tmp           Remove temp files
     --keep_dw_files    Keep downloaded files (overrules --rm_tmp)
+    --gc_pre_mask      Compute GC bins before masking
+    --revcomp_kmer     Count kmers in reverse complement chain
 
   * File can be compressed (.gz/.bz2), if you are passing more than one file 
     separate them with ',' Example: "-f chr1.fa,chr2.fa,chr3.fa"
  ** This pattern will match the fasta files. Example: "-e hap1" will exclude 
     all files with "hap1" in the name.
-*** UCSC Genome Database sequences are repeat soft-masked.
     
 =head1 EXAMPLES
 
@@ -118,10 +119,14 @@ my $exclude         =  undef;      # Exclude sequence name pattern
 my $mask_repeat     =  undef;      # Repeat masking flag
 my $mask_trf        =  undef;      # TRF masking flag
 my $no_mask_gene    =  undef;      # Gene masking flag
+my $no_mask_repeat  =  undef;      # Repeats masking flag
+my $no_mask_trf     =  undef;      # TRF masking flag
 my $no_repeat_table =  undef;      # No repeats profile flag
 my $no_kmer_table   =  undef;      # No kmer profile flag
 my $write_mask_seq  =  undef;      # Write fasta flag
-my $keep_dw_files   =  undef;
+my $keep_dw_files   =  undef;      # Keep downloaded files
+my $gc_pre_mask     =  undef;      # Compute GC bins before masking
+my $revcomp_kmer    =  undef;      # Count kmers in the reverse-complement chain
 
 # Fetch options
 GetOptions(
@@ -138,13 +143,15 @@ GetOptions(
     'g|gene:s'           => \$gene,
     'e|exclude:s'        => \$exclude,
     'rm_tmp'             => \$rm_tmp,
-    'mask_repeat|mR'     => \$mask_repeat,
-    'mask_trf|mT'        => \$mask_trf,
-    'no_mask_gene|nG'    => \$no_mask_gene,
-    'no_repeat_table|nR' => \$no_repeat_table,
-    'no_kmer_table|nK'   => \$no_kmer_table,
+    'no_mask_gene'       => \$no_mask_gene,
+    'no_mask_repeat'     => \$no_mask_repeat,
+    'no_mask_trf'        => \$no_mask_trf,
+    'no_repeat_table'    => \$no_repeat_table,
+    'no_kmer_table'      => \$no_kmer_table,
     'write_mask_seq'     => \$write_mask_seq,
-    'keep_dw_files'      => \$keep_dw_files
+    'keep_dw_files'      => \$keep_dw_files,
+    'gc_pre_mask'        => \$gc_pre_mask,
+    'revcomp_kmer'       => \$revcomp_kmer
 ) or pod2usage(-verbose => 2);
 
 # Call help if required
@@ -195,9 +202,9 @@ chdir "$dir/$model" or die "cannot move to $dir/$model";
 
 # Get files from UCSC genome database if required
 getUCSC_fasta()  unless (defined $fasta);
-getUCSC_repeat() unless (defined $repeat or defined $no_repeat_table);
-getUCSC_trf()    unless (defined $trf    or defined $no_repeat_table);
-getUCSC_gene()   unless (defined $gene   or defined $no_mask_gene);
+getUCSC_repeat() unless (defined $repeat or (defined $no_repeat_table and defined $no_mask_repeat));
+getUCSC_trf()    unless (defined $trf    or (defined $no_repeat_table and defined $no_mask_trf));
+getUCSC_gene()   unless (defined $gene   or  defined $no_mask_gene);
 
 # Creating list of files to process
 @fasta   = split (/,/, $fasta);
@@ -208,12 +215,15 @@ $exclude =~ s/,/|/g if (defined $exclude);
 
 # Load sequences and mask it
 readFasta();
-#calcBinGC();
-maskRepeat()   if (defined $mask_repeat);
-maskTRF()      if (defined $mask_trf);
-maskGene() unless (defined $no_mask_gene);
+calcBinGC()  if     (defined $gc_pre_mask);
+
+maskRepeat() unless (defined $no_mask_repeat);
+maskTRF()    unless (defined $no_mask_trf);
+maskGene()   unless (defined $no_mask_gene);
+
+calcBinGC()  unless (defined $gc_pre_mask);
+
 writeMaskSeq("$model.masked.fa") if (defined $write_mask_seq);
-calcBinGC();
 
 # Create the K-mer/Window and GCt tables
 profileSeqs() unless (defined $no_kmer_table);
@@ -500,10 +510,9 @@ sub profileSeqs {
 	        my $num_N = $ss =~ tr/N/N/;
 	        my $frq_N = $num_N / (length $ss);
 	        next if ($frq_N > 0.3); # No more than 30% bad bases 
-	        $bp_slices += (length $ss) - $num_N; # Effective bases
 	        
 	        # GC in the window and transition
-	        my $gc = classGC(calcGC($ss));
+	        my $gc = getBinGC($seq_id, int($i + ($win / 2)) );
 	        $gct{$last_gc}{$gc}++ if (defined $last_gc);
 	        $last_gc = $gc;   
 	    }
@@ -512,15 +521,26 @@ sub profileSeqs {
 		for (my $j = 0; $j <= $last; $j++) {
 	        my $word = substr ($seq, $j, $kmer);
 			next if ($word =~ m/[^ACGT]/);
+			$word = checkRevComp($word) if (defined $revcomp_kmer);
 			my $bingc = getBinGC($seq_id, $j);
 			$kmer{$bingc}{$word}++;
 	    }
     }
     
-    warn "  $bp_slices bases analyzed\n" if (defined $verbose);
     my $kmer_file = "$model.kmer.K$kmer.W$win.data";
     warn "writing k-mer profile in \"$kmer_file\"\n" if (defined $verbose);
     open K, ">$kmer_file" or die "cannot write file $kmer_file\n";
+    
+    # First pass to compute total in GC bins and global total of kmers
+    my $tot_sum = 0;
+    my %gc_sum  = ();
+    foreach my $gc (@gc) {
+        foreach my $word (keys %{ $kmer{$gc} }) {
+            $tot_sum     += $kmer{$gc}{$word};
+            $gc_sum{$gc} += $kmer{$gc}{$word};
+        }
+    }
+    
     foreach my $gc (@gc) {
 	    print K "#GC=$gc\n";
 	    foreach my $word (@kmer) {
@@ -530,10 +550,16 @@ sub profileSeqs {
 	        }
 	        if ($tot > 0) {
 	            foreach my $b (@dna) {
-	                my $cnt = 0;
-	                $cnt = $kmer{$gc}{"$word$b"} if (defined $kmer{$gc}{"$word$b"});
-	                my $frq = sprintf ("%.8f", $cnt / $tot);
-	                print K "$word$b\t$frq\t$cnt\n";
+	                my $cnt     = 0;
+	                   $cnt     = $kmer{$gc}{"$word$b"} if (defined $kmer{$gc}{"$word$b"});
+	                my $frq     = sprintf ("%.8f", $cnt / $tot);
+	                my $gc_frq  = '-';
+	                   $gc_frq  = sprintf ("%.8f", $cnt / $gc_sum{$gc}) if ($gc_sum{$gc} > 0);
+	                
+	                my $tot_frq = '-';
+	                   $tot_frq = sprintf ("%.8f", $cnt / $tot_sum);
+	                   
+	                print K "$word$b\t$frq\t$gc_frq\t$tot_frq\t$cnt\n";
 	            }
 	        }
 	        else {
@@ -543,7 +569,7 @@ sub profileSeqs {
 	            foreach my $b (@dna) {
 	                my $frq = sprintf ("%.8f", $p / 2);
 					   $frq = sprintf ("%.8f", $q / 2) if ($b =~ m/[AT]/);
-	                print K "$word$b\t$frq\t0\n";
+	                print K "$word$b\t$frq\t0\t0\t0\n";   
 	            }
 	        }
 	    }
@@ -894,6 +920,16 @@ sub getBinGC {
 	my $pos = shift @_;
 	my $gc  = $bingc{$id}[int($pos / $win)];
 	return $gc;
+}
+
+sub checkRevComp {
+    my $w =  shift @_;
+    my $r =  reverse $w;
+       $r =~ tr/ACGTacgt/TGCAtgca/;
+    my @w = ($w, $r);
+       @w = sort @w;
+       $w = shift @w;
+    return $w;
 }
 
 sub loadFiles {
