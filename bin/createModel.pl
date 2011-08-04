@@ -739,9 +739,10 @@ sub profileRM {
     }
     
     foreach my $rid (keys %repdata) {
-        my $gc = getBinGC($repdata{$rid}{'seq_id'}, int(($repdata{$id}{'end'} - $repdata{$id}{'ini'})/2);
+        my $gc = getBinGC($repdata{$rid}{'seq_id'}, int(($repdata{$rid}{'end'} - $repdata{$rid}{'ini'})/2));
         push @{ $repeat{$gc} }, $repdata{$rid}{'label'};
     }
+    %repdata = ();
 }
 
 sub checkGene {
