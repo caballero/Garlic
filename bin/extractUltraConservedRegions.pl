@@ -2,7 +2,18 @@
 
 =head1 NAME
 
-correctKmerFreq.pl
+extractUltraConservedRegions.pl
+
+=head1 DESCRIPTION
+
+Read a UCSC's multiz46.txt file, and filter the most conservated regions.
+Output is a tab-delimited text table with columns:
+1. UCSC id number
+2. Chromosome
+3. Direction (always +);
+4. Position ini
+5. Position end
+6. Conservation score
 
 =head1 USAGE
 
@@ -10,11 +21,15 @@ OPTIONS
     Parameter        Description                Value      Default
     -i --input       Input                      File       STDIN
     -o --output      Output                     File       STDOUT
+    -s --score       Score threshold            Float      0.65
     -h --help        Print this screen
     -v --verbose     Verbose mode
 
 =head1 EXAMPLES
 
+  zcat multiz46ways.txt.gz | perl extractUltraConservedRegions.pl > ucr.txt
+  perl extractUltraConservedRegions.pl -i multiz46ways.txt.gz -o ucr.txt
+  perl extractUltraConservedRegions.pl -i multiz46ways.txt.gz -o ucr.txt -s 0.8
 
 =head1 AUTHOR
 
@@ -51,45 +66,34 @@ my $help       = undef;
 my $verbose    = undef;
 my $input      = undef;
 my $output     = undef;
+my $score      = 0.65;
 
 # Fetch options
 GetOptions(
     'h|help'          => \$help,
     'v|verbose'       => \$verbose,
     'i|input:s'       => \$input,
-    'o|output:s'      => \$output
+    'o|output:s'      => \$output,
+    's|score:s'       => \$score
 );
 pod2usage(-verbose => 2) if (defined $help);
 
 if (defined $input) {
-    open STDIN, "$input" or die "Cannot read file $input\n";
+    my $fileh = $input;
+    $fileh = "gunzip  -c $input | " if ($input =~ m/gz$/);
+    $fileh = "bunzip2 -c $input | " if ($input =~ m/bz2$/); 
+    open STDIN, "$fileh" or die "Cannot read file $input\n";
 }
 
 if (defined $output) {
     open STDOUT, ">$output" or die "Cannot write file $output\n";
 }
 
-my ($gc, $p, $q);
 while (<>) {
     chomp;
-    if (m/#GC=\d+-(\d+)/) {
-        $gc = $1;
-        $p  = $gc - 5;
-        $q  = 100 - $p;
-        print "$_\n";
-    }
-    else {
-        my ($kmer, $frq, $cnt) = split (/\t/, $_);
-        if ($cnt == 0 and $frq eq '0.25000000') {
-            if ($kmer =~ m/[AT]$/) {
-                $frq = $q / 2;
-            } else {
-                $frq = $p / 2;
-            }
-            print "$kmer\t$frq\t$cnt\n";
-        }
-        else {
-            print "$_\n";
-        }
-    }
+    my ($id, $chr, $ini, $end, $tmp1, $tmp2, $sco) = split (/\t/, $_);
+    next unless ($sco >= $score);
+    print join "\t", $id, $chr, '+', $ini, $end, $sco;
+    print "\n";
 }
+
