@@ -185,8 +185,8 @@ my %repeat   = ();
 my %genes    = ();
 my @dna      = qw/A C G T/;
 my ($seq, $ss, $seq_id, $ini, $end, $len);
-# GC content bins, if you change this array, change the calGC() subroutine too.
-my @gc = qw/0-10 10-20 20-30 30-40 40-50 50-60 60-70 70-80 80-90 90-100/;
+# GC content bins, if you change this array, change the classGC() subroutine too.
+my @gc = qw/0-37 37-39 39-42 42-45 45-100/;
 
 # Check directories, create them if required
 unless (-e "$dir" and -d "$dir") {
@@ -851,7 +851,6 @@ sub removeTmp {
 }
 
 sub calcGC {
-    # GC ranges must be equal to @gc values or weird stuff will happen
     my $seq = shift @_;
     $seq =~ s/[^ACGTacgt]//;
     my $len = length $seq;
@@ -862,19 +861,15 @@ sub calcGC {
 }
 
 sub classGC {
+    # GC ranges must be equal to @gc values or weird stuff will happen
     my $gc = shift @_;
     return $gc if ($gc eq 'NA');
     
-    if    ($gc <= 0.10) { $gc =  '0-10' ; }
-    elsif ($gc <= 0.20) { $gc = '10-20' ; }   
-    elsif ($gc <= 0.30) { $gc = '20-30' ; }
-    elsif ($gc <= 0.40) { $gc = '30-40' ; }
-    elsif ($gc <= 0.50) { $gc = '40-50' ; }
-    elsif ($gc <= 0.60) { $gc = '50-60' ; }   
-    elsif ($gc <= 0.70) { $gc = '60-70' ; }
-    elsif ($gc <= 0.80) { $gc = '70-80' ; }
-    elsif ($gc <= 0.90) { $gc = '80-90' ; }
-    else                { $gc = '90-100'; }
+    if    ($gc <= 0.37) { $gc =  '0-37' ; }
+    elsif ($gc <= 0.39) { $gc = '37-39' ; }   
+    elsif ($gc <= 0.42) { $gc = '39-42' ; }
+    elsif ($gc <= 0.45) { $gc = '42-45' ; }
+    else                { $gc = '45-100'; }
     
     return $gc;
 }
