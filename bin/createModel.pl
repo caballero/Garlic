@@ -725,16 +725,21 @@ sub profileRM {
                 
             if (defined $repdata{$rid}) {
                 $repdata{$rid}{'label'} .= ";$div:$ins:$del:$rini:$rend";
+                $repdata{$rid}{'end'}    = $end;
+
             }
             else {
-                $repdata{$rid}{'label'} = $label;
+                $repdata{$rid}{'label'}  = $label;
+                $repdata{$rid}{'ini'}    = $ini;
+                $repdata{$rid}{'end'}    = $end;
+                $repdata{$rid}{'seq_id'} = $seq_id;
             }
         }
         close T;
     }
     
     foreach my $rid (keys %repdata) {
-        my $gc = getBinGC($seq_id, $ini);
+        my $gc = getBinGC($repdata{$rid}{'seq_id'}, int(($repdata{$id}{'end'} - $repdata{$id}{'ini'})/2);
         push @{ $repeat{$gc} }, $repdata{$rid}{'label'};
     }
 }
