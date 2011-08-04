@@ -22,6 +22,7 @@ OPTIONS
     -i --input       Input                      File       STDIN
     -o --output      Output                     File       STDOUT
     -s --score       Score threshold            Float      0.65
+    -l --length      Minimal length             Int        100
     -h --help        Print this screen
     -v --verbose     Verbose mode
 
@@ -67,6 +68,7 @@ my $verbose    = undef;
 my $input      = undef;
 my $output     = undef;
 my $score      = 0.65;
+my $length     = 100;
 
 # Fetch options
 GetOptions(
@@ -74,7 +76,8 @@ GetOptions(
     'v|verbose'       => \$verbose,
     'i|input:s'       => \$input,
     'o|output:s'      => \$output,
-    's|score:s'       => \$score
+    's|score:s'       => \$score,
+    'l|length:i'      => \$length
 );
 pod2usage(-verbose => 2) if (defined $help);
 
@@ -91,8 +94,10 @@ if (defined $output) {
 
 while (<>) {
     chomp;
-    my ($id, $chr, $ini, $end, $tmp1, $tmp2, $sco) = split (/\t/, $_);
+    my ($id, $chr, $ini, $end, @rest) = split (/\t/, $_);
+    my $sco = pop @rest;
     next unless ($sco >= $score);
+    next unless ($end - $ini >= $length);
     print join "\t", $id, $chr, '+', $ini, $end, $sco;
     print "\n";
 }
