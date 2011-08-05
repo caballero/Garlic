@@ -854,6 +854,11 @@ sub evolveRepeat {
         return "BAD";
     }
     
+    if (length $rep_seq{$type} < $ini or length $rep_seq{$type} > $end - $ini) {
+        warn "sequence for $type ($fam) too short!";
+        return "BAD";
+    }
+    
     if ($rep  =~ m/;/) {
         my $sseq = '';
         my @frag  = split (/;/, $rep);
