@@ -78,7 +78,7 @@ for (my $i = 0; $i <= $num; $i++) {
     my $x = $i;
     $x = "0$i" if ($i < 10);
     warn "    intergenic_$x\n";
-    open  F, "intergenic/>intergenic_$x.fa" or die "cannot open intergenic_$x.fa\n";
+    open  F, ">intergenic/intergenic_$x.fa" or die "cannot open intergenic_$x.fa\n";
     print F ">intergenic_$x $chr:$ini-$end\n";
     while ($seq) {
         print F substr ($seq, 0, 70), "\n";
