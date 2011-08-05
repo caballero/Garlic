@@ -111,6 +111,8 @@ while (<>) {
         $id = $_;
     }
     else {
+        s/N/X/g;
+        s/S/R/g;
         $seq{$id} .= $_;
     }
 }
@@ -118,10 +120,10 @@ while (<>) {
 warn "searching regions\n";
 foreach $id (keys %seq) {
     warn "  processing $id\n";
-    my @frag = split (/([NX]+)/, $seq{$id});
+    my @frag = split (/(X+)/, $seq{$id});
     my $ini = 0;
     foreach my $frag (@frag) {
-        if ($frag =~ m/[NX]/) {
+        if ($frag =~ m/X/) {
             $ini += length $frag;
         }
         else {
