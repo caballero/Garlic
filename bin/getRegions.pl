@@ -71,7 +71,7 @@ chomp(@reg);
 warn "writing sequences\n";
 for (my $i = 0; $i <= $num; $i++) {
     $reg = shift @reg;
-    ($chr, $ini, $end, $gc) = split $reg;
+    ($chr, $ini, $end, $gc) = split (/\t/, $reg);
     next unless (defined $seq{$chr});
     $seq = substr ($seq{$chr}, $ini - 1, $len);
     $end = $ini + $len;
