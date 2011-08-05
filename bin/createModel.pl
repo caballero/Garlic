@@ -37,7 +37,7 @@ OPTIONS
     --no_kmer_table    Don't compute k-mer composition
     --rm_tmp           Remove temp files
     --keep_dw_files    Keep downloaded files (overrules --rm_tmp)
-    --gc_pre_mask      Compute GC bins before masking
+    --gc_post_mask     Compute GC bins after masking (default is before)
     --revcomp_kmer     Count kmers in reverse complement chain
 
   * File can be compressed (.gz/.bz2), if you are passing more than one file 
@@ -125,7 +125,7 @@ my $no_repeat_table =  undef;      # No repeats profile flag
 my $no_kmer_table   =  undef;      # No kmer profile flag
 my $write_mask_seq  =  undef;      # Write fasta flag
 my $keep_dw_files   =  undef;      # Keep downloaded files
-my $gc_pre_mask     =  undef;      # Compute GC bins before masking
+my $gc_post_mask    =  undef;      # Compute GC bins before masking
 my $revcomp_kmer    =  undef;      # Count kmers in the reverse-complement chain
 
 # Fetch options
@@ -150,7 +150,7 @@ GetOptions(
     'no_kmer_table'      => \$no_kmer_table,
     'write_mask_seq'     => \$write_mask_seq,
     'keep_dw_files'      => \$keep_dw_files,
-    'gc_pre_mask'        => \$gc_pre_mask,
+    'gc_post_mask'       => \$gc_pre_mask,
     'revcomp_kmer'       => \$revcomp_kmer
 ) or pod2usage(-verbose => 2);
 
@@ -215,14 +215,11 @@ $exclude =~ s/,/|/g if (defined $exclude);
 
 # Load sequences and mask it
 readFasta();
-calcBinGC()  if     (defined $gc_pre_mask);
-
+calcBinGC()  unless (defined $gc_post_mask);
 maskRepeat() unless (defined $no_mask_repeat);
 maskTRF()    unless (defined $no_mask_trf);
 maskGene()   unless (defined $no_mask_gene);
-
-calcBinGC()  unless (defined $gc_pre_mask);
-
+calcBinGC()  if     (defined $gc_post_mask);
 writeMaskSeq("$model.masked.fa") if (defined $write_mask_seq);
 
 # Create the K-mer/Window and GCt tables
