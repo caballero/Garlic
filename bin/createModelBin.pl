@@ -186,7 +186,7 @@ my %genes    = ();
 my @dna      = qw/A C G T/;
 my ($seq, $ss, $seq_id, $ini, $end, $len);
 # GC content bins, if you change this array, change the classGC() subroutine too.
-my @gc = qw/0-5 5-10 10-15 15-20 20-25 25-30 30-35 35-40 40-45 45-50 50-55 55-60 60-65 65-70 70-75 75-80 80-85 85-90 90-95 95-100/;
+my @gc = qw/0-37 37-39 39-42 42-45 45-100/;
 
 # Check directories, create them if required
 unless (-e "$dir" and -d "$dir") {
@@ -868,26 +868,11 @@ sub classGC {
     my $gc = shift @_;
     return $gc if ($gc eq 'NA');
     
-    if    ($gc <= 0.05) { $gc =  '0-5'  ; }
-    elsif ($gc <= 0.10) { $gc =  '5-10' ; }   
-    elsif ($gc <= 0.15) { $gc = '10-15' ; }
-    elsif ($gc <= 0.20) { $gc = '15-20' ; }
-    elsif ($gc <= 0.25) { $gc = '20-25' ; }
-    elsif ($gc <= 0.30) { $gc = '25-30' ; }
-    elsif ($gc <= 0.35) { $gc = '30-35' ; }
-    elsif ($gc <= 0.40) { $gc = '35-40' ; }
-    elsif ($gc <= 0.45) { $gc = '40-45' ; }
-    elsif ($gc <= 0.50) { $gc = '45-50' ; }
-    elsif ($gc <= 0.55) { $gc = '50-55' ; }
-    elsif ($gc <= 0.60) { $gc = '55-60' ; }
-    elsif ($gc <= 0.65) { $gc = '60-65' ; }
-    elsif ($gc <= 0.70) { $gc = '65-70' ; }
-    elsif ($gc <= 0.75) { $gc = '70-75' ; }    
-    elsif ($gc <= 0.80) { $gc = '75-80' ; }
-    elsif ($gc <= 0.85) { $gc = '80-85' ; }
-    elsif ($gc <= 0.90) { $gc = '85-90' ; }
-    elsif ($gc <= 0.95) { $gc = '90-95' ; }
-    else                { $gc = '95-100'; }
+    if    ($gc <= 0.37) { $gc =  '0-37' ; }
+    elsif ($gc <= 0.39) { $gc = '37-39' ; }   
+    elsif ($gc <= 0.42) { $gc = '39-42' ; }
+    elsif ($gc <= 0.45) { $gc = '42-45' ; }
+    else                { $gc = '45-100'; }
     
     return $gc;
 }

@@ -119,7 +119,7 @@ while (<>) {
 
 warn "creating homolog sequences\n" if (defined $verbose);
 while (($id, $seq) = each %seq) {
-    print ">$id\n";
+    print ">$id synthetic\n";
     my $new_seq = undef;
     for (my $i = 0; $i <= (length $seq) - $block; $i += $block) {
         my $slice = substr ($seq, $i, $block);
@@ -156,21 +156,34 @@ sub minmaxGC {
     }
     return ($min_gc, $max_gc);
 }
+
 sub calcGC {
     my $seq     = shift @_;
     my $ngc     = $seq =~ tr/GCgc/GCgc/;
-    my $pgc     = 100 * $ngc / length ($seq);
+    my $gc      = $ngc / length ($seq);
     my $new_gc  = 30;
-	if    ($pgc < 10) { $new_gc = 10; }
-	elsif ($pgc < 20) { $new_gc = 20; }
-	elsif ($pgc < 30) { $new_gc = 30; }
-	elsif ($pgc < 40) { $new_gc = 40; }
-	elsif ($pgc < 50) { $new_gc = 50; }
-	elsif ($pgc < 60) { $new_gc = 60; }
-	elsif ($pgc < 70) { $new_gc = 70; }
-	elsif ($pgc < 80) { $new_gc = 80; }
-	elsif ($pgc < 90) { $new_gc = 90; }
-	else              { $new_gc = 100; }
+	
+    if    ($gc <= 0.05) { $new_gc =   5; }
+    elsif ($gc <= 0.10) { $new_gc =  10; }   
+    elsif ($gc <= 0.15) { $new_gc =  15; }
+    elsif ($gc <= 0.20) { $new_gc =  20; }
+    elsif ($gc <= 0.25) { $new_gc =  25; }
+    elsif ($gc <= 0.30) { $new_gc =  30; }
+    elsif ($gc <= 0.35) { $new_gc =  35; }
+    elsif ($gc <= 0.40) { $new_gc =  40; }
+    elsif ($gc <= 0.45) { $new_gc =  45; }
+    elsif ($gc <= 0.50) { $new_gc =  50; }
+    elsif ($gc <= 0.55) { $new_gc =  55; }
+    elsif ($gc <= 0.60) { $new_gc =  60; }
+    elsif ($gc <= 0.65) { $new_gc =  65; }
+    elsif ($gc <= 0.70) { $new_gc =  70; }
+    elsif ($gc <= 0.75) { $new_gc =  75; }    
+    elsif ($gc <= 0.80) { $new_gc =  80; }
+    elsif ($gc <= 0.85) { $new_gc =  85; }
+    elsif ($gc <= 0.90) { $new_gc =  90; }
+    elsif ($gc <= 0.95) { $new_gc =  95; }
+    else                { $new_gc = 100; }
+    
 	return $new_gc;
 }
 

@@ -116,7 +116,7 @@ $model{'repeat_file'} = "$model.repeats.W$win.data.gz";
 $model{'repbase'}     = "$dir/RepBase/RepBase16.06.fa.gz";    # point to RepBase fasta file
 
 # GC classes creation
-for (my $i = $mingc; $i <= $maxgc; $i += 10) { 
+for (my $i = $mingc; $i <= $maxgc; $i += 5) { 
 	push @classgc, $i;
 	$classgc{$i}++;
 }
@@ -400,7 +400,8 @@ sub loadKmers {
 		}
 		else {
 			chomp;
-			my ($b, $f, $v) = split (/\t/, $_);
+			my ($b, $f, @r) = split (/\t/, $_);
+			my $v = pop @r;
 			$elemk{$gc}{$b} = $f;
 			$v++; # give a chance to zero values
 			if (defined $classgc{$gc}) {
@@ -662,20 +663,33 @@ sub addTransversions {
 # calGC => calculate the GC content
 sub calcGC {
 	my $seq = shift @_;
+	$seq =~ s/[^ACGTacgt]//g;
 	my $tot = length $seq;
 	my $ngc = $seq =~ tr/GCgc//;
-	my $pgc = int($ngc * 100 / $tot);
-	my $new_gc = 0;
-	if    ($pgc < 10) { $new_gc = 10; }
-	elsif ($pgc < 20) { $new_gc = 20; }
-	elsif ($pgc < 30) { $new_gc = 30; }
-	elsif ($pgc < 40) { $new_gc = 40; }
-	elsif ($pgc < 50) { $new_gc = 50; }
-	elsif ($pgc < 60) { $new_gc = 60; }
-	elsif ($pgc < 70) { $new_gc = 70; }
-	elsif ($pgc < 80) { $new_gc = 80; }
-	elsif ($pgc < 90) { $new_gc = 90; }
+	my $pgc  = int($ngc / $tot);
+	my $new_gc = 40;
+	
+	if    ($pgc <  5) { $new_gc =   5; }
+	elsif ($pgc < 10) { $new_gc =  10; }
+	elsif ($pgc < 15) { $new_gc =  15; }
+	elsif ($pgc < 20) { $new_gc =  20; }
+	elsif ($pgc < 25) { $new_gc =  25; }
+	elsif ($pgc < 30) { $new_gc =  30; }
+	elsif ($pgc < 35) { $new_gc =  35; }
+	elsif ($pgc < 40) { $new_gc =  40; }
+	elsif ($pgc < 45) { $new_gc =  45; }
+	elsif ($pgc < 50) { $new_gc =  50; }
+	elsif ($pgc < 55) { $new_gc =  55; }
+	elsif ($pgc < 60) { $new_gc =  60; }
+	elsif ($pgc < 65) { $new_gc =  65; }
+	elsif ($pgc < 70) { $new_gc =  70; }
+	elsif ($pgc < 75) { $new_gc =  75; }
+	elsif ($pgc < 80) { $new_gc =  80; }
+	elsif ($pgc < 85) { $new_gc =  85; }
+	elsif ($pgc < 90) { $new_gc =  90; }
+	elsif ($pgc < 95) { $new_gc =  95; }
 	else              { $new_gc = 100; }
+	
 	return $new_gc;
 }
 
