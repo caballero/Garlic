@@ -428,9 +428,8 @@ sub loadRepeatConsensus {
 	open R, "$fileh" or errorExit("Cannot open $fileh");
 	while (<R>) {
 		chomp;
-		if (m/>/) {
-		    s/>//;
-			$rep = $_; 
+		if (m/>(\S+)/) {
+			$rep = $1; 
 		}
 		else {
 			$rep_seq{$rep} .= checkBases($_);
