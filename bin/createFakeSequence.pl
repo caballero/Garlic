@@ -221,7 +221,7 @@ exit 1;
 sub formatFasta {
 	my $sseq  = shift @_;
 	my $col   = shift @_;
-	$col ||= 80;
+	$col ||= 70;
 	my $fseq = '';
 	if (length $sseq <= $col) { 
 		$fseq = "$sseq\n";
@@ -360,6 +360,7 @@ sub checkSize{
 
 # loadGCt => load the GC transitions values
 sub loadGCt {
+    warn "loading GC transitions table\n" if (defined $debug);
 	my $file   = shift @_;
 	my $fileh  = defineFH($file);
 	my %gc_sum = ();
@@ -389,6 +390,7 @@ sub loadGCt {
 
 # loadKmers => load the kmers frequencies
 sub loadKmers {
+    warn "loadign kmer table\n" if (defined $debug);
 	my $file  = shift @_;
 	my $gc    = undef; 
 	my $tot   = 0;
@@ -419,6 +421,7 @@ sub loadKmers {
 
 # loadRepeatConsensus => read the fasta file of RepBase consensus
 sub loadRepeatConsensus {
+    warn "loading interspersed repeats consensus\n" if (defined $debug);
 	my $file  = shift @_;
 	my $fileh = defineFH($file);
 	my $rep   = '';
@@ -731,9 +734,10 @@ sub createSeq {
 	my $len   = shift @_;
 	my $win   = shift @_;
 	my $seq   = shift @_;
+	print "creating new sequence\n" if (defined $debug);
 	
 	for (my $i = length $seq; $i <= $len; $i += $win) {
-		print "creating new sequence " if (defined $debug);
+	    warn "    $i fragment, GC=$gc\n" if (defined $debug);
 		my $seed   = substr($seq, 1 - $k);
 		my $subseq = createSubSeq($k, $gc, $win - $k + 1, $seed);
 		$seq      .= $subseq;
@@ -768,6 +772,7 @@ sub createSubSeq {
 
 # insertElements => insert the elements
 sub insertElements {
+    warn "inserting elements\n" if (defined $debug);
 	my $s    = shift @_;
 	my %pos  = randSel((length $s) - $win, $nrep + $nsim);
 	my @ins  = ();
@@ -784,11 +789,13 @@ sub insertElements {
 	    if ($ins eq 'sim') {
 	        @bag = @{ $simple{$gc} };
 	        $new = $bag[int(rand @bag)];
+	        warn "  $new\n" if (defined $debug);
 	        $seq = evolveSimple($new, $gc);
 	    }
 	    else {
 	        @bag = @{ $repeat{$gc} };
 	        $new = $bag[int(rand @bag)];
+	        warn "  $new\n" if (defined $debug);
 	        $seq = evolveRepeat($new, $gc);
 	        next if ($seq eq 'BAD');
 	    }
