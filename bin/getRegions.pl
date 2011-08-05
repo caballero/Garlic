@@ -45,6 +45,7 @@ warn "loading sequences\n";
 opendir D, "$dir" or die;
 while (my $fa = readdir D) {
     next unless ($fa =~ m/\.fa$/);
+    warn "    reading $fa\n";
     open F, "fasta/$fa" or die;
     while (<F>) {
         chomp;
