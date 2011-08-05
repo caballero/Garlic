@@ -110,9 +110,9 @@ usage() unless (defined $model and defined $size);
 
 # Loading model parameters
 readConfig("$dir/$model/$model.model");
-$model{'gct_file'}    = "$model.GCt.W$win.data.gz";
-$model{'kmer_file'}   = "$model.kmer.K$kmer.W$win.data.gz";
-$model{'repeat_file'} = "$model.repeats.W$win.data.gz";
+$model{'gct_file'}    = "$model.GCt.W$win.data";
+$model{'kmer_file'}   = "$model.kmer.K$kmer.W$win.data";
+$model{'repeat_file'} = "$model.repeats.W$win.data";
 $model{'repbase'}     = "$dir/RepBase/RepBase16.06.fa.gz";    # point to RepBase fasta file
 
 # GC classes creation
