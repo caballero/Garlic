@@ -846,15 +846,10 @@ sub evolveRepeat {
     my $gc    = shift @_;
     my $seq   = '';
     my ($type, $fam, $dir, $div, $ins, $del, $ini, $end) = split (/:/, $rep);
-    my ($mut, $nins, $ndel, $nsit, $nver);
+    my ($mut, $nins, $ndel, $nsit, $nver, $cseq);
     
     unless (defined $rep_seq{$type}) {
         warn "sequence for $type ($fam) not found!";
-        return "BAD";
-    }
-    
-    if (length $rep_seq{$type} < $ini or length $rep_seq{$type} > $end - $ini) {
-        warn "sequence for $type ($fam) too short!";
         return "BAD";
     }
     
@@ -863,7 +858,18 @@ sub evolveRepeat {
         my @frag  = split (/;/, $rep);
         my $first = shift @frag;
         ($type, $fam, $dir, $div, $ins, $del, $ini, $end) = split (/:/, $first);
-        $sseq = substr ($rep_seq{$type}, $ini - 1, $end - $ini);
+        $cseq  = $rep_seq{$type};
+        
+        if (length $cseq < $ini) {
+            warn "sequence for $type ($fam) too short!";
+            return "BAD";
+        }
+        
+        if (length $cseq < $end) {
+            $end = length $cseq;
+        }
+        
+        $sseq = substr ($cseq, $ini - 1, $end - $ini);
         $sseq = revcomp($seq) if ($dir eq '-');
         $mut  = int($div * (length $seq) / 100);
         $nsit = int($mut / 2);
@@ -877,7 +883,11 @@ sub evolveRepeat {
         $seq  = $sseq;
         foreach my $frag (@frag) {
             ($div, $ins, $del, $ini, $end) = split (/:/, $frag);
-            $sseq  = substr ($rep_seq{$type}, $ini - 1, $end - $ini);
+            if (length $cseq < $end) {
+                $end = length $cseq;
+            }
+            
+            $sseq  = substr ($cseq, $ini - 1, $end - $ini);
             $sseq  = revcomp($seq) if ($dir eq '-');
             $mut  = int($div * (length $seq) / 100);
             $nsit = int($mut / 2);
@@ -892,7 +902,17 @@ sub evolveRepeat {
         }
     }
     else {
-        $seq  = substr ($rep_seq{$type}, $ini - 1, $end - $ini);
+        $cseq = $rep_seq{$type};
+        if (length $cseq < $ini) {
+            warn "sequence for $type ($fam) too short!";
+            return "BAD";
+        }
+        
+        if (length $cseq < $end) {
+            $end = length $cseq;
+        }
+        
+        $seq  = substr ($cseq, $ini - 1, $end - $ini);
         $seq  = revcomp($seq) if ($dir eq '-');
         $mut  = int($div * (length $seq) / 100);
         $nsit = int($mut / 2);
