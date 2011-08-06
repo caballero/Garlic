@@ -869,7 +869,7 @@ sub evolveRepeat {
         }
         
         if (length $cseq < $end) {
-            $end = length $cseq;
+            $cseq .= $rep_seq{$type};
         }
         
         $sseq = substr ($cseq, $ini - 1, $end - $ini);
@@ -887,7 +887,7 @@ sub evolveRepeat {
         foreach my $frag (@frag) {
             ($div, $ins, $del, $ini, $end) = split (/:/, $frag);
             if (length $cseq < $end) {
-                $end = length $cseq;
+                $cseq .= $rep_seq{$type};
             }
             
             $sseq  = substr ($cseq, $ini - 1, $end - $ini);
@@ -912,7 +912,7 @@ sub evolveRepeat {
         }
         
         if (length $cseq < $end) {
-            $end = length $cseq;
+            $cseq .= $rep_seq{$type};
         }
         
         $seq  = substr ($cseq, $ini - 1, $end - $ini);
