@@ -865,11 +865,11 @@ sub evolveRepeat {
         
         if (length $cseq < $ini) {
             warn "sequence for $type ($fam) too short!";
-            return "BAD";
+            $ini = 1;
         }
         
         if (length $cseq < $end) {
-            $cseq .= $rep_seq{$type};
+            $end = length $cseq;
         }
         
         $sseq = substr ($cseq, $ini - 1, $end - $ini);
@@ -886,8 +886,13 @@ sub evolveRepeat {
         $seq  = $sseq;
         foreach my $frag (@frag) {
             ($div, $ins, $del, $ini, $end) = split (/:/, $frag);
+            if (length $cseq < $ini) {
+                warn "sequence for $type ($fam) too short!";
+                $ini = 1;
+            }
+        
             if (length $cseq < $end) {
-                $cseq .= $rep_seq{$type};
+                $end = length $cseq;
             }
             
             $sseq  = substr ($cseq, $ini - 1, $end - $ini);
@@ -908,11 +913,11 @@ sub evolveRepeat {
         $cseq = $rep_seq{$type};
         if (length $cseq < $ini) {
             warn "sequence for $type ($fam) too short!";
-            return "BAD";
+            $ini = 1;
         }
         
         if (length $cseq < $end) {
-            $cseq .= $rep_seq{$type};
+            $end = length $cseq;
         }
         
         $seq  = substr ($cseq, $ini - 1, $end - $ini);
