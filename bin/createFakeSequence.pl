@@ -873,16 +873,16 @@ sub evolveRepeat {
         }
         
         $sseq = substr ($cseq, $ini - 1, $end - $ini);
-        $sseq = revcomp($seq) if ($dir eq '-');
-        $mut  = int($div * (length $seq) / 100);
+        $sseq = revcomp($sseq) if ($dir eq '-');
+        $mut  = int($div * (length $sseq) / 100);
         $nsit = int($mut / 2);
         $nver = $mut - $nsit;
-        $nins = int($ins * (length $seq) / 100);
-        $ndel = int($ins * (length $seq) / 100);
-        $sseq = addDeletions(    $seq, $ndel, $gc) if($ndel > 0);
-        $sseq = addTransitions(  $seq, $nsit, $gc) if($nsit > 0);
-        $sseq = addTransversions($seq, $nver, $gc) if($nver > 0);
-        $sseq = addInsertions(   $seq, $nins, $gc) if($nins > 0);
+        $nins = int($ins * (length $sseq) / 100);
+        $ndel = int($ins * (length $sseq) / 100);
+        $sseq = addDeletions(    $sseq, $ndel, $gc) if($ndel > 0);
+        $sseq = addTransitions(  $sseq, $nsit, $gc) if($nsit > 0);
+        $sseq = addTransversions($sseq, $nver, $gc) if($nver > 0);
+        $sseq = addInsertions(   $sseq, $nins, $gc) if($nins > 0);
         $seq  = $sseq;
         foreach my $frag (@frag) {
             ($div, $ins, $del, $ini, $end) = split (/:/, $frag);
@@ -891,16 +891,16 @@ sub evolveRepeat {
             }
             
             $sseq  = substr ($cseq, $ini - 1, $end - $ini);
-            $sseq  = revcomp($seq) if ($dir eq '-');
-            $mut  = int($div * (length $seq) / 100);
+            $sseq  = revcomp($sseq) if ($dir eq '-');
+            $mut  = int($div * (length $sseq) / 100);
             $nsit = int($mut / 2);
             $nver = $mut - $nsit;
-            $nins = int($ins * (length $seq) / 100);
-            $ndel = int($ins * (length $seq) / 100);
-            $sseq  = addDeletions(    $seq, $ndel, $gc) if($ndel > 0);
-            $sseq  = addTransitions(  $seq, $nsit, $gc) if($nsit > 0);
-            $sseq  = addTransversions($seq, $nver, $gc) if($nver > 0);
-            $sseq  = addInsertions(   $seq, $nins, $gc) if($nins > 0);
+            $nins = int($ins * (length $sseq) / 100);
+            $ndel = int($ins * (length $sseq) / 100);
+            $sseq  = addDeletions(    $sseq, $ndel, $gc) if($ndel > 0);
+            $sseq  = addTransitions(  $sseq, $nsit, $gc) if($nsit > 0);
+            $sseq  = addTransversions($sseq, $nver, $gc) if($nver > 0);
+            $sseq  = addInsertions(   $sseq, $nins, $gc) if($nins > 0);
             $seq  .= "X$sseq";
         }
     }
