@@ -809,7 +809,11 @@ sub insertElements {
 	        my @pos  = ();
 	        foreach my $frag (@frag) {
 	            push @pos, $pos;
-	            substr ($s, $pos, length $frag) = $frag;
+	            my $frag_len = length $frag;
+	            if ($pos + $frag_len > length $s) {
+	                $frag_len = (length $s) - $pos;
+	            }
+	            substr ($s, $pos, $frag_len) = $frag;
 	            $pos += (length $frag) + int(rand (length $frag)) + int(rand (length $frag));
 	        }
 	        $pos = join ":", @pos;
