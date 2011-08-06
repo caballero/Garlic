@@ -668,7 +668,7 @@ sub calcGC {
 	$seq =~ s/[^ACGTacgt]//g;
 	my $tot = length $seq;
 	my $ngc = $seq =~ tr/GCgc//;
-	my $pgc  = int($ngc / $tot);
+	my $pgc  = int($ngc * 100 / $tot);
 	my $new_gc = 40;
 	
 	if    ($pgc <  5) { $new_gc =   5; }
