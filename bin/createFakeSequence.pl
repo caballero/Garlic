@@ -779,8 +779,11 @@ sub insertElements {
 	for (my $i = 0; $i <= $nsim; $i++) { push @ins, 'sim'; }
 	@ins = shuffle(@ins);
 	foreach my $pos (keys %pos) {
+	    warn "Insertion position:$pos\n" if (defined $debug);
 	    my $zone = substr ($s, $pos, $win);
 	    my $gc   = calcGC($zone);
+	    
+	    warn "  region GC=$gc\n" if (defined $debug);
 	    my $ins  = shift @ins;
 	    my $new  = '';
 	    my $seq  = '';
