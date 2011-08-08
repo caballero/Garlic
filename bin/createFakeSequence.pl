@@ -775,7 +775,7 @@ sub createSubSeq {
 sub insertElements {
     warn "inserting elements\n" if (defined $debug);
 	my $s    = shift @_;
-	my %pos  = randSel(length $s, $nrep + $nsim);
+	my %pos  = randSel((length $s) - $win, $nrep + $nsim);
 	my @pos  = sort {$b<=>$a} (keys %pos);
 	my @ins  = ();
 	my $urep = 0;
@@ -784,7 +784,7 @@ sub insertElements {
 	for (my $i = 0; $i <= $nsim; $i++) { push @ins, 'sim'; }
 	@ins = shuffle(@ins);
 	foreach my $pos (@pos) {
-	    warn "Insertion position:$pos\n" if (defined $debug);
+	    warn "Insertion position:$pos " if (defined $debug);
 	    my $gc   = calcGC(substr ($s, $pos, $win));
 	    warn "  region GC=$gc\n" if (defined $debug);
 	    my $ins  = shift @ins;
@@ -833,7 +833,7 @@ sub insertElements {
 	    }
 	    
 	    $seq = lc $seq if (defined $mask);
-	    substr ($s, $pos, length $seq) = $seq;
+	    substr ($s, $pos, 1) = $seq;
 	    push @inserts, "$pos\t$new";
 	}
 	warn "Inserted: $urep repeats and $usim simple repeats\n" if (defined $debug);
