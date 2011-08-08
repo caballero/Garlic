@@ -360,7 +360,7 @@ sub checkSize{
 
 # loadGCt => load the GC transitions values
 sub loadGCt {
-    warn "loading GC transitions table\n" if (defined $debug);
+    print "loading GC transitions table\n" if (defined $debug);
 	my $file   = shift @_;
 	my $fileh  = defineFH($file);
 	my %gc_sum = ();
@@ -390,7 +390,7 @@ sub loadGCt {
 
 # loadKmers => load the kmers frequencies
 sub loadKmers {
-    warn "loadign kmer table\n" if (defined $debug);
+    print "loadign kmer table\n" if (defined $debug);
 	my $file  = shift @_;
 	my $gc    = undef; 
 	my $tot   = 0;
@@ -421,7 +421,7 @@ sub loadKmers {
 
 # loadRepeatConsensus => read the fasta file of RepBase consensus
 sub loadRepeatConsensus {
-    warn "loading interspersed repeats consensus\n" if (defined $debug);
+    print "loading interspersed repeats consensus\n" if (defined $debug);
 	my $file  = shift @_;
 	my $fileh = defineFH($file);
 	my ($rep, $seq);
@@ -738,7 +738,7 @@ sub createSeq {
 	print "creating new sequence\n" if (defined $debug);
 	
 	for (my $i = length $seq; $i <= $len; $i += $win) {
-	    warn "    $i fragment, GC=$gc\n" if (defined $debug);
+	    print "    $i fragment, GC=$gc\n" if (defined $debug);
 		my $seed   = substr($seq, 1 - $k);
 		my $subseq = createSubSeq($k, $gc, $win - $k + 1, $seed);
 		$seq      .= $subseq;
@@ -773,7 +773,7 @@ sub createSubSeq {
 
 # insertElements => insert the elements
 sub insertElements {
-    warn "inserting elements\n" if (defined $debug);
+    print "inserting elements\n" if (defined $debug);
 	my $s    = shift @_;
 	my %pos  = randSel((length $s) - $win, $nrep + $nsim);
 	my @pos  = sort {$b<=>$a} (keys %pos);
@@ -784,9 +784,9 @@ sub insertElements {
 	for (my $i = 0; $i <= $nsim; $i++) { push @ins, 'sim'; }
 	@ins = shuffle(@ins);
 	foreach my $pos (@pos) {
-	    warn "Insertion position:$pos " if (defined $debug);
+	    print "Insertion position:$pos " if (defined $debug);
 	    my $gc   = calcGC(substr ($s, $pos, $win));
-	    warn "  region GC=$gc\n" if (defined $debug);
+	    print "  region GC=$gc\n" if (defined $debug);
 	    my $ins  = shift @ins;
 	    my $seq  = undef;
 	    my @bag = ();
@@ -814,7 +814,7 @@ sub insertElements {
 	    }
 	    
 	    my $new = $bag[int(rand @bag)];
-	    warn "  $new\n" if (defined $debug);
+	    print "  $new\n" if (defined $debug);
 	    if ($new =~ m/^SIMPLE/) {
 	        $seq = evolveSimple($new, $gc);
 	        $usim++;
@@ -824,7 +824,7 @@ sub insertElements {
 	        if ($seq eq 'BAD') {
 	            while (1) {
 	                $new = $bag[int(rand @bag)];
-               	    warn "  $new\n" if (defined $debug);
+               	    print "  $new\n" if (defined $debug);
 	                $seq = evolveRepeat($new, $gc);
 	                last if ($seq ne 'BAD');
 	            }
@@ -836,7 +836,7 @@ sub insertElements {
 	    substr ($s, $pos, 1) = $seq;
 	    push @inserts, "$pos\t$new";
 	}
-	warn "Inserted: $urep repeats and $usim simple repeats\n" if (defined $debug);
+	print "Inserted: $urep repeats and $usim simple repeats\n" if (defined $debug);
 	return $s;
 }
 
@@ -870,7 +870,7 @@ sub evolveRepeat {
     my ($mut, $nins, $ndel, $nsit, $nver, $cseq);
     
     unless (defined $rep_seq{$type}) {
-        warn "sequence for $type ($fam) not found!";
+        print "sequence for $type ($fam) not found!";
         return "BAD";
     }
     
@@ -882,7 +882,7 @@ sub evolveRepeat {
         $cseq  = $rep_seq{$type};
         
         if (length $cseq < $ini) {
-            warn "sequence for $type ($fam) too short!";
+            print "sequence for $type ($fam) too short!";
             $ini = 1;
         }
         
@@ -905,7 +905,7 @@ sub evolveRepeat {
         foreach my $frag (@frag) {
             ($div, $ins, $del, $ini, $end) = split (/:/, $frag);
             if (length $cseq < $ini) {
-                warn "sequence for $type ($fam) too short!";
+                print "sequence for $type ($fam) too short!";
                 $ini = 1;
             }
         
@@ -930,7 +930,7 @@ sub evolveRepeat {
     else {
         $cseq = $rep_seq{$type};
         if (length $cseq < $ini) {
-            warn "sequence for $type ($fam) too short!";
+            print "sequence for $type ($fam) too short!";
             $ini = 1;
         }
         
