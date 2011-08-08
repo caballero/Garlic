@@ -816,7 +816,7 @@ sub insertElements {
 	                $frag_len = (length $s) - $pos;
 	            }
 	            substr ($s, $pos, $frag_len) = $frag;
-	            $pos += (length $frag) + int(rand (length $frag)) + int(rand (length $frag));
+	            $pos += int(rand (length $frag)) + int(rand (length $frag));
 	        }
 	        $pos = join ":", @pos;
 	    }
