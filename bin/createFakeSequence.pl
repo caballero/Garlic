@@ -456,12 +456,13 @@ sub loadRepeats {
         else {
             next unless (defined $classgc{$gc});
             if (m/^SIMPLE/) {
+                push @{ $simple{$gc} }, $_;
                 $nsim++;
             }
             else {
+                push @{ $repeat{$gc} }, $_;
                 $nrep++;
             }
-            push @{ $repeat{$gc} }, $_;
         }
     }
     close R;
@@ -788,13 +789,26 @@ sub insertElements {
 	    warn "  region GC=$gc\n" if (defined $debug);
 	    my $ins  = shift @ins;
 	    my $seq  = undef;
-	    my @bag  = @{ $repeat{$gc} };
-	    if ($#bag == 0) { # no empty bags
-	        while (1) {
-	            @bag = @{ $repeat{ $classgc[int(rand @classgc)] } };
-	            last if ($#bag > 0);
+	    my @bag = ();
+	    if ($ins eq 'sim') {
+	        @bag  = @{ $simple{$gc} };
+	        if ($#bag == 0) { # no empty bags
+	            while (1) {
+	                @bag = @{ $simple{ $classgc[int(rand @classgc)] } };
+	                last if ($#bag > 0);
+	            }
 	        }
 	    }
+	    else {
+	        @bag  = @{ $repeat{$gc} };
+	        if ($#bag == 0) { # no empty bags
+	            while (1) {
+	                @bag = @{ $repeat{ $classgc[int(rand @classgc)] } };
+	                last if ($#bag > 0);
+	            }
+	        }
+	    }
+	    
 	    my $new = $bag[int(rand @bag)];
 	    warn "  $new\n" if (defined $debug);
 	    if ($new =~ m/^SIMPLE/) {
