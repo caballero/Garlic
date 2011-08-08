@@ -776,15 +776,14 @@ sub insertElements {
     warn "inserting elements\n" if (defined $debug);
 	my $s    = shift @_;
 	my %pos  = randSel((length $s) - $win, $nrep + $nsim);
+	my @pos  = sort {$b<=>$a} keys %pos;
 	my @ins  = ();
 	for (my $i = 0; $i <= $nrep; $i++) { push @ins, 'rep'; }
 	for (my $i = 0; $i <= $nsim; $i++) { push @ins, 'sim'; }
 	@ins = shuffle(@ins);
-	foreach my $pos (keys %pos) {
+	foreach my $pos (@pos) {
 	    warn "Insertion position:$pos\n" if (defined $debug);
-	    my $zone = substr ($s, $pos, $win);
-	    my $gc   = calcGC($zone);
-	    
+	    my $gc   = calcGC(substr ($s, $pos, $win));
 	    warn "  region GC=$gc\n" if (defined $debug);
 	    my $ins  = shift @ins;
 	    my $new  = '';
@@ -816,7 +815,7 @@ sub insertElements {
 	                $frag_len = (length $s) - $pos;
 	            }
 	            substr ($s, $pos, $frag_len) = $frag;
-	            $pos += int(rand (length $frag)) + int(rand (length $frag));
+	            $pos += $pos + (length $frag) + int(rand (length $frag));
 	        }
 	        $pos = join ":", @pos;
 	    }
