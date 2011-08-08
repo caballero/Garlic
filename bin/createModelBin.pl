@@ -661,7 +661,7 @@ sub profileTRF {
             my $consensus = $line[-1];
             my $label     = "SIMPLE:$consensus:$period:$div:$indel";
             next unless (defined $seq{$seq_id});
-            #next if (checkGene($seq_id, $ini, $end));
+            next if (checkGene($seq_id, $ini, $end));
             
             # Check for overlaping repeats
             if ($ini >= $last_ini and $ini <= $last_end) {
@@ -718,7 +718,7 @@ sub profileRM {
             }
             my $label     = "$type:$fam:$dir:$div:$ins:$del:$rini:$rend";
             next unless (defined $seq{$seq_id});
-            #next if (checkGene($seq_id, $ini, $end));
+            next if (checkGene($seq_id, $ini, $end));
                 
             if (defined $repdata{$rid}) {
                 $repdata{$rid}{'label'} .= ";$div:$ins:$del:$rini:$rend";
