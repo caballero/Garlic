@@ -463,6 +463,8 @@ sub loadRepeats {
                 $nsim++;
             }
             else {
+                s/^ALR\/Alpha/ALR/;
+                s/^L1M4b/L1M4B/;
                 push @{ $repeat{$gc} }, $_;
                 $nrep++;
             }
