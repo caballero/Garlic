@@ -101,7 +101,7 @@ usage() if (!GetOptions(
 				'maxgc|c:i'     => \$maxgc,
 				'mask|m'     	=> \$mask,
 				'verbose|v'   	=> \$debug,
-				'dir:s'         => \$dir
+				'dir|d:s'         => \$dir
 				)
 );
 
@@ -428,7 +428,7 @@ sub loadRepeatConsensus {
 	open R, "$fileh" or errorExit("Cannot open $fileh");
 	while (<R>) {
 		chomp;
-		if (m/^ID\s+(.+?)\s+)/) {
+		if (m/^ID\s+(.+?)\s+/) {
 			$rep = $1; 
 		}
 		elsif (m/^\s+(.+)\s+\d+$/) {
