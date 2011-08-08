@@ -780,21 +780,21 @@ sub createSubSeq {
 sub insertElements {
     print "inserting elements\n" if (defined $debug);
 	my $s    = shift @_;
-	my %pos  = randSel((length $s) - $win, $nrep + $nsim);
-	my @pos  = sort {$b<=>$a} (keys %pos);
-	my @ins  = ();
 	my $urep = 0;
 	my $usim = 0;
+	my @ins  = ();
 	for (my $i = 0; $i <= $nrep; $i++) { push @ins, 'rep'; }
 	for (my $i = 0; $i <= $nsim; $i++) { push @ins, 'sim'; }
 	@ins = shuffle(@ins);
-	foreach my $pos (@pos) {
+	for (my $i = 0; $i <= $#ins; $i++) {
+	    my $ins = $ins[$i];
+	    my $seq = undef;
+	    my @bag = ();
+	    my $pos = int(rand((length $s) - $win));
 	    print "Insertion position:$pos " if (defined $debug);
 	    my $gc   = calcGC(substr ($s, $pos, $win));
 	    print "  region GC=$gc\n" if (defined $debug);
-	    my $ins  = shift @ins;
-	    my $seq  = undef;
-	    my @bag = ();
+
 	    if ($ins eq 'sim') {
 	        @bag  = @{ $simple{$gc} };
 	        if ($#bag == 0) { # no empty bags
