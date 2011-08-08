@@ -113,7 +113,7 @@ readConfig("$dir/$model/$model.model");
 $model{'gct_file'}    = "$model.GCt.W$win.data";
 $model{'kmer_file'}   = "$model.kmer.K$kmer.W$win.data";
 $model{'repeat_file'} = "$model.repeats.W$win.data";
-$model{'repbase'}     = "$dir/RepBase/RepBase16.06.fa.gz";    # point to RepBase fasta file
+$model{'repbase'}     = "$dir/RepBase/RepeatMaskerLib.embl";    # point to RepBase fasta file
 
 # GC classes creation
 for (my $i = $mingc; $i <= $maxgc; $i += 5) { 
@@ -424,15 +424,17 @@ sub loadRepeatConsensus {
     warn "loading interspersed repeats consensus\n" if (defined $debug);
 	my $file  = shift @_;
 	my $fileh = defineFH($file);
-	my $rep   = '';
+	my ($rep, $seq);
 	open R, "$fileh" or errorExit("Cannot open $fileh");
 	while (<R>) {
 		chomp;
-		if (m/>(\S+)/) {
+		if (m/^ID\s+(.+?)\s+)/) {
 			$rep = $1; 
 		}
-		else {
-			$rep_seq{$rep} .= checkBases($_);
+		elsif (m/^\s+(.+)\s+\d+$/) {
+		    $seq =  $1;
+		    $seq =~ s/\s//g;
+		    $rep_seq{$rep} .= checkBases($seq);
 		}
 	}
 	close R;
