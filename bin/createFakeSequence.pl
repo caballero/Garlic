@@ -311,7 +311,7 @@ sub calcInsertNum {
 	my $num  = 0;
 	my @op   = qw/plus minus none/;
 	my $op   = $op[int(rand(@op))];
-	my $dif  = int(rand($avg) * int(rand(2)));
+	my $dif  = int(rand($avg) * int(rand(1)));
 	if ($op eq 'plus') { 
 	    $num = $avg + $dif; 
 	}
@@ -870,7 +870,7 @@ sub evolveRepeat {
     my ($mut, $nins, $ndel, $nsit, $nver, $cseq);
     
     unless (defined $rep_seq{$type}) {
-        print "sequence for $type ($fam) not found!";
+        print "sequence for $type ($fam) not found!\n";
         return "BAD";
     }
     
@@ -882,7 +882,7 @@ sub evolveRepeat {
         $cseq  = $rep_seq{$type};
         
         if (length $cseq < $ini) {
-            print "sequence for $type ($fam) too short!";
+            print "sequence for $type ($fam) too short!\n";
             $ini = 1;
         }
         
@@ -905,7 +905,7 @@ sub evolveRepeat {
         foreach my $frag (@frag) {
             ($div, $ins, $del, $ini, $end) = split (/:/, $frag);
             if (length $cseq < $ini) {
-                print "sequence for $type ($fam) too short!";
+                print "sequence for $type ($fam) too short!\n";
                 $ini = 1;
             }
         
