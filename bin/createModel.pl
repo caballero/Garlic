@@ -711,6 +711,7 @@ sub profileRM {
             my $rini      = $line[11];
             my $rend      = $line[12];
             my $rid       = "$seq_id:$fam:$line[-1]";
+            next if ($type =~ m/\(/);
             if ($dir eq 'C') {
                 $rini = $line[13];
                 $rend = $line[12];
