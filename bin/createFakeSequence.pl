@@ -794,7 +794,9 @@ sub insertElements {
 	        @bag  = @{ $simple{$gc} };
 	        if ($#bag == 0) { # no empty bags
 	            while (1) {
-	                @bag = @{ $simple{ $classgc[int(rand @classgc)] } };
+	                $gc = $classgc[int(rand @classgc)];
+	                next unless (defined ($simple{$gc}[0]);
+	                @bag = @{ $simple{$gc} };
 	                last if ($#bag > 0);
 	            }
 	        }
@@ -803,7 +805,9 @@ sub insertElements {
 	        @bag  = @{ $repeat{$gc} };
 	        if ($#bag == 0) { # no empty bags
 	            while (1) {
-	                @bag = @{ $repeat{ $classgc[int(rand @classgc)] } };
+	                $gc = $classgc[int(rand @classgc)];
+	                next unless (defined ($repeat{$gc}[0]);
+	                @bag = @{ $repeat{$gc} };
 	                last if ($#bag > 0);
 	            }
 	        }
