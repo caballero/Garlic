@@ -431,6 +431,9 @@ sub loadRepeatConsensus {
 		if (m/^ID\s+(.+?)\s+/) {
 			$rep = $1; 
 		}
+		elsif (m/^DE\s+RepbaseID:\s(.+)\n/) {
+		    $rep = $1;
+		}
 		elsif (m/^\s+(.+)\s+\d+$/) {
 		    $seq =  $1;
 		    $seq =~ s/\s//g;
