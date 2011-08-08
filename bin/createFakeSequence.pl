@@ -136,13 +136,13 @@ print "k-mers in ", $model{'kmer_file'}, " loaded\n" if(defined $debug);
 
 # Number of simple repeats to use
 unless (defined $nsim) {
-	$nsim = calcInsertNum($size, $model{'num_simple'} / $model{'intergenic'});
+	$nsim = calcInsertNum($size, $model{'num_simple'} / $model{'bases'});
 }
 print "$nsim simple repeats to select\n" if(defined $debug);
 
 # Number of interspearsed repeats to use
 unless (defined $nrep) {
-	$nrep = calcInsertNum($size, $model{'num_repeat'} / $model{'intergenic'});
+	$nrep = calcInsertNum($size, $model{'num_repeat'} / $model{'bases'});
 }
 print "$nrep interspersed repeats to select\n" if(defined $debug);
 
