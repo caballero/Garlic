@@ -83,7 +83,6 @@ my $mingc   =       10; # Minimal GC content to use
 my $maxgc   =      100; # Maximal GC content to use
 my $dir     = './data'; # Path to models/RebBase directories
 my %rep_seq =       (); # Hash with consensus sequences from RepBase
-my $max_cyc =     1000; # Max number of cycles in loops
 my $mut_cyc =       10;
 my @dna     = qw/A C G T/; # yes, the DNA alphabet
 
