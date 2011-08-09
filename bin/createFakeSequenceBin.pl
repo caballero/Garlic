@@ -116,7 +116,8 @@ $model{'repeat_file'} = "$model.repeats.W$win.data";
 $model{'repbase'}     = "$dir/RepBase/RepeatMaskerLib.embl";    # point to RepBase fasta file
 
 # GC classes creation
-@classgc = qw(37 39 42 45 100);
+@classgc = (37, 39, 42, 45, 100);
+%classgc = (37 => 1, 39 => 1, 42 => 1, 45 => 1, 100 => 1);
 
 print "Generating a $size sequence with $model model, output in $out\n" if (defined $debug);
 
