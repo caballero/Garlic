@@ -784,6 +784,7 @@ sub insertElements {
 	my $usim = 0;
 	my @ins  = ();
 	my @bag  = ();
+	my @pos  = ();
 	my ($pos, $ins, $gc, $seq, $new);
 	
 	for (my $i = 0; $i <= $nrep; $i++) { push @ins, 'rep'; }
@@ -849,6 +850,10 @@ sub insertElements {
 	while ($s =~ m/(x)/ig) {
 	    $pos = pos $s;
 	    $pos--;
+	    push @pos, $pos;
+	}
+	@pos = sort {$b<=>$a} (@pos);
+	foreach $pos (@pos) {
 	    $ins = $ins[int(rand @ins)];
 	    
 	    print "Insertion position:$pos " if (defined $debug);
@@ -897,7 +902,7 @@ sub insertElements {
 	    }  
 	    
 	    $seq = lc $seq if (defined $mask);
-	    $s =~ s/[xX]/$seq/;
+	    substr($s, $pos, 1) = $seq;
 	    push @inserts, "$pos\t$new";
 	}
 	print "Inserted: $urep repeats and $usim simple repeats\n" if (defined $debug);
