@@ -881,7 +881,7 @@ sub insertElements {
 	    }  
 	    
 	    $seq = lc $seq if (defined $mask);
-	    substr ($s, $pos, 1) = $seq;
+	    $s =~ s/[xX]/$seq/;
 	    push @inserts, "$pos\t$new";
 	}
 	print "Inserted: $urep repeats and $usim simple repeats\n" if (defined $debug);
