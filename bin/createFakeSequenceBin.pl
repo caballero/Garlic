@@ -283,7 +283,7 @@ sub checkSeqSize {
 	my $seq      = shift @_;
 	my $old_size = length $seq;
 	if ($old_size > $size) {
-		print "Sequence too long, removing ", $old_size - $size, "bases\n" if (defined $debug);
+		print "Sequence too long, removing ", $old_size - $size, " bases\n" if (defined $debug);
 		$seq = substr ($seq, 0, $size);
 	}
 	elsif ($old_size < $size) {
@@ -829,7 +829,7 @@ sub insertElements {
 	    push @inserts, "$pos\t$new";
 	}
 	
-	@ins    = qw/sim rep new/;
+	@ins    = qw/sim rep/;
 	while ($s =~ m/(x)/ig) {
 	    $pos = pos $s;
 	    $pos--;
