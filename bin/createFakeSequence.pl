@@ -158,7 +158,7 @@ my $fgc    = newGC();
 my @fseeds = keys %{ $elemk{$fgc} };
 my $fseed  = $fseeds[int(rand @fseeds)];
 
-$seq = createSeq($kmer, $fgc, int($size / 2), $win, $fseed);
+$seq = createSeq($kmer, $fgc, int($size * 0.7), $win, $fseed);
 print "Base sequence generated ($size bases)\n" if(defined $debug);
 
 # Adding new elements
@@ -844,7 +844,7 @@ sub insertElements {
 	    push @inserts, "$pos\t$new";
 	}
 	
-	@ins    = qw/sim rep new/;
+	@ins    = qw/sim rep/;
 	while ($s =~ m/(x)/ig) {
 	    $pos = pos $s;
 	    $pos--;
