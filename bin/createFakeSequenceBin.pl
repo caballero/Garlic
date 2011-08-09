@@ -881,7 +881,9 @@ sub insertElements {
 	        $urep++;
 	    }
 	    else { # insert a random sequence (100-1100 bp)
-	       $seq = createSubSeq($kmer, $gc, 100 + int(rand 1000), substr($s, $pos, 1 - $kmer)); 
+	        my $long = 100 + int(rand 1000);
+	        print "  inserting a new sequence ($long bp)\n";
+	        $seq = createSubSeq($kmer, $gc, $long, substr($s, $pos, 1 - $kmer)); 
 	    }  
 	    
 	    $seq = lc $seq if (defined $mask);
