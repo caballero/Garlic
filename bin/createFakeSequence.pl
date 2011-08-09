@@ -310,7 +310,7 @@ sub calcInsertNum {
 	my $num  = 0;
 	my @op   = qw/plus minus none/;
 	my $op   = $op[int(rand(@op))];
-	my $dif  = int(rand($avg) * int(rand(5)));
+	my $dif  = int(rand($avg) * rand(1));
 	if ($op eq 'plus') { 
 	    $num = $avg + $dif; 
 	}
@@ -901,7 +901,7 @@ sub insertElements {
 	        $seq = createSubSeq($kmer, $gc, $long, substr($s, $pos, 1 - $kmer)); 
 	    }  
 	    
-	    $seq = lc $seq if (defined $mask);
+	    $seq = lc $seq if (defined $mask and $ins ne 'new');
 	    substr($s, $pos, 1) = $seq;
 	    push @inserts, "$pos\t$new";
 	}
