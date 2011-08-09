@@ -768,6 +768,7 @@ sub insertElements {
 	my $usim = 0;
 	my @ins  = ();
 	my @bag  = ();
+	my @pos  = ();
 	my ($pos, $ins, $gc, $seq, $new);
 	
 	for (my $i = 0; $i <= $nrep; $i++) { push @ins, 'rep'; }
