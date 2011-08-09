@@ -309,7 +309,7 @@ sub calcInsertNum {
 	my $num  = 0;
 	my @op   = qw/plus minus none/;
 	my $op   = $op[int(rand(@op))];
-	my $dif  = int(rand($avg) * int(rand(1)));
+	my $dif  = int(rand($avg) * int(rand(5)));
 	if ($op eq 'plus') { 
 	    $num = $avg + $dif; 
 	}
@@ -767,16 +767,19 @@ sub insertElements {
 	my $urep = 0;
 	my $usim = 0;
 	my @ins  = ();
+	my @bag  = ();
+	my ($pos, $ins, $gc, $seq, $new);
+	
 	for (my $i = 0; $i <= $nrep; $i++) { push @ins, 'rep'; }
 	for (my $i = 0; $i <= $nsim; $i++) { push @ins, 'sim'; }
 	@ins = shuffle(@ins);
 	for (my $i = 0; $i <= $#ins; $i++) {
-	    my $ins = $ins[$i];
-	    my $seq = undef;
-	    my @bag = ();
-	    my $pos = int(rand((length $s) - $win));
+	    $ins = $ins[$i];
+	    $seq = undef;
+	    @bag = ();
+	    $pos = int($win / 2) + int(rand((length $s) - $win));
 	    print "Insertion position:$pos " if (defined $debug);
-	    my $gc   = calcGC(substr ($s, $pos, $win));
+	    $gc   = calcGC(substr ($s, $pos - int($win / 2), $win));
 	    print "  region GC=$gc\n" if (defined $debug);
 
 	    if ($ins eq 'sim') {
@@ -802,7 +805,7 @@ sub insertElements {
 	        }
 	    }
 	    
-	    my $new = $bag[int(rand @bag)];
+	    $new = $bag[int(rand @bag)];
 	    print "  $new\n" if (defined $debug);
 	    if ($new =~ m/^SIMPLE/) {
 	        $seq = evolveSimple($new, $gc);
@@ -820,6 +823,62 @@ sub insertElements {
 	        }
 	        $urep++;
 	    }
+	    
+	    $seq = lc $seq if (defined $mask);
+	    substr ($s, $pos, 1) = $seq;
+	    push @inserts, "$pos\t$new";
+	}
+	
+	@ins    = qw/sim rep new/;
+	while ($s =~ m/(x)/ig) {
+	    $pos = pos $s;
+	    $pos--;
+	    $ins = $ins[int(rand @ins)];
+	    
+	    print "Insertion position:$pos " if (defined $debug);
+	    $gc   = calcGC(substr ($s, $pos - int($win / 2), $win));
+	    print "  region GC=$gc\n" if (defined $debug);
+
+	    if ($ins eq 'sim') {
+	        @bag  = @{ $simple{$gc} };
+	        if ($#bag == 0) { # no empty bags
+	            while (1) {
+	                $gc = $classgc[int(rand @classgc)];
+	                next unless (defined $simple{$gc}[0]);
+	                @bag = @{ $simple{$gc} };
+	                last if ($#bag > 0);
+	            }
+	        }
+	        $new = $bag[int(rand @bag)];
+	        print "  $new\n" if (defined $debug);
+	        $seq = evolveSimple($new, $gc);
+	        $usim++;
+	    }
+	    elsif ($ins eq 'rep') {
+	        @bag  = @{ $repeat{$gc} };
+	        if ($#bag == 0) { # no empty bags
+	            while (1) {
+	                $gc = $classgc[int(rand @classgc)];
+	                next unless (defined $repeat{$gc}[0]);
+	                @bag = @{ $repeat{$gc} };
+	                last if ($#bag > 0);
+	            }
+	        }
+	    	$new = $bag[int(rand @bag)];
+	        $seq = evolveRepeat($new, $gc);
+	        if ($seq eq 'BAD') {
+	            while (1) {
+	                $new = $bag[int(rand @bag)];
+               	    print "  $new\n" if (defined $debug);
+	                $seq = evolveRepeat($new, $gc);
+	                last if ($seq ne 'BAD');
+	            }
+	        }
+	        $urep++;
+	    }
+	    else { # insert a random sequence (100-1100 bp)
+	       $seq = createSubSeq($kmer, $gc, 100 + int(rand 1000), substr($s, $pos, 1 - $kmer)); 
+	    }  
 	    
 	    $seq = lc $seq if (defined $mask);
 	    substr ($s, $pos, 1) = $seq;
