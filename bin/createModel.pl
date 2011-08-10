@@ -697,7 +697,7 @@ sub profileRM {
             chomp;
             s/^\s+//;
             next unless (m/^\d+/);
-            next if (m/Simple_repeat|Low_complexity|Unknown/);
+            next if (m/Simple_repeat|Low_complexity|Unknown|Satellite/);
             my @line      = split (/\s+/, $_);
             my $seq_id    = $line[4];
             my $ini       = $line[5];
