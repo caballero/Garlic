@@ -121,20 +121,18 @@ while (<>) {
 warn "searching regions\n";
 foreach $id (keys %seq) {
     warn "  processing $id\n";
-    my @frag = split (/(X+?)/, $seq{$id});
+    my @frag = split (/(X+)/, $seq{$id});
     my $ini = 0;
     foreach my $frag (@frag) {
-        my $len = length $frag;
         unless ($frag =~ m/X/) {
-            if ($len >= $size) {
-                my $n = $frag =~ tr/ACGTacgt/ACGTacgt/;
-                next if (($n / $len) < 0.4);
-                my $end = $ini + $size;
-                print "$id\t$ini\t$end\n";
-            }
+            my $seq = substr ($frag, 0, $size);
+            my $num = $seq =~ tr/ACGTacgt/ACGTacgt/;
+            my $end = $ini + $size;
+            print "$id\t$ini\t$end\n" if (($num / $size) > 0.3);
         }
-        $ini += $len;
+        $ini += length $frag;
     }
+    
 }
 
 
