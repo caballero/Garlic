@@ -1002,10 +1002,10 @@ sub evolveRepeat {
         $nver = $mut - $nsit;
         $nins = int($ins * (length $seq) / 100);
         $ndel = int($ins * (length $seq) / 100);
-        $seq  = addDeletions(    $seq, $ndel, $gc) if($ndel > 0);
-        $seq  = addTransitions(  $seq, $nsit, $gc) if($nsit > 0);
-        $seq  = addTransversions($seq, $nver, $gc) if($nver > 0);
-        $seq  = addInsertions(   $seq, $nins, $gc) if($nins > 0);
+        $seq  = addDeletions(    $seq, $ndel, $gc, 0) if($ndel > 0);
+        $seq  = addTransitions(  $seq, $nsit, $gc, 0) if($nsit > 0);
+        $seq  = addTransversions($seq, $nver, $gc, 0) if($nver > 0);
+        $seq  = addInsertions(   $seq, $nins, $gc, 0) if($nins > 0);
     }
     return $seq;
 }
