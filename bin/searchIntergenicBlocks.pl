@@ -100,6 +100,7 @@ elsif ($size =~ m/g/i) {
 }
 $size =~ s/\D//g;
 $size *= $fac;
+my $win = int($size / 10);
 
 warn "loading sequences\n";
 my %seq = ();
@@ -123,24 +124,17 @@ foreach $id (keys %seq) {
     my @frag = split (/(X+)/, $seq{$id});
     my $ini = 0;
     foreach my $frag (@frag) {
-        if ($frag =~ m/X/) {
-            $ini += length $frag;
-        }
-        else {
-            if (length $frag >= $size) {
-                my $nrep = $frag =~ tr/R/R/;
-                next if (($nrep / length $frag) > 0.5);
-                my $gc  = calcGC(\$frag);
-                my $end = $ini + length $frag;
-                print "$id\t$ini\t$end\t$gc\n";
+        my $len = length $frag;
+        unless ($frag =~ m/X/) {
+            if ($len >= $size) {
+                my $n = $frag =~ tr/ACGTacgt/ACGTacgt/;
+                next if (($n / $len) < 0.4);
+                my $end = $ini + $size;
+                print "$id\t$ini\t$end\\n";
             }
         }
+        $ini += $len;
     }
 }
 
-sub calcGC {
-    my $seq_ref = shift @_;
-    my $ngc = $$seq_ref =~ tr/GC/GC/;
-    my $pgc = int($ngc * 100 / length $$seq_ref);
-    return $pgc;
-}
+
