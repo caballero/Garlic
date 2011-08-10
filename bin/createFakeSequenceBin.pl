@@ -516,10 +516,11 @@ sub addDeletions {
 		$tdel++;
 	}
 	$skip = $ndel;
+	$eval++;
 	print "  Added $tdel deletions ($skip skipped, GC=$gcl)\n" if(defined $debug);
 	if ($skip > 0) {
 		$gcl = newGC();
-		$seq = addDeletions($seq, $skip, $gcl, ++$eval);
+		$seq = addDeletions($seq, $skip, $gcl, $eval);
 	}
 	
 	$seq =~ s/D//g;
@@ -608,10 +609,11 @@ sub addTransitions {
 		$tsit++;
 	}
 	$skip = $nsit;
+	$eval++;
 	print "  Added $tsit transitions ($skip skipped, GC=$gcl)\n" if(defined $debug);
 	if ($skip > 0) {
 		$gcl = newGC();
-		$seq = addTransitions($seq, $skip, $gcl, ++$eval);
+		$seq = addTransitions($seq, $skip, $gcl, $eval);
 	}
 	return $seq;
 }
@@ -658,10 +660,11 @@ sub addTransversions {
 		$tver++;
 	}
 	$skip = $nver;
+	$eval++;
 	print "  Added $tver transversions ($skip skipped, GC=$gcl)\n" if(defined $debug);
 	if ($skip > 0) {
 		$gcl = newGC();
-		$seq = addTransversions($seq, $skip, $gcl, ++$eval);
+		$seq = addTransversions($seq, $skip, $gcl, $eval);
 	}
 	return $seq;
 }
