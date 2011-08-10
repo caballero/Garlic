@@ -121,7 +121,7 @@ while (<>) {
 warn "searching regions\n";
 foreach $id (keys %seq) {
     warn "  processing $id\n";
-    my @frag = split (/(X+)/, $seq{$id});
+    my @frag = split (/(X+?)/, $seq{$id});
     my $ini = 0;
     foreach my $frag (@frag) {
         my $len = length $frag;
@@ -130,7 +130,7 @@ foreach $id (keys %seq) {
                 my $n = $frag =~ tr/ACGTacgt/ACGTacgt/;
                 next if (($n / $len) < 0.4);
                 my $end = $ini + $size;
-                print "$id\t$ini\t$end\\n";
+                print "$id\t$ini\t$end\n";
             }
         }
         $ini += $len;
