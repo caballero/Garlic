@@ -494,7 +494,7 @@ sub addDeletions {
 	my $seq  = shift @_;
 	my $ndel = shift @_;
 	my $gcl  = shift @_;
-	my $eval = shift @_; $eval ||= 0;
+	my $eval = shift @_;
 	my $tdel = 0;
 	my $skip = 0;
 	my @pos  = selPosition($seq, $gcl);
@@ -518,10 +518,11 @@ sub addDeletions {
 		$tdel++;
 	}
 	$skip = $ndel;
+	$eval++;
 	print "  Added $tdel deletions ($skip skipped, GC=$gcl)\n" if(defined $debug);
 	if ($skip > 0) {
 		$gcl = newGC();
-		$seq = addDeletions($seq, $skip, $gcl, ++$eval);
+		$seq = addDeletions($seq, $skip, $gcl, $eval);
 	}
 	
 	$seq =~ s/D//g;
@@ -573,7 +574,7 @@ sub addTransitions {
 	my $seq  = shift @_;
 	my $nsit = shift @_;
 	my $gcl  = shift @_;
-	my $eval = shift @_; $eval ||= 0;
+	my $eval = shift @_;
 	my $tsit = 0;
 	my $skip = 0;
 	my @pos  = selPosition($seq, $gcl);
@@ -609,10 +610,11 @@ sub addTransitions {
 		$tsit++;
 	}
 	$skip = $nsit;
+	$eval++;
 	print "  Added $tsit transitions ($skip skipped, GC=$gcl)\n" if(defined $debug);
 	if ($skip > 0) {
 		$gcl = newGC();
-		$seq = addTransitions($seq, $skip, $gcl, ++$eval);
+		$seq = addTransitions($seq, $skip, $gcl, $eval);
 	}
 	return $seq;
 }
@@ -622,7 +624,7 @@ sub addTransversions {
 	my $seq  = shift @_;
 	my $nver = shift @_;
 	my $gcl  = shift @_;
-	my $eval = shift @_; $eval ||= 0;
+	my $eval = shift @_;
 	my $tver = 0;
 	my $skip = 0;
 	my @pos  = selPosition($seq, $gcl);
@@ -659,10 +661,11 @@ sub addTransversions {
 		$tver++;
 	}
 	$skip = $nver;
+	$eval++;
 	print "  Added $tver transversions ($skip skipped, GC=$gcl)\n" if(defined $debug);
 	if ($skip > 0) {
 		$gcl = newGC();
-		$seq = addTransversions($seq, $skip, $gcl, ++$eval);
+		$seq = addTransversions($seq, $skip, $gcl, $eval);
 	}
 	return $seq;
 }
@@ -923,10 +926,10 @@ sub evolveSimple {
     my $nid   = int($indel * (length $seq) / 100);
     my $ndel  = int(rand $nid);
     my $nins  = $nid - $ndel;
-    $seq = addDeletions(    $seq, $ndel, $gc) if($ndel > 0);
-    $seq = addTransitions(  $seq, $nsit, $gc) if($nsit > 0);
-    $seq = addTransversions($seq, $nver, $gc) if($nver > 0);
-    $seq = addInsertions(   $seq, $nins, $gc) if($nins > 0);
+    $seq = addDeletions(    $seq, $ndel, $gc, 0) if($ndel > 0);
+    $seq = addTransitions(  $seq, $nsit, $gc, 0) if($nsit > 0);
+    $seq = addTransversions($seq, $nver, $gc, 0) if($nver > 0);
+    $seq = addInsertions(   $seq, $nins, $gc   ) if($nins > 0);
     return $seq;
 }
 
@@ -966,10 +969,10 @@ sub evolveRepeat {
         $nver = $mut - $nsit;
         $nins = int($ins * (length $sseq) / 100);
         $ndel = int($ins * (length $sseq) / 100);
-        $sseq = addDeletions(    $sseq, $ndel, $gc) if($ndel > 0);
-        $sseq = addTransitions(  $sseq, $nsit, $gc) if($nsit > 0);
-        $sseq = addTransversions($sseq, $nver, $gc) if($nver > 0);
-        $sseq = addInsertions(   $sseq, $nins, $gc) if($nins > 0);
+        $sseq = addDeletions(    $sseq, $ndel, $gc, 0) if($ndel > 0);
+        $sseq = addTransitions(  $sseq, $nsit, $gc, 0) if($nsit > 0);
+        $sseq = addTransversions($sseq, $nver, $gc, 0) if($nver > 0);
+        $sseq = addInsertions(   $sseq, $nins, $gc   ) if($nins > 0);
         $seq  = $sseq;
         foreach my $frag (@frag) {
             ($div, $ins, $del, $ini, $end) = split (/:/, $frag);
@@ -989,10 +992,10 @@ sub evolveRepeat {
             $nver = $mut - $nsit;
             $nins = int($ins * (length $sseq) / 100);
             $ndel = int($ins * (length $sseq) / 100);
-            $sseq  = addDeletions(    $sseq, $ndel, $gc) if($ndel > 0);
-            $sseq  = addTransitions(  $sseq, $nsit, $gc) if($nsit > 0);
-            $sseq  = addTransversions($sseq, $nver, $gc) if($nver > 0);
-            $sseq  = addInsertions(   $sseq, $nins, $gc) if($nins > 0);
+            $sseq  = addDeletions(    $sseq, $ndel, $gc, 0) if($ndel > 0);
+            $sseq  = addTransitions(  $sseq, $nsit, $gc, 0) if($nsit > 0);
+            $sseq  = addTransversions($sseq, $nver, $gc, 0) if($nver > 0);
+            $sseq  = addInsertions(   $sseq, $nins, $gc   ) if($nins > 0);
             $seq  .= "X$sseq";
         }
     }
@@ -1014,10 +1017,10 @@ sub evolveRepeat {
         $nver = $mut - $nsit;
         $nins = int($ins * (length $seq) / 100);
         $ndel = int($ins * (length $seq) / 100);
-        $seq  = addDeletions(    $seq, $ndel, $gc) if($ndel > 0);
-        $seq  = addTransitions(  $seq, $nsit, $gc) if($nsit > 0);
-        $seq  = addTransversions($seq, $nver, $gc) if($nver > 0);
-        $seq  = addInsertions(   $seq, $nins, $gc) if($nins > 0);
+        $seq  = addDeletions(    $seq, $ndel, $gc, 0) if($ndel > 0);
+        $seq  = addTransitions(  $seq, $nsit, $gc, 0) if($nsit > 0);
+        $seq  = addTransversions($seq, $nver, $gc, 0) if($nver > 0);
+        $seq  = addInsertions(   $seq, $nins, $gc   ) if($nins > 0);
     }
     return $seq;
 }
