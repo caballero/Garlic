@@ -65,7 +65,7 @@ my $help       =  undef;
 my $verbose    =  undef;
 my $fasta      =  undef;
 my $output     =  undef;
-my $size       = '10kb';
+my $size       = '100';
 
 # Fetch options
 GetOptions(
@@ -100,7 +100,6 @@ elsif ($size =~ m/g/i) {
 }
 $size =~ s/\D//g;
 $size *= $fac;
-my $win = int($size / 10);
 
 warn "loading sequences\n";
 my %seq = ();
@@ -125,10 +124,8 @@ foreach $id (keys %seq) {
     my $ini = 0;
     foreach my $frag (@frag) {
         unless ($frag =~ m/X/) {
-            my $seq = substr ($frag, 0, $size);
-            my $num = $seq =~ tr/ACGTacgt/ACGTacgt/;
-            my $end = $ini + $size;
-            print "$id\t$ini\t$end\n" if (($num / $size) > 0.3);
+            my $end = $ini + length ($frag);
+            print "$id\t$ini\t$end\n" if (length $frag > $size);
         }
         $ini += length $frag;
     }
