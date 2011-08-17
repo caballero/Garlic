@@ -704,12 +704,18 @@ sub profileRepeats {
     open R, ">$file" or die "cannot open $file\n";
     foreach my $gc (@gc) {
         my $dist = calcGCdist(@{ $ebases{$gc} });
-        print R "#GC=$gc\t$dist\n";
-        foreach my $rep (@{ $repeat{$gc} }) {
-            print R "$rep\n";
-        }
+        my $rep  = calcRepDist(@{ $repeat{$gc} });
+        print R "#GC=$gc\t$dist\n$rep\n";
     }
     close R;
+}
+
+sub calcRepDist {
+   my $res = undef;
+   foreach my $rep (@_) {
+       
+   }
+   return $res;
 }
 
 sub profileTRF {
@@ -721,7 +727,7 @@ sub profileTRF {
         }
         my $last_ini = -1;
         my $last_end = -1;
-        my $last_div = -1;
+        my $last_con = 'x';
         my $last_gc  = -1;
         open T, "$file" or die "cannot open $file\n";
         while (<T>) {
@@ -740,8 +746,8 @@ sub profileTRF {
             
             # Check for overlaping repeats
             if ($ini >= $last_ini and $ini <= $last_end) {
-                if ($div >= $last_div) {
-                    next; # because last repeat has less variation
+                if (length $consensus < length $last_con) {
+                    next; # because last repeat is shorter
                 }
                 else {
                     pop @{ $repeat{$last_gc} }; # last repeat removal
@@ -752,7 +758,7 @@ sub profileTRF {
             push @{ $repeat{$gc} }, $label;
             $last_ini = $ini;
             $last_end = $end;
-            $last_div = $div;
+            $last_con = $consensus;
             $last_gc  = $gc;
         }
         close T;
@@ -1004,6 +1010,7 @@ sub calcGCdist {
     for (my $i = 10; $i <= 100; $i += 10) { $gcf{$i} = 0; }
     
     foreach my $x (@_) {
+        next if ($x eq 'NA');
         $tot++;
         if    ($x < 10) { $gcf{10}++; }
         elsif ($x < 20) { $gcf{20}++; }
