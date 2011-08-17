@@ -511,7 +511,13 @@ sub loadGenes {
     }
     
     foreach $seq_id (keys %genes) {
-        @{ $genes{$seq_id} } = sort {$a<=>$b} @{ $genes{$seq_id} };
+        @{ $genes{$seq_id} }  = sort {$a<=>$b} @{ $genes{$seq_id} };
+        my $i   = 0;
+        my $bin = 0;
+        foreach my $reg (@{ $genes{$seq_id} }) {
+            my ($ini, $end) = split (/-/, $reg);
+            
+        }
     }
 }
 
