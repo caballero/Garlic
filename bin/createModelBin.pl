@@ -28,7 +28,8 @@ OPTIONS
     -r --repeats       RepeatMasker output           FileName*
     -t --trf           TRF output                    FileName*
     -g --genes         Gene annotation               FileName*
-    -e --exclude       Exclude this sequences        Pattern**
+    -a --analyze       Analyze these regions         FileName*
+    -e --exclude       Exclude these sequences       Pattern**
     
     --no_mask_gene     Don't mask genes
     --no_mask_repeat   Don't mask repeats
@@ -112,6 +113,7 @@ my $fasta           =  undef;      # Sequences in fasta files
 my $repeat          =  undef;      # RepeatMasker output
 my $trf             =  undef;      # TRF output
 my $gene            =  undef;      # Gene annotation
+my $region          =  undef;
 my $help            =  undef;      # Help flag
 my $verbose         =  undef;      # Verbose mode flag
 my $rm_tmp          =  undef;      # Remove downloaded files
@@ -142,6 +144,7 @@ GetOptions(
     't|trf:s'            => \$trf,
     'g|gene:s'           => \$gene,
     'e|exclude:s'        => \$exclude,
+    'a|analyze:s'        => \$region,
     'rm_tmp'             => \$rm_tmp,
     'no_mask_gene'       => \$no_mask_gene,
     'no_mask_repeat'     => \$no_mask_repeat,
@@ -179,12 +182,15 @@ my @fasta    = ();
 my @repeat   = ();
 my @trf      = ();
 my @gene     = ();
+my @region   = ();
 my %bingc    = ();
 my %seq      = ();
 my %repeat   = ();
 my %genes    = ();
+my %region   = ();
 my @dna      = qw/A C G T/;
 my ($seq, $ss, $seq_id, $ini, $end, $len);
+
 # GC content bins, if you change this array, change the classGC() subroutine too.
 my @gc = qw/0-37 37-39 39-42 42-45 45-100/;
 
@@ -211,6 +217,7 @@ getUCSC_gene()   unless (defined $gene   or  defined $no_mask_gene);
 @repeat  = split (/,/, $repeat);
 @trf     = split (/,/, $trf);
 @gene    = split (/,/, $gene);
+@region  = split (/,/, $region) if (defined $region);
 $exclude =~ s/,/|/g if (defined $exclude);
 
 # Load sequences and mask it
@@ -486,6 +493,46 @@ sub maskGene {
     }
 }
 
+sub loadGenes {
+    # load gene annotation
+    warn "reading coordinates for genes\n" if (defined $verbose);
+    foreach my $file (@gene) {
+        my $fileh = defineFH($file);
+        open FH, "$fileh" or die "cannot open $file\n";
+        while (<FH>) {
+            my @arr = split (/\t/, $_);
+            $seq_id = $arr[2];
+            next unless (defined $seq{$seq_id});
+            $ini = $arr[4];
+            $end = $arr[5];
+            push @{ $genes{$seq_id} }, "$ini-$end";
+        }
+        close FH;
+    }
+    
+    foreach $seq_id (keys %genes) {
+        @{ $genes{$seq_id} } = sort {$a<=>$b} @{ $genes{$seq_id} };
+    }
+}
+
+sub loadRegions {
+    # load region coordinates
+    warn "loading regions\n" if (defined $verbose);
+    foreach my $file (@region) {
+        my $fileh = defineFH($file);
+        open FH, "$fileh" or die "cannot open $file\n";
+        while (<FH>) {
+            my @arr = split (/\t/, $_);
+            $seq_id = $arr[0];
+            next unless (defined $seq{$seq_id});
+            $ini = $arr[1];
+            $end = $arr[2];
+            $region{$seq_id} = "$ini-$end";
+        }
+        close FH;
+    }
+}
+
 sub profileSeqs {
     # compute Kmer frequencies and GC transitions observed
     warn "profiling sequences, kmer=$kmer and window=$win\n" if (defined $verbose);
@@ -493,34 +540,47 @@ sub profileSeqs {
     my @kmer      = createKmer($kmer - 1, @dna);
     my %kmer      = ();
     my %gct       = ();
-    
+    my ($ini, $end, $reg);
+    loadRegions() if (defined $region);
+
     foreach $seq_id (keys %seq) {
 	    warn "  analyzing sequence $seq_id\n" if (defined $verbose);
-        $seq = $seq{$seq_id};
 	    $seq =~ s/[^ACGT]/N/g;
 	    my $last_gc = undef;
-	    my $len = length $seq;
-		# GC windows transitions
-		my $last = $len - $win;
-	    for (my $i = 0; $i <= $last; $i += $win) {
-	        $ss = substr ($seq, $i, $win);
-	        my $num_N = $ss =~ tr/N/N/;
-	        my $frq_N = $num_N / (length $ss);
-	        next if ($frq_N > 0.3); # No more than 30% bad bases 
-	        
-	        # GC in the window and transition
-	        my $gc = getBinGC($seq_id, int($i + ($win / 2)) );
-	        $gct{$last_gc}{$gc}++ if (defined $last_gc);
-	        $last_gc = $gc;   
+	    my $len     = length $seq;
+	    my @slices  = ();
+	    
+	    if (defined $region) {
+	        foreach $reg (keys %{ $region{$seq_id} }) {
+	            push (@slices, $reg);
+	        }
 	    }
-		# Kmer counts
-		$last = $len - $kmer;
-		for (my $j = 0; $j <= $last; $j++) {
-	        my $word = substr ($seq, $j, $kmer);
-			next if ($word =~ m/[^ACGT]/);
-			$word = checkRevComp($word) if (defined $revcomp_kmer);
-			my $bingc = getBinGC($seq_id, $j);
-			$kmer{$bingc}{$word}++;
+	    else {
+	        push (@slices, "0-$len");
+	    }
+	    
+	    foreach $reg (@slices) {
+	        ($ini, $end) = split (/-/, $reg);
+	        # GC windows transitions
+	        for (my $i = $ini; $i <= $end - $win; $i += $win) {
+	            $ss = substr ($seq, $i, $win);
+	            my $num_N = $ss =~ tr/N/N/;
+	            my $frq_N = $num_N / (length $ss);
+	            next if ($frq_N > 0.3); # No more than 30% bad bases 
+	        
+	            # GC in the window and transition
+	            my $gc = getBinGC($seq_id, int($i + ($win / 2)) );
+	            $gct{$last_gc}{$gc}++ if (defined $last_gc);
+	            $last_gc = $gc;   
+	        }
+	        # Kmer counts
+	        for (my $j = $ini; $j <= $end - $kmer; $j++) {
+	            my $word = substr ($seq, $j, $kmer);
+	            next if ($word =~ m/[^ACGT]/);
+	            $word = checkRevComp($word) if (defined $revcomp_kmer);
+	            my $bingc = getBinGC($seq_id, $j);
+	            $kmer{$bingc}{$word}++;
+	        }
 	    }
     }
     
@@ -622,6 +682,7 @@ sub createKmer {
 sub profileRepeats {
     # call the repeat parsers and write the final table
     warn "profiling repeats\n" if (defined $verbose);
+    loadGenes()  if (defined $gene);
     profileTRF() if (defined $trf);
     profileRM()  if (defined $repeat);
     
