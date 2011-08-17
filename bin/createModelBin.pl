@@ -178,16 +178,17 @@ my $ucsc_trf      = "$ucsc/$model/bigZips/"  . $files{$model}{'TRF'};
 my $ucsc_gene     = "$ucsc/$model/database/" . $files{$model}{'GEN'}; 
 
 # Main variables
-my @fasta    = ();
-my @repeat   = ();
-my @trf      = ();
-my @gene     = ();
-my @region   = ();
-my %bingc    = ();
-my %seq      = ();
-my %repeat   = ();
-my %genes    = ();
-my %region   = ();
+my @fasta    = (); # list of fasta files
+my @repeat   = (); # list of RepeatMasker output files
+my @trf      = (); # list of TRF ouput files
+my @gene     = (); # list of gene annotation files
+my @region   = (); # list of selected regions
+my %bingc    = (); # hash to search the regional GC 
+my %seq      = (); # hash with the complete sequences
+my %repeat   = (); # hash with the repeats information
+my %genes    = (); # hash with gene coordinates
+my %gidx     = (); # hash to search genes by regions
+my %region   = (); # hash with the regions pre-selected
 my @dna      = qw/A C G T/;
 my ($seq, $ss, $seq_id, $ini, $end, $len);
 
@@ -512,11 +513,18 @@ sub loadGenes {
     
     foreach $seq_id (keys %genes) {
         @{ $genes{$seq_id} }  = sort {$a<=>$b} @{ $genes{$seq_id} };
-        my $i   = 0;
-        my $bin = 0;
+        my $i    = 0;
+        my $bin  = 0;
+        my $last = 1;
+        $gidx{$seq_id}[0] = 0;
         foreach my $reg (@{ $genes{$seq_id} }) {
             my ($ini, $end) = split (/-/, $reg);
-            
+            if ($ini / $binzise > $last) {
+                $last++;
+                $bin++;
+                $gidx{$seq_id}[$bin] = $i;
+            }
+            $i++;
         }
     }
 }
@@ -812,8 +820,10 @@ sub profileRM {
 sub checkGene {
     my ($c, $i, $e) = @_;
     my $res = undef;
-    foreach my $coord (@{ $genes{$c} }) {
-        my ($gi, $ge) = split (/-/, $coord);
+    my $b = int($i / $binsize);
+    my @genes = @{ $genes{$c} };
+    for (my $j = $b; $j<= $#genes; $j++) {
+        my ($gi, $ge) = split (/-/, $genes[$j]);
         if ($i >= $gi and $e <= $ge) {
             $res = 1;
             last;
