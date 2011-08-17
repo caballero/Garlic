@@ -183,12 +183,13 @@ my @repeat   = (); # list of RepeatMasker output files
 my @trf      = (); # list of TRF ouput files
 my @gene     = (); # list of gene annotation files
 my @region   = (); # list of selected regions
-my %bingc    = (); # hash to search the regional GC 
-my %seq      = (); # hash with the complete sequences
-my %repeat   = (); # hash with the repeats information
-my %genes    = (); # hash with gene coordinates
-my %gidx     = (); # hash to search genes by regions
-my %region   = (); # hash with the regions pre-selected
+my %bingc    = (); # index to search the regional GC 
+my %seq      = (); # complete sequences
+my %repeat   = (); # repeats information
+my %genes    = (); # gene coordinates
+my %gidx     = (); # index to search genes by regions
+my %region   = (); # regions pre-selected
+my %ebases   = (); # effective bases per GC bin
 my @dna      = qw/A C G T/;
 my ($seq, $ss, $seq_id, $ini, $end, $len);
 
@@ -541,7 +542,7 @@ sub loadRegions {
             next unless (defined $seq{$seq_id});
             $ini = $arr[1];
             $end = $arr[2];
-            $region{$seq_id} = "$ini-$end";
+            push (@{ $region{$seq_id} }, "$ini-$end");
         }
         close FH;
     }
@@ -559,15 +560,12 @@ sub profileSeqs {
 
     foreach $seq_id (keys %seq) {
 	    warn "  analyzing sequence $seq_id\n" if (defined $verbose);
-	    $seq =~ s/[^ACGT]/N/g;
 	    my $last_gc = undef;
 	    my $len     = length $seq;
 	    my @slices  = ();
 	    
 	    if (defined $region) {
-	        foreach $reg (keys %{ $region{$seq_id} }) {
-	            push (@slices, $reg);
-	        }
+	        @slices = @{ $region{$seq_id} };
 	    }
 	    else {
 	        push (@slices, "0-$len");
@@ -575,17 +573,18 @@ sub profileSeqs {
 	    
 	    foreach $reg (@slices) {
 	        ($ini, $end) = split (/-/, $reg);
-	        # GC windows transitions
+	        # GC profile
 	        for (my $i = $ini; $i <= $end - $win; $i += $win) {
 	            $ss = substr ($seq, $i, $win);
-	            my $num_N = $ss =~ tr/N/N/;
-	            my $frq_N = $num_N / (length $ss);
-	            next if ($frq_N > 0.3); # No more than 30% bad bases 
-	        
 	            # GC in the window and transition
 	            my $gc = getBinGC($seq_id, int($i + ($win / 2)) );
 	            $gct{$last_gc}{$gc}++ if (defined $last_gc);
-	            $last_gc = $gc;   
+	            $last_gc = $gc;
+	            # Effective bases count
+	            my $nbas = $ss =~ tr/ACGT/ACGT/;
+	            my $nrep = $ss =~ tr/acgtRrSs/acgtRrSs/;
+	            my $ntot = $nbas + $nrep;
+	            push (@{ $ebases{$gc} }, int(100 * $nbas / $ntot)) if ($ntot > 0);
 	        }
 	        # Kmer counts
 	        for (my $j = $ini; $j <= $end - $kmer; $j++) {
@@ -704,7 +703,8 @@ sub profileRepeats {
     warn "writing repeats info in \"$file\"\n";
     open R, ">$file" or die "cannot open $file\n";
     foreach my $gc (@gc) {
-        print R "#GC=$gc\n";
+        my $dist = calcGCdist(@{ $ebases{$gc} });
+        print R "#GC=$gc\t$dist\n";
         foreach my $rep (@{ $repeat{$gc} }) {
             print R "$rep\n";
         }
@@ -995,6 +995,34 @@ sub getBinGC {
 	my $pos = shift @_;
 	my $gc  = $bingc{$id}[int($pos / $win)];
 	return $gc;
+}
+
+sub calcGCdist {
+    my $res = undef;
+    my $tot = 0;
+    my %gcf = ();
+    for (my $i = 10; $i <= 100; $i += 10) { $gcf{$i} = 0; }
+    
+    foreach my $x (@_) {
+        $tot++;
+        if    ($x < 10) { $gcf{10}++; }
+        elsif ($x < 20) { $gcf{20}++; }
+        elsif ($x < 30) { $gcf{30}++; }
+        elsif ($x < 40) { $gcf{40}++; }
+        elsif ($x < 50) { $gcf{50}++; }
+        elsif ($x < 60) { $gcf{60}++; }
+        elsif ($x < 70) { $gcf{70}++; }
+        elsif ($x < 80) { $gcf{80}++; }
+        elsif ($x < 90) { $gcf{90}++; }
+        else            { $gcf{100}++; }
+    }
+
+    for (my $i = 10; $i <= 100; $i += 10) {
+        my $f = sprintf ("%.8f", $gcf{$i} / $tot);
+        $res .= "$i=$f:";
+    }
+    $res =~ s/:$//;
+    return $res;
 }
 
 sub checkRevComp {
