@@ -519,7 +519,7 @@ sub loadGenes {
         $gidx{$seq_id}[0] = 0;
         foreach my $reg (@{ $genes{$seq_id} }) {
             my ($ini, $end) = split (/-/, $reg);
-            if ($ini / $binzise > $last) {
+            if ($ini / $binsize > $last) {
                 $last++;
                 $bin++;
                 $gidx{$seq_id}[$bin] = $i;
