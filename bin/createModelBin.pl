@@ -166,11 +166,11 @@ my %files = ();
 loadFiles();
 
 # Configurable parameters
-my $get           = 'wget -c';           # command to fetch files from internet
+my $get           = 'wget -c';      # command to fetch files from internet
    $get          .= ' -q' unless (defined $verbose);
-my $unpack        = 'tar zxf';           # command to unpack the files downloaded
-my $unzip         = 'unzip';             # command to decompress the files downloaded
-my $gunzip        = 'gunzip -c';         # command to decompress the files downloaded
+my $unpack        = 'tar zxf';      # command to unpack the files downloaded
+my $unzip         = 'unzip';        # command to decompress the files downloaded
+my $gunzip        = 'gunzip -c';    # command to decompress the files downloaded
 my $ucsc          = 'http://hgdownload.cse.ucsc.edu/goldenPath'; # UCSC url
 my $ucsc_genome   = "$ucsc/$model/bigZips/"  . $files{$model}{'FAS'};
 my $ucsc_repeat   = "$ucsc/$model/bigZips/"  . $files{$model}{'RMO'};
@@ -260,7 +260,7 @@ sub searchFiles {
 sub getUCSC_gene {
     # Gene models to mask functional regions
     $gene = $files{$model}{'GEN'};
-    die "Sorry, $model don't have annotation registrated\n" unless (defined $gene);
+    die "Sorry, $model don't have gene annotation\n" unless (defined $gene);
 
     if (-e $gene) {
         warn "$gene present, using it\n" if (defined $verbose);
@@ -268,14 +268,14 @@ sub getUCSC_gene {
     else {
         warn "obtaining Gene files from $ucsc\n" if (defined $verbose);
         system ("$get $ucsc_gene");
-        die "cannot find Gene output in $ucsc_gene" unless (-e $gene and -s $gene);
+        die "cannot find gene ann in $ucsc_gene" unless (-e $gene and -s $gene);
     }
 }
 
 sub getUCSC_trf {
     # TRF output is used for simple repeat annotation
     my $target_file = $files{$model}{'TRF'};
-    die "Sorry, $model don't have TRF registrated\n" unless (defined $target_file);
+    die "Sorry, $model don't have TRF\n" unless (defined $target_file);
 
     if (-e "TRF/$target_file") {
         warn "$target_file present, using it\n" if (defined $verbose);
@@ -317,7 +317,7 @@ sub getUCSC_trf {
 sub getUCSC_repeat {
     # RepeatMasker output
     my $target_file = $files{$model}{'RMO'};
-    die "Sorry, $model don't have RepeatMasker registrated\n" unless (defined $target_file);
+    die "Sorry, $model don't have RepeatMasker\n" unless (defined $target_file);
 
     if (-e "RM/$target_file") {
         warn "$target_file present, using it\n" if (defined $verbose);
@@ -329,7 +329,7 @@ sub getUCSC_repeat {
         mkdir 'RM' unless (-e 'RM' and -d 'RM');
         chdir 'RM' or die "cannot move to RM directory\n";
         system ("$get $ucsc_repeat");
-        die "cannot find RepeatMasker output in $ucsc_repeat" unless (-e $target_file);
+        die "cannot find RepeatMasker out in $ucsc_repeat" unless (-e $target_file);
     }
     
     if ($target_file =~ m/tar.gz$/) {
@@ -359,7 +359,7 @@ sub getUCSC_repeat {
 sub getUCSC_fasta {
     # Chromosomal sequences
     my $target_file = $files{$model}{'FAS'};
-    die "Sorry, $model don't have Fasta registrated\n" unless (defined $target_file);
+    die "Sorry, $model don't have fasta\n" unless (defined $target_file);
 
     if (-e "fasta/$target_file") {
         warn "$target_file present, using it\n" if (defined $verbose);
@@ -370,7 +370,7 @@ sub getUCSC_fasta {
         mkdir 'fasta' unless (-e 'fasta' and -d 'fasta');
         chdir 'fasta' or die "cannot move to fasta directory\n";
         system ("$get $ucsc_genome");
-        die "cannot find genomic sequences in $ucsc_genome" unless (-e $target_file);
+        die "cannot find genomic seq in $ucsc_genome" unless (-e $target_file);
     }
     
     if ($target_file =~ m/tar.gz$/) {
@@ -551,7 +551,7 @@ sub loadRegions {
 
 sub profileSeqs {
     # compute Kmer frequencies and GC transitions observed
-    warn "profiling sequences, kmer=$kmer and window=$win\n" if (defined $verbose);
+    warn "profiling sequences, kmer=$kmer, window=$win\n" if (defined $verbose);
     my $bp_slices = 0;
     my @kmer      = createKmer($kmer - 1, @dna);
     my %kmer      = ();
@@ -585,7 +585,7 @@ sub profileSeqs {
 	            my $nbas = $ss =~ tr/ACGT/ACGT/;
 	            my $nrep = $ss =~ tr/acgtRrSs/acgtRrSs/;
 	            my $ntot = $nbas + $nrep;
-	            push (@{ $ebases{$gc} }, int(100 * $nbas / $ntot)) if ($ntot > 0);
+	            push (@{ $ebases{$gc} }, int(100*$nbas/$ntot)) if ($ntot > 0);
 	        }
 	        # Kmer counts
 	        for (my $j = $ini; $j <= $end - $kmer; $j++) {
@@ -614,23 +614,20 @@ sub profileSeqs {
     
     foreach my $gc (@gc) {
 	    print K "#GC=$gc\n";
-	    foreach my $word (@kmer) {
+	    foreach my $w (@kmer) {
 	        my $tot = 0;
 	        foreach my $b (@dna) {
-	            $tot += $kmer{$gc}{"$word$b"} if (defined $kmer{$gc}{"$word$b"});
+	            $tot += $kmer{$gc}{"$w$b"} if (defined $kmer{$gc}{"$w$b"});
 	        }
 	        if ($tot > 0) {
 	            foreach my $b (@dna) {
-	                my $cnt     = 0;
-	                   $cnt     = $kmer{$gc}{"$word$b"} if (defined $kmer{$gc}{"$word$b"});
-	                my $frq     = sprintf ("%.8f", $cnt / $tot);
-	                my $gc_frq  = '-';
-	                   $gc_frq  = sprintf ("%.8f", $cnt / $gc_sum{$gc}) if ($gc_sum{$gc} > 0);
+	                my $cnt    = 0;
+	                $cnt       = $kmer{$gc}{"$w$b"} if (defined $kmer{$gc}{"$w$b"});
+	                my $frq    = sprintf ("%.8f", $cnt / $tot);
+	                my $gc_frq = '-';
+	                $gc_frq    = sprintf ("%.8f", $cnt/$gc_sum{$gc}) if ($gc_sum{$gc} > 0);
 	                
-	                my $tot_frq = '-';
-	                   $tot_frq = sprintf ("%.8f", $cnt / $tot_sum);
-	                   
-	                print K "$word$b\t$frq\t$gc_frq\t$tot_frq\t$cnt\n";
+	                print K "$w$b\t$frq\t$gc_frq\t$cnt\n";
 	            }
 	        }
 	        else {
@@ -716,11 +713,11 @@ sub calcRepDist {
     my $res = undef;
     my %rep = ();
     my $tot = 0;
-    my ($rep, $rid, $rfam, $con, $per, $dir, $div, $ins, $del, $indel, $ini, $end, $nfrg);
+    my ($rep,$rid,$rfam,$con,$per,$dir,$div,$ins,$del,$indel,$ini,$end,$nfrg);
     foreach $rep (@_) {
         $tot++;
         if ($rep =~ m/SIMPLE/) {
-            ($rfam, $con, $dir, $per, $div, $indel) = split (/:/, $rep);
+            ($rfam,$con,$dir,$per,$div,$indel) = split (/:/, $rep);
             $rep{"$rfam:$con"}{'num'}++;
             $rep{"$rfam:$con"}{'dir'}   .= "$dir,";
             $rep{"$rfam:$con"}{'per'}   .= "$per,";
@@ -732,7 +729,7 @@ sub calcRepDist {
             if ($rep =~ m/;/) {
                 my @frg = split (/;/, $rep);
                 my $frg = shift @frg;
-                ($rid, $rfam, $dir, $div, $ins, $del, $ini, $end) = split (/:/, $frg);
+                ($rid,$rfam,$dir,$div,$ins,$del,$ini,$end) = split (/:/, $frg);
                 foreach $frg (@frg) {
                     my ($fdiv, $fins, $fdel, $fini, $fend) = split (/:/, $frg);
                     $div = $fdiv if ($fdiv > $div);
@@ -744,7 +741,7 @@ sub calcRepDist {
                 }
             }
             else {
-                ($rid, $rfam, $dir, $div, $ins, $del, $ini, $end) = split (/:/, $rep);
+                ($rid,$rfam,$dir,$div,$ins,$del,$ini,$end) = split (/:/, $rep);
             }
             my $len = $end - $ini;
             $rep{"$rid:$rfam"}{'num'}++;
@@ -784,10 +781,10 @@ sub calcRepDist {
 sub calcDirDist {
     # define the distribution of direction values, returns: "p(+),p(-)"
     my $dirs = shift @_;
-    my $for = $dirs =~ tr/+/+/;
-    my $rev = $dirs =~ tr/-/-/;
-    my $tot = $rev + $for;
-    my $res = sprintf ("%.6f", $for / $tot) . ',' . sprintf ("%.6f", $rev / $tot);
+    my $for  = $dirs =~ tr/+/+/;
+    my $rev  = $dirs =~ tr/-/-/;
+    my $tot  = $rev + $for;
+    my $res  = sprintf ("%.6f", $for/$tot) . ',' . sprintf ("%.6f", $rev/$tot);
     return $res;
 }
 
@@ -926,7 +923,8 @@ sub profileRM {
     }
     
     foreach my $rid (keys %repdata) {
-        my $gc = getBinGC($repdata{$rid}{'seq_id'}, int(($repdata{$rid}{'end'} - $repdata{$rid}{'ini'})/2));
+        my $pos = int(($repdata{$rid}{'end'} - $repdata{$rid}{'ini'})/2);
+        my $gc  = getBinGC($repdata{$rid}{'seq_id'}, $pos);
         push @{ $repeat{$gc} }, $repdata{$rid}{'label'};
     }
     %repdata = ();
@@ -1015,8 +1013,8 @@ sub writeModelInfo {
     print M "bases=$tot_bases\n";
     print M "intergenic=$tot_good\n";
     print M "undefined=$tot_null\n";
-    print M "num_repeat=$tot_repeat\n"                  unless (defined $no_repeat_table);
-    print M "num_simple=$tot_simple\n"                  unless (defined $no_repeat_table);
+    print M "num_repeat=$tot_repeat\n" unless (defined $no_repeat_table);
+    print M "num_simple=$tot_simple\n" unless (defined $no_repeat_table);
     close M;   
 }
 
@@ -1033,7 +1031,7 @@ sub removeTmp {
     
     my @dirs = qw/fasta RM TRF/;
     
-    unlink ($files{$model}{'GEN'}) unless (defined $keep{ $files{$model}{'GEN'} });
+    unlink ($files{$model}{'GEN'}) unless (defined $keep{$files{$model}{'GEN'}});
     foreach my $dir (@dirs) {
         chdir $dir;
         opendir D, "." or die "cannot open directory $dir\n";
