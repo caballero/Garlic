@@ -637,7 +637,7 @@ sub profileSeqs {
 	            foreach my $b (@dna) {
 	                my $frq = sprintf ("%.8f", $p / 2);
 					   $frq = sprintf ("%.8f", $q / 2) if ($b =~ m/[AT]/);
-	                print K "$word$b\t$frq\t0\t0\t0\n";   
+	                print K "$w$b\t$frq\t0\t0\t0\n";   
 	            }
 	        }
 	    }
