@@ -712,9 +712,68 @@ sub profileRepeats {
 
 sub calcRepDist {
    my $res = undef;
-   foreach my $rep (@_) {
-       
+   my %rep = ();
+   my $tot = 0;
+   my ($rep, $rid, $rfam, $con, $per, $div, $ins, $del, $indel, $ini, $end, $nfrg);
+   foreach $rep (@_) {
+       $tot++;
+       if ($rep =~ m/SIMPLE/) {
+           ($rfam, $con, $per, $div, $indel) = split (/:/, $rep);
+           $rep{"$rfam:$con"}{'num'}++;
+           $rep{"$rfam:$con"}{'per'}   .= "$per,";
+           $rep{"$rfam:$con"}{'div'}   .= "$div,";
+           $rep{"$rfam:$con"}{'indel'} .= "$indel,";
+       }
+       else {
+           $nfrg = 1;
+           if ($rep =~ m/;/) {
+               my @frg = split (/;/, $rep);
+               my $frg = shift @frg;
+               ($rid, $rfam, $div, $ins, $del, $ini, $end) = split (/:/, $frg);
+               foreach $frg (@frg) {
+                   my ($fdiv, $fins, $fdel, $fini, $fend) = split (/:/, $frg);
+                   $div = $fdiv if ($fdiv > $div);
+                   $ins = $fins if ($fins > $ins);
+                   $del = $fdel if ($fdel > $del);
+                   $ini = $fini if ($fini < $ini);
+                   $end = $fend if ($fend > $end);
+                   $nfrg++;
+               }
+           }
+           else {
+               ($rid, $rfam, $div, $ins, $del, $ini, $end) = split (/:/, $rep);
+           }
+           my $len = $end - $ini;
+           $rep{"$rid:$rfam"}{'num'}++;
+           $rep{"$rid:$rfam"}{'div'} .= "$div,";
+           $rep{"$rid:$rfam"}{'ins'} .= "$ins,";
+           $rep{"$rid:$rfam"}{'del'} .= "$del,";
+           $rep{"$rid:$rfam"}{'len'} .= "$len,";
+           $rep{"$rid:$rfam"}{'frg'} .= "$nfrg,";
+       }
    }
+   
+   foreach $rep (keys %rep) {
+       my $freq = sprintf ("%.8f", $rep{$rep}{'num'} / $tot);
+       my $lab  = '';
+       my @feat = ();
+       if ($rep =~ m/SIMPLE/) {
+           @feat = qw/per div indel/;
+       }
+       else {
+           @feat = qw/div ins del len frg/;
+       }
+       
+       foreach my $feat (@feat) {
+           my $data = $rep{$rep}{$feat};
+              $data =~ s/,$//;
+           my @data = split (/,/, $data);
+              @data = sort {$a<=>$b} @data;
+              $lab .= "$data[0]-$data[-1]:";
+       }
+       $res .= "$rep:$freq:$lab\n";
+   }
+   
    return $res;
 }
 
