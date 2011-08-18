@@ -714,22 +714,23 @@ sub calcRepDist {
    my $res = undef;
    my %rep = ();
    my $tot = 0;
-   my ($rep, $rid, $rfam, $con, $per, $div, $ins, $del, $indel, $ini, $end, $nfrg);
+   my ($rep, $rid, $rfam, $con, $per, $dir, $div, $ins, $del, $indel, $ini, $end, $nfrg);
    foreach $rep (@_) {
        $tot++;
        if ($rep =~ m/SIMPLE/) {
-           ($rfam, $con, $per, $div, $indel) = split (/:/, $rep);
+           ($rfam, $con, $dir, $per, $div, $indel) = split (/:/, $rep);
            $rep{"$rfam:$con"}{'num'}++;
+           $rep{"$rfam:$con"}{'dir'}   .= "$dir,";
            $rep{"$rfam:$con"}{'per'}   .= "$per,";
            $rep{"$rfam:$con"}{'div'}   .= "$div,";
            $rep{"$rfam:$con"}{'indel'} .= "$indel,";
        }
-       else {
+       else { # interspersed repeat
            $nfrg = 1;
            if ($rep =~ m/;/) {
                my @frg = split (/;/, $rep);
                my $frg = shift @frg;
-               ($rid, $rfam, $div, $ins, $del, $ini, $end) = split (/:/, $frg);
+               ($rid, $rfam, $dir, $div, $ins, $del, $ini, $end) = split (/:/, $frg);
                foreach $frg (@frg) {
                    my ($fdiv, $fins, $fdel, $fini, $fend) = split (/:/, $frg);
                    $div = $fdiv if ($fdiv > $div);
@@ -741,10 +742,11 @@ sub calcRepDist {
                }
            }
            else {
-               ($rid, $rfam, $div, $ins, $del, $ini, $end) = split (/:/, $rep);
+               ($rid, $rfam, $dir, $div, $ins, $del, $ini, $end) = split (/:/, $rep);
            }
            my $len = $end - $ini;
            $rep{"$rid:$rfam"}{'num'}++;
+           $rep{"$rid:$rfam"}{'dir'} .= "$dir,";
            $rep{"$rid:$rfam"}{'div'} .= "$div,";
            $rep{"$rid:$rfam"}{'ins'} .= "$ins,";
            $rep{"$rid:$rfam"}{'del'} .= "$del,";
@@ -753,10 +755,13 @@ sub calcRepDist {
        }
    }
    
+   # create the label with data distributions
    foreach $rep (keys %rep) {
        my $freq = sprintf ("%.8f", $rep{$rep}{'num'} / $tot);
        my $lab  = '';
        my @feat = ();
+       $rep{$rep}{'dir'} =~ s/,$//;
+       $lab    .= calcDirDist($rep{$rep}{'dir'});
        if ($rep =~ m/SIMPLE/) {
            @feat = qw/per div indel/;
        }
@@ -765,16 +770,43 @@ sub calcRepDist {
        }
        
        foreach my $feat (@feat) {
-           my $data = $rep{$rep}{$feat};
-              $data =~ s/,$//;
-           my @data = split (/,/, $data);
-              @data = sort {$a<=>$b} @data;
-              $lab .= "$data[0]-$data[-1]:";
+           $rep{$rep}{$feat} =~ s/,$//;
+           $lab .= ':' . calcBinDist(split (/,/, $rep{$rep}{$feat}));
        }
        $res .= "$rep:$freq:$lab\n";
    }
    
    return $res;
+}
+
+sub calcDirDist {
+    my $dirs = shift @_;
+    my $for = $dirs =~ tr/+/+/;
+    my $rev = $dirs =~ tr/-/-/;
+    my $tot = $rev + $for;
+    my $res = sprintf ("%.6f", $for / $tot) . ',' . sprintf ("%.6f", $rev / $tot);
+    return $res;
+}
+
+sub calcBinDist {
+    my $res  = undef;
+    my @data = sort {$a<=>$b} @_;
+    my ($q1, $q2, $q3) = calcQuartiles(@data);
+    my ($s1, $s2, $s3, $s4);
+    my $tot = 0;
+    foreach my $x (@_) {
+        $tot++;
+        if    ($x < $q1) { $s1++; }
+        elsif ($x < $q2) { $s2++; }
+        elsif ($x < $q3) { $s3++; }
+        else             { $s4++; }
+    }
+    $s1  = sprintf ("%.6f", $s1 / $tot);
+    $s2  = sprintf ("%.6f", $s2 / $tot);
+    $s3  = sprintf ("%.6f", $s3 / $tot);
+    $s4  = sprintf ("%.6f", $s4 / $tot);
+    $res = "$data[0],$q1=$s1,$q2=$s2,$q3=$s3,$data[-1]=$s4";
+    return $res;
 }
 
 sub profileTRF {
@@ -799,7 +831,13 @@ sub profileTRF {
             my $div       = 100 - $line[7];
             my $indel     = $line[8];
             my $consensus = $line[-1];
-            my $label     = "SIMPLE:$consensus:$period:$div:$indel";
+            my $dir       = '+';
+            my $alt_con   = checkRevComp($consensus);
+            if ($consensus ne $alt_con) {
+                $consensus = $alt_con;
+                $dir       = '-';
+            }
+            my $label     = "SIMPLE:$consensus:$dir:$period:$div:$indel";
             next unless (defined $seq{$seq_id});
             next if (checkGene($seq_id, $ini, $end));
             
