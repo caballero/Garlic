@@ -632,12 +632,12 @@ sub profileSeqs {
 	        }
 	        else {
 				my ($g, $c) = split (/-/, $gc);
-				my $p = ($c - 5) / 100;
+				my $p = $c / 100;
 				my $q = 1 - $p;
 	            foreach my $b (@dna) {
 	                my $frq = sprintf ("%.8f", $p / 2);
 					   $frq = sprintf ("%.8f", $q / 2) if ($b =~ m/[AT]/);
-	                print K "$w$b\t$frq\t0\t0\t0\n";   
+	                print K "$w$b\t$frq\t0\t0\n";   
 	            }
 	        }
 	    }
