@@ -711,75 +711,77 @@ sub profileRepeats {
 }
 
 sub calcRepDist {
-   my $res = undef;
-   my %rep = ();
-   my $tot = 0;
-   my ($rep, $rid, $rfam, $con, $per, $dir, $div, $ins, $del, $indel, $ini, $end, $nfrg);
-   foreach $rep (@_) {
-       $tot++;
-       if ($rep =~ m/SIMPLE/) {
-           ($rfam, $con, $dir, $per, $div, $indel) = split (/:/, $rep);
-           $rep{"$rfam:$con"}{'num'}++;
-           $rep{"$rfam:$con"}{'dir'}   .= "$dir,";
-           $rep{"$rfam:$con"}{'per'}   .= "$per,";
-           $rep{"$rfam:$con"}{'div'}   .= "$div,";
-           $rep{"$rfam:$con"}{'indel'} .= "$indel,";
-       }
-       else { # interspersed repeat
-           $nfrg = 1;
-           if ($rep =~ m/;/) {
-               my @frg = split (/;/, $rep);
-               my $frg = shift @frg;
-               ($rid, $rfam, $dir, $div, $ins, $del, $ini, $end) = split (/:/, $frg);
-               foreach $frg (@frg) {
-                   my ($fdiv, $fins, $fdel, $fini, $fend) = split (/:/, $frg);
-                   $div = $fdiv if ($fdiv > $div);
-                   $ins = $fins if ($fins > $ins);
-                   $del = $fdel if ($fdel > $del);
-                   $ini = $fini if ($fini < $ini);
-                   $end = $fend if ($fend > $end);
-                   $nfrg++;
-               }
-           }
-           else {
-               ($rid, $rfam, $dir, $div, $ins, $del, $ini, $end) = split (/:/, $rep);
-           }
-           my $len = $end - $ini;
-           $rep{"$rid:$rfam"}{'num'}++;
-           $rep{"$rid:$rfam"}{'dir'} .= "$dir,";
-           $rep{"$rid:$rfam"}{'div'} .= "$div,";
-           $rep{"$rid:$rfam"}{'ins'} .= "$ins,";
-           $rep{"$rid:$rfam"}{'del'} .= "$del,";
-           $rep{"$rid:$rfam"}{'len'} .= "$len,";
-           $rep{"$rid:$rfam"}{'frg'} .= "$nfrg,";
-       }
-   }
+    # parse the selected repeats, returns the processed list 
+    my $res = undef;
+    my %rep = ();
+    my $tot = 0;
+    my ($rep, $rid, $rfam, $con, $per, $dir, $div, $ins, $del, $indel, $ini, $end, $nfrg);
+    foreach $rep (@_) {
+        $tot++;
+        if ($rep =~ m/SIMPLE/) {
+            ($rfam, $con, $dir, $per, $div, $indel) = split (/:/, $rep);
+            $rep{"$rfam:$con"}{'num'}++;
+            $rep{"$rfam:$con"}{'dir'}   .= "$dir,";
+            $rep{"$rfam:$con"}{'per'}   .= "$per,";
+            $rep{"$rfam:$con"}{'div'}   .= "$div,";
+            $rep{"$rfam:$con"}{'indel'} .= "$indel,";
+        }
+        else { # interspersed repeat
+            $nfrg = 1;
+            if ($rep =~ m/;/) {
+                my @frg = split (/;/, $rep);
+                my $frg = shift @frg;
+                ($rid, $rfam, $dir, $div, $ins, $del, $ini, $end) = split (/:/, $frg);
+                foreach $frg (@frg) {
+                    my ($fdiv, $fins, $fdel, $fini, $fend) = split (/:/, $frg);
+                    $div = $fdiv if ($fdiv > $div);
+                    $ins = $fins if ($fins > $ins);
+                    $del = $fdel if ($fdel > $del);
+                    $ini = $fini if ($fini < $ini);
+                    $end = $fend if ($fend > $end);
+                    $nfrg++;
+                }
+            }
+            else {
+                ($rid, $rfam, $dir, $div, $ins, $del, $ini, $end) = split (/:/, $rep);
+            }
+            my $len = $end - $ini;
+            $rep{"$rid:$rfam"}{'num'}++;
+            $rep{"$rid:$rfam"}{'dir'} .= "$dir,";
+            $rep{"$rid:$rfam"}{'div'} .= "$div,";
+            $rep{"$rid:$rfam"}{'ins'} .= "$ins,";
+            $rep{"$rid:$rfam"}{'del'} .= "$del,";
+            $rep{"$rid:$rfam"}{'len'} .= "$len,";
+            $rep{"$rid:$rfam"}{'frg'} .= "$nfrg,";
+        }
+    }
    
-   # create the label with data distributions
-   foreach $rep (keys %rep) {
-       my $freq = sprintf ("%.8f", $rep{$rep}{'num'} / $tot);
-       my $lab  = '';
-       my @feat = ();
-       $rep{$rep}{'dir'} =~ s/,$//;
-       $lab    .= calcDirDist($rep{$rep}{'dir'});
-       if ($rep =~ m/SIMPLE/) {
-           @feat = qw/per div indel/;
-       }
-       else {
-           @feat = qw/div ins del len frg/;
-       }
+    # create the label with data distributions
+    foreach $rep (keys %rep) {
+        my $freq = sprintf ("%.8f", $rep{$rep}{'num'} / $tot);
+        my $lab  = '';
+        my @feat = ();
+        $rep{$rep}{'dir'} =~ s/,$//;
+        $lab    .= calcDirDist($rep{$rep}{'dir'});
+        if ($rep =~ m/SIMPLE/) {
+            @feat = qw/per div indel/;
+        }
+        else {
+            @feat = qw/div ins del len frg/;
+        }
        
-       foreach my $feat (@feat) {
-           $rep{$rep}{$feat} =~ s/,$//;
-           $lab .= ':' . calcBinDist(split (/,/, $rep{$rep}{$feat}));
-       }
-       $res .= "$rep:$freq:$lab\n";
-   }
+        foreach my $feat (@feat) {
+            $rep{$rep}{$feat} =~ s/,$//;
+            $lab .= ':' . calcBinDist(split (/,/, $rep{$rep}{$feat}));
+        }
+        $res .= "$rep:$freq:$lab\n";
+    }
    
-   return $res;
+    return $res;
 }
 
 sub calcDirDist {
+    # define the distribution of direction values, returns: "p(+),p(-)"
     my $dirs = shift @_;
     my $for = $dirs =~ tr/+/+/;
     my $rev = $dirs =~ tr/-/-/;
@@ -789,6 +791,7 @@ sub calcDirDist {
 }
 
 sub calcBinDist {
+    # define the distribution of values, returns: "min,q1=f1,q2=f2,q3=f3,max=f4"
     my $res  = undef;
     my @data = sort {$a<=>$b} @_;
     my ($q1, $q2, $q3) = calcQuartiles(@data);
@@ -807,6 +810,14 @@ sub calcBinDist {
     $s4  = sprintf ("%.6f", $s4 / $tot);
     $res = "$data[0],$q1=$s1,$q2=$s2,$q3=$s3,$data[-1]=$s4";
     return $res;
+}
+
+sub calcQuartiles {
+    # calculate the quartiles, returns: Q1, Q2, Q3
+    my $p2 = int ($#_ / 2);
+    my $p1 = int ($p2 / 2);
+    my $p3 = int ($p2 / 2) + $p2;
+    return ($_[$p1], $_[$p2], $_[$p3]);
 }
 
 sub profileTRF {
@@ -1034,6 +1045,7 @@ sub removeTmp {
 }
 
 sub calcGC {
+    # calcular GC content (not %)
     my $seq = shift @_;
     $seq =~ s/[^ACGTacgt]//;
     my $len = length $seq;
@@ -1058,6 +1070,7 @@ sub classGC {
 }
 
 sub calcBinGC {
+    # compute the GC content by Bin
     warn "computing GC bins\n" if (defined $verbose);
 	while ( ($seq_id, $seq) = each %seq) {
 		my $len  = length $seq;
@@ -1094,6 +1107,7 @@ sub calcBinGC {
 }
 
 sub getBinGC {
+    # returns the GC based on precomputed tables
 	my $id  = shift @_;
 	my $pos = shift @_;
 	my $gc  = $bingc{$id}[int($pos / $win)];
@@ -1101,6 +1115,7 @@ sub getBinGC {
 }
 
 sub calcGCdist {
+    # compute the dsitribution of GC contents 
     my $res = undef;
     my $tot = 0;
     my %gcf = ();
@@ -1122,7 +1137,7 @@ sub calcGCdist {
     }
 
     for (my $i = 10; $i <= 100; $i += 10) {
-        my $f = sprintf ("%.8f", $gcf{$i} / $tot);
+        my $f = sprintf ("%.6f", $gcf{$i} / $tot);
         $res .= "$i=$f:";
     }
     $res =~ s/:$//;
@@ -1130,6 +1145,7 @@ sub calcGCdist {
 }
 
 sub checkRevComp {
+    # compare a sequence with the reverse/complement, returns the first in alphabetic order
     my $w =  shift @_;
     my $r =  reverse $w;
        $r =~ tr/ACGTacgt/TGCAtgca/;
@@ -1140,6 +1156,10 @@ sub checkRevComp {
 }
 
 sub loadFiles {
+    # UCSC GB files, hash structure is: $files{MODEL}{TYPE} = FILE
+    # TYPE can be FAS=Fasta sequences, RMO=RepeatMasker out, 
+    #             TRF=Tandem Repeat Masker out, GEN=Gene annotation
+    #
     # Human
     $files{'hg19'   }{'FAS'} = 'chromFa.tar.gz';
     $files{'hg19'   }{'RMO'} = 'chromOut.tar.gz';
