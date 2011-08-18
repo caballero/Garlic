@@ -398,6 +398,7 @@ sub getUCSC_fasta {
 }
 
 sub defineFH {
+    # define how to read a file
 	my $fi = shift @_;
 	my $fh = $fi;
     $fh = "gunzip  -c $fi | " if ($fi =~ m/\.gz$/);
@@ -932,6 +933,7 @@ sub profileRM {
 }
 
 sub checkGene {
+    # verify is a region is inside gene annotation
     my ($c, $i, $e) = @_;
     my $res = undef;
     my $b = int($i / $binsize);
@@ -1019,6 +1021,7 @@ sub writeModelInfo {
 }
 
 sub removeTmp {
+    # delete extracted/downloaded files
     warn "removing temporary files\n" if (defined $verbose);
     my %keep = ();
     if (defined $keep_dw_files) {
@@ -1145,7 +1148,8 @@ sub calcGCdist {
 }
 
 sub checkRevComp {
-    # compare a sequence with the reverse/complement, returns the first in alphabetic order
+    # compare a sequence with the reverse/complement, 
+    # returns the first in alphabetic order
     my $w =  shift @_;
     my $r =  reverse $w;
        $r =~ tr/ACGTacgt/TGCAtgca/;
