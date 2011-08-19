@@ -605,9 +605,9 @@ sub profileSeqs {
 	        }
 	        # Kmer counts
 	        for (my $j = $ini; $j <= $end - $kmer; $j++) {
-	            my $word = substr ($seq, $j, $kmer);
+	            my $word  = substr ($seq, $j, $kmer);
 	            next if ($word =~ m/[^ACGT]/);
-	            $word = checkRevComp($word) if (defined $revcomp_kmer);
+	            $word     = checkRevComp($word) if (defined $revcomp_kmer);
 	            my $bingc = getBinGC($seq_id, $j);
 	            $kmer{$bingc}{$word}++;
 	        }
@@ -800,7 +800,7 @@ sub calcDirDist {
     my $for  = $dirs =~ tr/+/+/;
     my $rev  = $dirs =~ tr/-/-/;
     my $tot  = $rev + $for;
-    my $res  = sprintf ("%.6f", $for / $tot);
+    my $res  = sprintf ("%.2f", $for / $tot);
     return $res;
 }
 
@@ -1129,7 +1129,7 @@ sub calcGCdist {
     my $tot  = 0;
     my @data = sort {$a<=>$b} @_;
     # this part is ommited
-    my ($q1, $q2, $q3) = calcQuartiles(@_);
+    my ($q1, $q2, $q3) = calcQuartiles(@data);
     my $s1   = 0;
     my $s2   = 0;
     my $s3   = 0;
