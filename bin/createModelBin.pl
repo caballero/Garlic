@@ -589,7 +589,7 @@ sub profileSeqs {
     my ($ini, $end, $reg);
     loadRegions() if (defined $region);
 
-    foreach $seq_id (keys %seq) {
+    while ( ($seq_id, $seq) = each %seq) {
 	    warn "  analyzing sequence $seq_id\n" if (defined $verbose);
 	    my $last_gc = undef;
 	    my $len     = length $seq;
