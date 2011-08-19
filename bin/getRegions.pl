@@ -33,7 +33,7 @@ use strict;
 use warnings;
 use List::Util qw/shuffle/;
 
-my $file = 'hg19.100kb.intergenic';
+my $file = 'hg19.lt100kb.intergenic';
 my $num  = 99;
 my $dir  = './fasta';
 my $len  = 1e5;
@@ -78,8 +78,8 @@ for (my $i = 0; $i <= $num; $i++) {
     my $x = $i;
     $x = "0$i" if ($i < 10);
     warn "    intergenic_$x\n";
-    open  F, ">intergenic/intergenic_$x.fa" or die "cannot open intergenic_$x.fa\n";
-    print F ">intergenic_$x $chr:$ini-$end\n";
+    open  F, ">real$x.fa" or die "cannot open real$x.fa\n";
+    print F ">real$x $chr:$ini-$end\n";
     while ($seq) {
         print F substr ($seq, 0, 70), "\n";
         substr ($seq, 0, 70) = '';
