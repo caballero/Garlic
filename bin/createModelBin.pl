@@ -42,6 +42,7 @@ OPTIONS
     --keep_dw_files    Keep downloaded files (overrules --rm_tmp)
     --gc_post_mask     Compute GC bins after masking (default is before)
     --revcomp_kmer     Count kmers in reverse complement chain
+    --write_mask_seq   Write the masked sequence
 
   * File can be compressed (.gz/.bz2), if you are passing more than one file 
     separate them with ',' Example: "-f chr1.fa,chr2.fa,chr3.fa"
@@ -74,7 +75,7 @@ Alternatively, you can use your own sequences and annotations to create a model:
 
 In this case you must provide the sequences in a Fasta file, the RepeatMasker 
 output, the Tandem Repeat Finder output and the annotated genes in a tabular 
-text file similar to the knownGenes.txt format.
+text file similar to the UCSC ensGenes.txt format (not knownGene.txt).
   
 =head1 AUTHOR
 
