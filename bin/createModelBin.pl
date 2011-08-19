@@ -31,6 +31,7 @@ OPTIONS
     -a --analyze       Analyze these regions         FileName*
     -e --exclude       Exclude these sequences       Pattern**
     
+    --mask_exon        Mask exons (default is whole genes)
     --no_mask_gene     Don't mask genes
     --no_mask_repeat   Don't mask repeats
     --no_mask_trf      Don't mask simple repeats
@@ -129,6 +130,7 @@ my $write_mask_seq  =  undef;      # Write fasta flag
 my $keep_dw_files   =  undef;      # Keep downloaded files
 my $gc_post_mask    =  undef;      # Compute GC bins before masking
 my $revcomp_kmer    =  undef;      # Count kmers in the reverse-complement chain
+my $mask_exon       =  undef;      # Mask exonic regions (default is whole gene)
 
 # Fetch options
 GetOptions(
@@ -154,11 +156,12 @@ GetOptions(
     'write_mask_seq'     => \$write_mask_seq,
     'keep_dw_files'      => \$keep_dw_files,
     'gc_post_mask'       => \$gc_post_mask,
-    'revcomp_kmer'       => \$revcomp_kmer
+    'revcomp_kmer'       => \$revcomp_kmer,
+    'mask_exon'          => \$mask_exon
 ) or pod2usage(-verbose => 2);
 
 # Call help if required
-pod2usage(-verbose => 2) if (defined $help);
+pod2usage(-verbose => 2)     if (defined $help);
 pod2usage(-verbose => 2) unless (defined $model);
 
 # UCSC model files
@@ -227,7 +230,8 @@ readFasta();
 calcBinGC()  unless (defined $gc_post_mask);
 maskRepeat() unless (defined $no_mask_repeat);
 maskTRF()    unless (defined $no_mask_trf);
-maskGene()   unless (defined $no_mask_gene);
+if (defined $mask_exon) { maskExon(); }
+else { maskGene() unless (defined $no_mask_gene); }
 calcBinGC()  if     (defined $gc_post_mask);
 writeMaskSeq("$model.masked.fa") if (defined $write_mask_seq);
 
@@ -496,6 +500,29 @@ sub maskGene {
     }
 }
 
+sub maskExon {
+    # mask exon sequences with gene annotation
+    warn "masking exons\n" if (defined $verbose);
+    foreach my $file (@gene) {
+        my $fileh = defineFH($file);
+        open FH, "$fileh" or die "cannot open $file\n";
+        while (<FH>) {
+            my @arr = split (/\t/, $_);
+            $seq_id = $arr[2];
+            next unless (defined $seq{$seq_id});
+            $arr[ 9] =~ s/,$//;
+            $arr[10] =~ s/,$//;
+            my @ini = split (/,/, $arr[ 9]);
+            my @end = split (/,/, $arr[10]);
+            for (my $i = 0; $i <= $#ini; $i++) {
+                $len = $end[$i] - $ini[$i] - 1;
+                substr ($seq{$seq_id}, $ini[$i], $len) = 'X' x $len;
+            }
+        }
+        close FH;
+    }
+}
+
 sub loadGenes {
     # load gene annotation
     warn "reading coordinates for genes\n" if (defined $verbose);
@@ -701,7 +728,7 @@ sub profileRepeats {
     warn "writing repeats info in \"$file\"\n";
     open R, ">$file" or die "cannot open $file\n";
     foreach my $gc (@gc) {
-        my $dist = calcGCdist(@{ $ebases{$gc} });
+        my $dist = calcBinDist(@{ $ebases{$gc} });
         my $rep  = calcRepDist(@{ $repeat{$gc} });
         print R "#GC=$gc\t$dist\n$rep\n";
     }
