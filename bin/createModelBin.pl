@@ -1127,7 +1127,7 @@ sub calcGCdist {
     # compute the dsitribution of GC contents 
     my $res  = undef;
     my $tot  = 0;
-    my @data = @_;
+    my @data = sort {$a<=>$b} @_;
     # this part is ommited
     my ($q1, $q2, $q3) = calcQuartiles(@_);
     my $s1   = 0;
