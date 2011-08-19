@@ -717,7 +717,7 @@ sub profileRepeats {
     warn "writing repeats info in \"$file\"\n";
     open R, ">$file" or die "cannot open $file\n";
     foreach my $gc (@gc) {
-        my $dist = calcBinDist(@{ $ebases{$gc} });
+        my $dist = calcGCdist(@{ $ebases{$gc} });
         my $rep  = calcRepDist(@{ $repeat{$gc} });
         print R "#GC=$gc\t$dist\n$rep\n";
     }
@@ -800,34 +800,16 @@ sub calcDirDist {
     my $for  = $dirs =~ tr/+/+/;
     my $rev  = $dirs =~ tr/-/-/;
     my $tot  = $rev + $for;
-    my $res  = sprintf ("%.6f", $for/$tot) . ',' . sprintf ("%.6f", $rev/$tot);
+    my $res  = sprintf ("%.6f", $for / $tot);
     return $res;
 }
 
 sub calcBinDist {
-    # define the distribution of values, returns: "min,q1=f1,q2=f2,q3=f3,max=f4"
+    # define the distribution of values, returns: "min-max"
     my $res  = undef;
     my @data = sort {$a<=>$b} @_;
-    my ($q1, $q2, $q3) = calcQuartiles(@data);
-    my $s1   = 0;
-    my $s2   = 0;
-    my $s3   = 0;
-    my $s4   = 0;
-    my $tot  = 0;
-    foreach my $x (@_) {
-        $tot++;
-        if    ($x < $q1) { $s1++; }
-        elsif ($x < $q2) { $s2++; }
-        elsif ($x < $q3) { $s3++; }
-        else             { $s4++; }
-    }
-    return 'NA' if ($tot < 1);
-    $s1  = sprintf ("%.6f", $s1 / $tot);
-    $s2  = sprintf ("%.6f", $s2 / $tot);
-    $s3  = sprintf ("%.6f", $s3 / $tot);
-    $s4  = sprintf ("%.6f", $s4 / $tot);
-    $res = "$data[0],$q1=$s1,$q2=$s2,$q3=$s3,$data[-1]=$s4";
-    return $res;
+    $res = "$data[0]-$data[-1]";
+    return $res
 }
 
 sub calcQuartiles {
@@ -1143,31 +1125,29 @@ sub getBinGC {
 
 sub calcGCdist {
     # compute the dsitribution of GC contents 
-    my $res = undef;
-    my $tot = 0;
-    my %gcf = ();
-    for (my $i = 10; $i <= 100; $i += 10) { $gcf{$i} = 0; }
-    
+    my $res  = undef;
+    my $tot  = 0;
+    my @data = @_;
+    # this part is ommited
+    my ($q1, $q2, $q3) = calcQuartiles(@_);
+    my $s1   = 0;
+    my $s2   = 0;
+    my $s3   = 0;
+    my $s4   = 0;
+    my $tot  = 0;
     foreach my $x (@_) {
-        next if ($x eq 'NA');
         $tot++;
-        if    ($x < 10) { $gcf{10}++; }
-        elsif ($x < 20) { $gcf{20}++; }
-        elsif ($x < 30) { $gcf{30}++; }
-        elsif ($x < 40) { $gcf{40}++; }
-        elsif ($x < 50) { $gcf{50}++; }
-        elsif ($x < 60) { $gcf{60}++; }
-        elsif ($x < 70) { $gcf{70}++; }
-        elsif ($x < 80) { $gcf{80}++; }
-        elsif ($x < 90) { $gcf{90}++; }
-        else            { $gcf{100}++; }
+        if    ($x < $q1) { $s1++; }
+        elsif ($x < $q2) { $s2++; }
+        elsif ($x < $q3) { $s3++; }
+        else             { $s4++; }
     }
-
-    for (my $i = 10; $i <= 100; $i += 10) {
-        my $f = sprintf ("%.6f", $gcf{$i} / $tot);
-        $res .= "$i=$f:";
-    }
-    $res =~ s/:$//;
+    return 'NA' if ($tot < 1);
+    $s1  = sprintf ("%.6f", $s1 / $tot);
+    $s2  = sprintf ("%.6f", $s2 / $tot);
+    $s3  = sprintf ("%.6f", $s3 / $tot);
+    $s4  = sprintf ("%.6f", $s4 / $tot);
+    $res = "$data[0],$q1=$s1,$q2=$s2,$q3=$s3,$data[-1]=$s4";
     return $res;
 }
 
