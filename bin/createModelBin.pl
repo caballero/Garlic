@@ -809,8 +809,11 @@ sub calcBinDist {
     my $res  = undef;
     my @data = sort {$a<=>$b} @_;
     my ($q1, $q2, $q3) = calcQuartiles(@data);
-    my ($s1, $s2, $s3, $s4);
-    my $tot = 0;
+    my $s1   = 0;
+    my $s2   = 0;
+    my $s3   = 0;
+    my $s4   = 0;
+    my $tot  = 0;
     foreach my $x (@_) {
         $tot++;
         if    ($x < $q1) { $s1++; }
