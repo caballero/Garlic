@@ -32,6 +32,7 @@ OPTIONS
     -e --exclude       Exclude these sequences       Pattern**
     
     --mask_exon        Mask exons (default is whole genes)
+    --no_intron_filter Don't filter intronic sequences
     --no_mask_gene     Don't mask genes
     --no_mask_repeat   Don't mask repeats
     --no_mask_trf      Don't mask simple repeats
@@ -131,7 +132,7 @@ my $keep_dw_files   =  undef;      # Keep downloaded files
 my $gc_post_mask    =  undef;      # Compute GC bins before masking
 my $revcomp_kmer    =  undef;      # Count kmers in the reverse-complement chain
 my $mask_exon       =  undef;      # Mask exonic regions (default is whole gene)
-
+my $no_intron       =  undef;      # No intron filter flag  
 # Fetch options
 GetOptions(
     'h|help'             => \$help,
@@ -157,7 +158,8 @@ GetOptions(
     'keep_dw_files'      => \$keep_dw_files,
     'gc_post_mask'       => \$gc_post_mask,
     'revcomp_kmer'       => \$revcomp_kmer,
-    'mask_exon'          => \$mask_exon
+    'mask_exon'          => \$mask_exon,
+    'no_intron_filter'   => \$no_intron
 ) or pod2usage(-verbose => 2);
 
 # Call help if required
@@ -875,7 +877,9 @@ sub profileTRF {
             }
             my $label     = "SIMPLE:$consensus:$dir:$period:$div:$indel";
             next unless (defined $seq{$seq_id});
-            next if (checkGene($seq_id, $ini, $end));
+            unless (defined $no_intron) {
+                next if (checkGene($seq_id, $ini, $end));
+            }
             
             # Check for overlaping repeats
             if ($ini >= $last_ini and $ini <= $last_end) {
@@ -932,7 +936,10 @@ sub profileRM {
             }
             my $label     = "$type:$fam:$dir:$div:$ins:$del:$rini:$rend";
             next unless (defined $seq{$seq_id});
-            next if (checkGene($seq_id, $ini, $end));
+            
+            unless (defined $no_intron) {
+                next if (checkGene($seq_id, $ini, $end));
+            }
                 
             if (defined $repdata{$rid}) {
                 $repdata{$rid}{'label'} .= ";$div:$ins:$del:$rini:$rend";
