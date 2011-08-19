@@ -818,6 +818,7 @@ sub calcBinDist {
         elsif ($x < $q3) { $s3++; }
         else             { $s4++; }
     }
+    return 'NA' if ($tot < 1);
     $s1  = sprintf ("%.6f", $s1 / $tot);
     $s2  = sprintf ("%.6f", $s2 / $tot);
     $s3  = sprintf ("%.6f", $s3 / $tot);
