@@ -1134,7 +1134,6 @@ sub calcGCdist {
     my $s2   = 0;
     my $s3   = 0;
     my $s4   = 0;
-    my $tot  = 0;
     foreach my $x (@_) {
         $tot++;
         if    ($x < $q1) { $s1++; }
