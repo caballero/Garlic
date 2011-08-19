@@ -193,7 +193,6 @@ my %bingc    = (); # index to search the regional GC
 my %seq      = (); # complete sequences
 my %repeat   = (); # repeats information
 my %genes    = (); # gene coordinates
-my %gidx     = (); # index to search genes by regions
 my %region   = (); # regions pre-selected
 my %ebases   = (); # effective bases per GC bin
 my @dna      = qw/A C G T/;
@@ -545,19 +544,6 @@ sub loadGenes {
     
     foreach $seq_id (keys %genes) {
         @{ $genes{$seq_id} }  = sort {$a<=>$b} @{ $genes{$seq_id} };
-        my $i    = 0;
-        my $bin  = 0;
-        my $last = 1;
-        $gidx{$seq_id}[0] = 0;
-        foreach my $reg (@{ $genes{$seq_id} }) {
-            my ($ini, $end) = split (/-/, $reg);
-            if ($ini / $binsize > $last) {
-                $last++;
-                $bin++;
-                $gidx{$seq_id}[$bin] = $i;
-            }
-            $i++;
-        }
     }
 }
 
@@ -590,7 +576,7 @@ sub profileSeqs {
     loadRegions() if (defined $region);
 
     while ( ($seq_id, $seq) = each %seq) {
-	    warn "  analyzing sequence $seq_id\n" if (defined $verbose);
+	    warn "    analyzing sequence $seq_id\n" if (defined $verbose);
 	    my $last_gc = undef;
 	    my $len     = length $seq;
 	    my @slices  = ();
@@ -871,13 +857,14 @@ sub profileTRF {
             my $indel     = $line[8];
             my $consensus = $line[-1];
             my $dir       = '+';
+            next unless (defined $seq{$seq_id});
+
             my $alt_con   = checkRevComp($consensus);
             if ($consensus ne $alt_con) {
                 $consensus = $alt_con;
                 $dir       = '-';
             }
             my $label     = "SIMPLE:$consensus:$dir:$period:$div:$indel";
-            next unless (defined $seq{$seq_id});
             unless (defined $no_intron) {
                 next if (checkGene($seq_id, $ini, $end));
             }
@@ -929,6 +916,8 @@ sub profileRM {
             my $fam       = $line[10];
             my $rini      = $line[11];
             my $rend      = $line[12];
+            next unless (defined $seq{$seq_id});
+
             my $rid       = "$seq_id:$fam:$line[-1]";
             if ($dir eq 'C') {
                 $rini = $line[13];
@@ -936,7 +925,6 @@ sub profileRM {
                 $dir  = '-';
             }
             my $label     = "$type:$fam:$dir:$div:$ins:$del:$rini:$rend";
-            next unless (defined $seq{$seq_id});
             
             unless (defined $no_intron) {
                 next if (checkGene($seq_id, $ini, $end));
@@ -969,9 +957,8 @@ sub checkGene {
     # verify is a region is inside gene annotation
     my ($c, $i, $e) = @_;
     my $res = undef;
-    my $b = int($i / $binsize);
     my @genes = @{ $genes{$c} };
-    for (my $j = $b; $j<= $#genes; $j++) {
+    for (my $j = 0; $j<= $#genes; $j++) {
         my ($gi, $ge) = split (/-/, $genes[$j]);
         if ($i >= $gi and $e <= $ge) {
             $res = 1;
