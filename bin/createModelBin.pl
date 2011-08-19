@@ -808,7 +808,7 @@ sub calcBinDist {
     # define the distribution of values, returns: "min-max"
     my $res  = undef;
     my @data = sort {$a<=>$b} @_;
-    if ($data[0]-$data[-1]) {
+    if ($data[0] eq $data[-1]) {
         $res = $data[0];
     }
     else {
