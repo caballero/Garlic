@@ -419,7 +419,7 @@ sub readFasta {
         if (defined $exclude) {
             next if ($file =~ m/$exclude/);
         }
-        warn "  reading $file\n" if (defined $verbose);
+        warn "    reading $file\n" if (defined $verbose);
         my $fileh = defineFH($file);
         open FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
