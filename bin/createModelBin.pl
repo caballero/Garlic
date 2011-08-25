@@ -582,6 +582,7 @@ sub profileSeqs {
 	    my @slices  = ();
 	    
 	    if (defined $region) {
+		    next unless (defined $region{$seq_id});
 	        @slices = @{ $region{$seq_id} };
 	    }
 	    else {
