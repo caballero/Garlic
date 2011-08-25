@@ -582,7 +582,11 @@ sub profileSeqs {
 	    my @slices  = ();
 	    
 	    if (defined $region) {
+<<<<<<< HEAD
 		    next unless (defined $region{$seq_id});
+=======
+	        next unless (defined $region{$seq_id});
+>>>>>>> 918bd034a1e28c17c73ea260cb84a36ae96892b8
 	        @slices = @{ $region{$seq_id} };
 	    }
 	    else {
@@ -1109,6 +1113,7 @@ sub calcBinGC {
 		    my $end = $i + $blk; 
 		       $end = $#gc if ($end > $#gc);
 		    for (my $j = $ini; $j <= $end; $j++) {
+		        next unless (defined $gc[$j]);
 		        next if ($gc[$j] eq 'NA');
 		        $sum += $gc[$j];
 		        $num++;
