@@ -83,6 +83,7 @@ my $mingc   =       10; # Minimal GC content to use
 my $maxgc   =      100; # Maximal GC content to use
 my $dir     = './data'; # Path to models/RebBase directories
 my %rep_seq =       (); # Hash with consensus sequences from RepBase
+my %repdens =       (); # Repeat density values
 my $mut_cyc =       10;
 my @dna     = qw/A C G T/; # yes, the DNA alphabet
 
@@ -450,8 +451,15 @@ sub loadRepeats {
     open R, "$fileh" or die "cannot open $file\n";
     while (<R>) {
         chomp;
-        if (m/#GC=\d+-(\d+)/) {
+        if (m/#GC=\d+-(\d+)\t(.+)/) {
             $gc = $1;
+            my $d = $2;
+            my @d = split (/,/, $d);
+            shift @d; # minimal values is a zero, I'll remove this in a future
+            foreach my $x (@d) {
+                my ($p, $f) = split (/=/, $x);
+                $repdens{$gc}{$p} = $f;
+            }
         }
         else {
             next unless (defined $classgc{$gc});
