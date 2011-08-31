@@ -157,7 +157,7 @@ my $fgc    = newGC();
 my @fseeds = keys %{ $elemk{$fgc} };
 my $fseed  = $fseeds[int(rand @fseeds)];
 
-$seq = createSeq($kmer, $fgc, int($size * 0.7), $win, $fseed);
+$seq = createSeq($kmer, $fgc, $size, $win, $fseed);
 print "Base sequence generated ($size bases)\n" if(defined $debug);
 
 # Adding new elements
@@ -166,8 +166,8 @@ if ($nsim + $nrep > 0) {
 	print "Inserted [$nsim + $nrep] elements in base sequence\n" if(defined $debug);
 }
 
-print "Verifying sequence final size\n" if(defined $debug);
-$seq = checkSeqSize($size, $seq);
+#print "Verifying sequence final size\n" if(defined $debug);
+#$seq = checkSeqSize($size, $seq);
 
 print "Generated a sequence with ", length $seq, " bases\n" if(defined $debug);
 
@@ -455,24 +455,13 @@ sub loadRepeats {
             $gc = $1;
             my $d = $2;
             my @d = split (/,/, $d);
-            shift @d; # minimal values is a zero, I'll remove this in a future
-            foreach my $x (@d) {
-                my ($p, $f) = split (/=/, $x);
-                $repdens{$gc}{$p} = $f;
-            }
+            @{ $repdens{$gc} } = @d;
         }
         else {
-            next unless (defined $classgc{$gc});
-            if (m/^SIMPLE/) {
-                push @{ $simple{$gc} }, $_;
-                $nsim++;
-            }
-            else {
-                s/^ALR\/Alpha/ALR/;
-                s/^L1M4b/L1M4B/;
-                push @{ $repeat{$gc} }, $_;
-                $nrep++;
-            }
+            s/^ALR\/Alpha/ALR/;
+            s/^L1M4b/L1M4B/;
+            push @{ $repeat{$gc} }, $_;
+            (m/SIMPLE/) ? $nsim++ : $nrep++;
         }
     }
     close R;
@@ -770,136 +759,76 @@ sub createSubSeq {
 	return $s;
 }
 
+# getRangeValue => obtain a random value in a range
+sub getRangeValue {
+    my ($min, $max) = @_;
+    my $val = $min + int( rand ($max - $min) );
+    return $val;
+}
+
 # insertElements => insert the elements
 sub insertElements {
     print "inserting elements\n" if (defined $debug);
-	my $s    = shift @_;
-	my $urep = 0;
-	my $usim = 0;
-	my @ins  = ();
-	my @bag  = ();
-	my @pos  = ();
-	my ($pos, $ins, $gc, $seq, $new);
+	my $s      = shift @_;
+	my $gc     = shift @_;
+	my @pos    = ();
+	my ($pos, $ins, $seq, $dice, $r, $p, $q, $rbase, $repfra, $repthr, $range, $minf, $maxf);
+	my $urep   = 0;
+	my $usim   = 0;
 	
-	for (my $i = 0; $i <= $nrep; $i++) { push @ins, 'rep'; }
-	for (my $i = 0; $i <= $nsim; $i++) { push @ins, 'sim'; }
-	@ins = shuffle(@ins);
-	for (my $i = 0; $i <= $#ins; $i++) {
-	    $ins = $ins[$i];
-	    $seq = undef;
-	    @bag = ();
-	    $pos = int($win / 2) + int(rand((length $s) - $win));
-	    print "Insertion position:$pos " if (defined $debug);
-	    $gc   = calcGC(substr ($s, $pos - int($win / 2), $win));
-	    print "  region GC=$gc\n" if (defined $debug);
-
-	    if ($ins eq 'sim') {
-	        @bag  = @{ $simple{$gc} };
-	        if ($#bag == 0) { # no empty bags
-	            while (1) {
-	                $gc = $classgc[int(rand @classgc)];
-	                next unless (defined $simple{$gc}[0]);
-	                @bag = @{ $simple{$gc} };
-	                last if ($#bag > 0);
-	            }
-	        }
-	    }
-	    else {
-	        @bag  = @{ $repeat{$gc} };
-	        if ($#bag == 0) { # no empty bags
-	            while (1) {
-	                $gc = $classgc[int(rand @classgc)];
-	                next unless (defined $repeat{$gc}[0]);
-	                @bag = @{ $repeat{$gc} };
-	                last if ($#bag > 0);
-	            }
-	        }
-	    }
-	    
-	    $new = $bag[int(rand @bag)];
-	    print "  $new\n" if (defined $debug);
-	    if ($new =~ m/^SIMPLE/) {
-	        $seq = evolveSimple($new, $gc);
-	        $usim++;
-	    }
-	    else {
-	        $seq = evolveRepeat($new, $gc);
-	        if ($seq eq 'BAD') {
-	            while (1) {
-	                $new = $bag[int(rand @bag)];
-               	    print "  $new\n" if (defined $debug);
-	                $seq = evolveRepeat($new, $gc);
-	                last if ($seq ne 'BAD');
-	            }
-	        }
-	        $urep++;
-	    }
-	    
-	    $seq = lc $seq if (defined $mask);
-	    substr ($s, $pos, 1) = $seq;
-	    push @inserts, "$pos\t$new";
+	# select a repetitive fraction based in the GC bin values
+	$rbase  = $s =~ tr/acgt/acgt/;
+	$repfra = 100 * $rbase / length $s;
+	$dice   = rand;
+	$p      = 0;
+	$range  = $repdens{$gc}[0];
+	foreach my $elem ( @{$repdens{$gc}} ) {
+	    ($r, $q) = split (/=/, $elem);
+	    $range   = $r if ($dice >= $p);
+	    $p += $q;
 	}
+	($minf, $maxf) = split (/-/, $range);
+	$repthr  = getRangeValue($minf, $maxf);
 	
-	@ins    = qw/sim rep/;
-	while ($s =~ m/(x)/ig) {
-	    $pos = pos $s;
-	    $pos--;
-	    push @pos, $pos;
-	}
-	@pos = sort {$b<=>$a} (@pos);
-	foreach $pos (@pos) {
-	    $ins = $ins[int(rand @ins)];
-	    
-	    print "Insertion position:$pos " if (defined $debug);
-	    $gc   = calcGC(substr ($s, $pos - int($win / 2), $win));
-	    print "  region GC=$gc\n" if (defined $debug);
-
-	    if ($ins eq 'sim') {
-	        @bag  = @{ $simple{$gc} };
-	        if ($#bag == 0) { # no empty bags
-	            while (1) {
-	                $gc = $classgc[int(rand @classgc)];
-	                next unless (defined $simple{$gc}[0]);
-	                @bag = @{ $simple{$gc} };
-	                last if ($#bag > 0);
-	            }
-	        }
-	        $new = $bag[int(rand @bag)];
-	        print "  $new\n" if (defined $debug);
-	        $seq = evolveSimple($new, $gc);
-	        $usim++;
+	# our bag of elements to insert
+	@ins = shuffle(@{ $repeats{$gc} });
+    
+	while ($repfra < $repthr) {
+	    # choose a new element
+	    $dice = rand;
+	    $p = 0;
+	    foreach $ins (@ins) {
+	        my @info = split (/:/, $ins);
+	        $new = $ins;
+	        last if ($dice <= $p);
+	        $p += $info[2];
 	    }
-	    elsif ($ins eq 'rep') {
-	        @bag  = @{ $repeat{$gc} };
-	        if ($#bag == 0) { # no empty bags
-	            while (1) {
-	                $gc = $classgc[int(rand @classgc)];
-	                next unless (defined $repeat{$gc}[0]);
-	                @bag = @{ $repeat{$gc} };
-	                last if ($#bag > 0);
-	            }
-	        }
-	    	$new = $bag[int(rand @bag)];
-	        $seq = evolveRepeat($new, $gc);
-	        if ($seq eq 'BAD') {
-	            while (1) {
-	                $new = $bag[int(rand @bag)];
-               	    print "  $new\n" if (defined $debug);
-	                $seq = evolveRepeat($new, $gc);
-	                last if ($seq ne 'BAD');
-	            }
-	        }
-	        $urep++;
-	    }
-	    else { # insert a random sequence (100-1100 bp)
-	        my $long = 100 + int(rand 1000);
-	        print "  inserting a new sequence ($long bp)\n";
-	        $seq = createSubSeq($kmer, $gc, $long, substr($s, $pos, 1 - $kmer)); 
-	    }  
-	    
-	    $seq = lc $seq if (defined $mask and $ins ne 'new');
-	    substr($s, $pos, 1) = $seq;	    
-	    push @inserts, "$pos\t$new";
+	    if ($new =~ m/SIMPLE/) {
+            $seq = evolveSimple($new, $gc);
+            $usim++;
+        }
+        else {
+            $seq = evolveRepeat($new, $gc);
+            $urep++;
+        }
+        $seq = lc $seq;
+        
+        # define the position
+        my $try = 0;
+        while (1) {
+            $try++;
+            last if ($try >= $mut_cyc);
+            $pos = int(rand ((length $s) - length $seq));
+            my $frag = substr($s, $pos, length $seq);
+            last unless ($frag =~ m/[^ACGT]/);
+        }
+        next if ($try >= $mut_cyc); # cannot find a good position, changing the repeat
+        
+        substr($s, $pos, length $seq) = $seq;	    
+        push @inserts, "$pos\t$new";
+        
+        $rbase  = $s =~ tr/acgt/acgt/;
+	    $repfra = 100 * $rbase / length $s;
 	}
 	print "Inserted: $urep repeats and $usim simple repeats\n" if (defined $debug);
 	return $s;
