@@ -61,7 +61,7 @@ use List::Util qw/shuffle/;
 ## Global variables
 my $seq     =       ''; # The sequence itself
 my $model   =    undef; # Model to use
-my $kmer    =        4; # HMM size to use
+my $kmer    =        4; # kmer size to use
 my $nrep    =    undef; # Number of repeats to insert
 my $nsim    =    undef; # Number of simple repeats to insert
 my $out     =   'fake'; # Filename to use
@@ -772,7 +772,7 @@ sub insertElements {
 	my $s      = shift @_;
 	my $gc     = shift @_;
 	my @pos    = ();
-	my ($pos, $ins, $seq, $dice, $r, $p, $q, $rbase, $repfra, $repthr, $range, $minf, $maxf);
+	my ($pos, $ins, $new, $seq, $dice, $r, $p, $q, $rbase, $repfra, $repthr, $range, $minf, $maxf);
 	my $urep   = 0;
 	my $usim   = 0;
 	
@@ -791,12 +791,15 @@ sub insertElements {
 	$repthr  = getRangeValue($minf, $maxf);
 	
 	# our bag of elements to insert
-	@ins = shuffle(@{ $repeats{$gc} });
-    
+	my @ins = shuffle(@{ $repeat{$gc} });
+	
+    my $tot_try = 0; # to avoid infinite loops in dense repetitive sequences
 	while ($repfra < $repthr) {
+	    $tot_try++;
+	    last if ($tot_try >= $mut_cyc);
 	    # choose a new element
-	    $dice = rand;
-	    $p = 0;
+	    $dice   = rand;
+	    $p      = 0;
 	    foreach $ins (@ins) {
 	        my @info = split (/:/, $ins);
 	        $new = $ins;
@@ -808,7 +811,7 @@ sub insertElements {
             $usim++;
         }
         else {
-            $seq = evolveRepeat($new, $gc);
+            ($seq, $new) = evolveRepeat($new, $gc, 99999);
             $urep++;
         }
         $seq = lc $seq;
@@ -827,8 +830,9 @@ sub insertElements {
         substr($s, $pos, length $seq) = $seq;	    
         push @inserts, "$pos\t$new";
         
-        $rbase  = $s =~ tr/acgt/acgt/;
-	    $repfra = 100 * $rbase / length $s;
+        $rbase   = $s =~ tr/acgt/acgt/;
+	    $repfra  = 100 * $rbase / length $s;
+	    $tot_try = 0;
 	}
 	print "Inserted: $urep repeats and $usim simple repeats\n" if (defined $debug);
 	return $s;
@@ -839,9 +843,27 @@ sub evolveSimple {
     my $sim   = shift @_;
     my $gc    = shift @_;
     my $seq   = '';
-    my ($lab, $seed, $exp, $div, $indel) = split (/:/, $sim);
+    my ($lab, $seed, $freq, $dir, $exp, $div, $indel) = split (/:/, $sim);
+    my ($min, $max);
+    $dir = rand; # direction is random
+    
+    # define values from ranges (if applicable)
+    if ($exp =~ /-/) {
+        ($min, $max) = split (/-/, $exp);
+        $exp = getRangeValues($min, $max);
+    }
+    if ($div =~ /-/) {
+        ($min, $max) = split (/-/, $div);
+        $div = getRangeValues($min, $max);
+    }
+    if ($indel =~ /-/) {
+        ($min, $max) = split (/-/, $indel);
+        $indel = getRangeValues($min, $max);
+    }
+    
+    # create the sequence
     $seq      = $seed x (int($exp) + 1);
-    $seq      = substr ($seq, 0, int($exp * length $seed));
+    $seq      = revcomp($seq) if ($dir > 0.5);
     my $mut   = int($div * (length $seq) / 100);
     my $nsit  = int($mut / 2);
     my $nver  = $mut - $nsit;
@@ -857,94 +879,92 @@ sub evolveSimple {
 
 # evolveRepeat => return the evolved repeat
 sub evolveRepeat {
-    my $rep   = shift @_;
-    my $gc    = shift @_;
+    my ($rep, $gc, $old_age) = @_;
     my $seq   = '';
-    my ($type, $fam, $dir, $div, $ins, $del, $ini, $end) = split (/:/, $rep);
-    my ($mut, $nins, $ndel, $nsit, $nver, $cseq);
+    my ($type, $fam, $freq, $dir, $div, $ins, $del, $ini, $frag, $break) = split (/:/, $rep);
+    my ($mut, $nins, $ndel, $nsit, $nver, $cseq, $min, $max, $age);
+    $dir = rand; # direction is random
     
     unless (defined $rep_seq{$type}) {
         print "sequence for $type ($fam) not found!\n";
-        return "BAD";
+        return 'BAD';
     }
     
-    if ($rep  =~ m/;/) {
-        my $sseq = '';
-        my @frag  = split (/;/, $rep);
-        my $first = shift @frag;
-        ($type, $fam, $dir, $div, $ins, $del, $ini, $end) = split (/:/, $first);
-        $cseq  = $rep_seq{$type};
-        
-        if (length $cseq < $ini) {
-            print "sequence for $type ($fam) too short!\n";
-            $ini = 1;
-        }
-        
-        if (length $cseq < $end) {
-            $end = length $cseq;
-        }
-        
-        $sseq = substr ($cseq, $ini - 1, $end - $ini);
-        $sseq = revcomp($sseq) if ($dir eq '-');
-        $mut  = int($div * (length $sseq) / 100);
-        $nsit = int($mut / 2);
-        $nver = $mut - $nsit;
-        $nins = int($ins * (length $sseq) / 100);
-        $ndel = int($ins * (length $sseq) / 100);
-        $sseq = addDeletions(    $sseq, $ndel, $gc, 0) if($ndel > 0);
-        $sseq = addTransitions(  $sseq, $nsit, $gc, 0) if($nsit > 0);
-        $sseq = addTransversions($sseq, $nver, $gc, 0) if($nver > 0);
-        $sseq = addInsertions(   $sseq, $nins, $gc   ) if($nins > 0);
-        $seq  = $sseq;
-        foreach my $frag (@frag) {
-            ($div, $ins, $del, $ini, $end) = split (/:/, $frag);
-            if (length $cseq < $ini) {
-                print "sequence for $type ($fam) too short!\n";
-                $ini = 1;
-            }
-        
-            if (length $cseq < $end) {
-                $end = length $cseq;
-            }
-            
-            $sseq  = substr ($cseq, $ini - 1, $end - $ini);
-            $sseq  = revcomp($sseq) if ($dir eq '-');
-            $mut  = int($div * (length $sseq) / 100);
-            $nsit = int($mut / 2);
-            $nver = $mut - $nsit;
-            $nins = int($ins * (length $sseq) / 100);
-            $ndel = int($ins * (length $sseq) / 100);
-            $sseq  = addDeletions(    $sseq, $ndel, $gc, 0) if($ndel > 0);
-            $sseq  = addTransitions(  $sseq, $nsit, $gc, 0) if($nsit > 0);
-            $sseq  = addTransversions($sseq, $nver, $gc, 0) if($nver > 0);
-            $sseq  = addInsertions(   $sseq, $nins, $gc   ) if($nins > 0);
-            $seq  .= "X$sseq";
+    # get values from ranges (if applicable)
+    if ($div =~ /-/) {
+        ($min, $max) = split (/-/, $div);
+        $div = getRangeValues($min, $max);
+    }
+    if ($ins =~ /-/) {
+        ($min, $max) = split (/-/, $ins);
+        $ins = getRangeValues($min, $max);
+    }
+    if ($del =~ /-/) {
+        ($min, $max) = split (/-/, $del);
+        $del = getRangeValues($min, $max);
+    }
+    if ($break =~ /-/) {
+        ($min, $max) = split (/-/, $break);
+        $break = getRangeValues($min, $max);
+    }
+    if ($frag =~ /-/) {
+        ($min, $max) = split (/-/, $frag);
+        $frag = getRangeValues($min, $max);
+        $frag = length $rep_seq{$type} if ($frag > length $rep_seq{$type});
+    }
+    
+    $age  = $div + $ins + $del + ($break * 10); # how old are you?
+    return 'BAD' if ($age > $old_age);
+    
+    # ok, evolve the consensus sequence
+    $ini  = int( rand( (length $rep_seq{$type}) - $frag));
+    $seq  = substr ($rep_seq{$type}, $ini, $frag);
+    $seq  = revcomp($seq) if ($dir > 0.5);
+    $mut  = int($div * (length $seq) / 100);
+    $nsit = int($mut / 2);
+    $nver = $mut - $nsit;
+    $nins = int($ins * (length $seq) / 100);
+    $ndel = int($ins * (length $seq) / 100);
+    $seq  = addDeletions(    $seq, $ndel, $gc, 0) if($ndel > 0);
+    $seq  = addTransitions(  $seq, $nsit, $gc, 0) if($nsit > 0);
+    $seq  = addTransversions($seq, $nver, $gc, 0) if($nver > 0);
+    $seq  = addInsertions(   $seq, $nins, $gc, 0) if($nins > 0);
+
+    # split the repeat if required    
+    if ($break > 1) {
+        my $num = 1;
+        while ($num < $break) {
+            $num++;
+            my ($insert, $repinfo) = getInsert($gc, $age);
+            my $target = int(rand(length $seq));
+            $rep .= ",$repinfo";
+            substr($seq, $target, 1) = $insert;
         }
     }
-    else {
-        $cseq = $rep_seq{$type};
-        if (length $cseq < $ini) {
-            print "sequence for $type ($fam) too short!";
-            $ini = 1;
+    
+    return ($seq, $rep);
+}
+
+# getInsert => select a new repeat to insert into another
+sub getInsert {
+    my ($gc, $age) = @_;
+    my $seq     = '';
+    my $new_rep = '';
+    # our bag of elements to insert
+	my @ins = shuffle(@{ $repeat{$gc} });
+	while (1) {
+        $new_rep = $ins[int(rand @ins)];
+        if ($new_rep =~ /SIMPLE/) {
+            $seq = evolveSimple($new_rep, $gc);
+            last;
         }
-        
-        if (length $cseq < $end) {
-            $end = length $cseq;
+        else {
+            $seq = evolveRepeat($new_rep, $gc, $age);
+            next if ($seq eq 'BAD');
+            last;
         }
-        
-        $seq  = substr ($cseq, $ini - 1, $end - $ini);
-        $seq  = revcomp($seq) if ($dir eq '-');
-        $mut  = int($div * (length $seq) / 100);
-        $nsit = int($mut / 2);
-        $nver = $mut - $nsit;
-        $nins = int($ins * (length $seq) / 100);
-        $ndel = int($ins * (length $seq) / 100);
-        $seq  = addDeletions(    $seq, $ndel, $gc, 0) if($ndel > 0);
-        $seq  = addTransitions(  $seq, $nsit, $gc, 0) if($nsit > 0);
-        $seq  = addTransversions($seq, $nver, $gc, 0) if($nver > 0);
-        $seq  = addInsertions(   $seq, $nins, $gc, 0) if($nins > 0);
     }
-    return $seq;
+    return ($seq, $new_rep);
 }
 
 # randSel => select a random numbers in a finite range
