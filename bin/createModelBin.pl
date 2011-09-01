@@ -543,6 +543,7 @@ sub loadGenes {
     }
     
     foreach $seq_id (keys %genes) {
+		no warnings; # turn off warn about numerical sorting in num-num
         @{ $genes{$seq_id} }  = sort {$a<=>$b} @{ $genes{$seq_id} };
     }
 }
@@ -582,11 +583,7 @@ sub profileSeqs {
 	    my @slices  = ();
 	    
 	    if (defined $region) {
-<<<<<<< HEAD
-		    next unless (defined $region{$seq_id});
-=======
 	        next unless (defined $region{$seq_id});
->>>>>>> 918bd034a1e28c17c73ea260cb84a36ae96892b8
 	        @slices = @{ $region{$seq_id} };
 	    }
 	    else {
@@ -805,7 +802,7 @@ sub calcDirDist {
     my $for  = $dirs =~ tr/+/+/;
     my $rev  = $dirs =~ tr/-/-/;
     my $tot  = $rev + $for;
-    my $res  = sprintf ("%.2f", $for / $tot);
+    my $res  = sprintf ("%.1f", $for / $tot);
     return $res;
 }
 
@@ -1157,7 +1154,7 @@ sub calcGCdist {
     $s2  = sprintf ("%.6f", $s2 / $tot);
     $s3  = sprintf ("%.6f", $s3 / $tot);
     $s4  = sprintf ("%.6f", $s4 / $tot);
-    $res = "$data[0],$q1=$s1,$q2=$s2,$q3=$s3,$data[-1]=$s4";
+    $res = "$data[0]-$q1=$s1,$q1-$q2=$s2,$q2-$q3=$s3,$q3-$data[-1]=$s4";
     return $res;
 }
 
