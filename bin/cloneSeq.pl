@@ -15,9 +15,12 @@ OPTIONS
     Parameter        Description                Value      Default
     -i --input       Input Fasta                File       STDIN
     -o --output      Output Fasta               File       STDOUT
+    -b --base        Write base sequence here   File
+    -r --repeat      write repeats info here    File
+    -d --dir         Directory of models        Dir        ./data
     -w --win         Window size                INT        1000
     -k --kmer        Kmer size                  INT        4
-    -b --block       Block size                 INT        10kb
+    -b --block       Block size                 INT        20kb
     -m --model       Model to use*              STR        hg19
     -h --help        Print this screen
     -v --verbose     Verbose mode
