@@ -796,8 +796,8 @@ sub insertElements {
 	    foreach $ins (@ins) {
 	        my @info = split (/:/, $ins);
 	        $new = $ins;
-	        last if ($dice <= $p);
 	        $p += $info[2];
+	        last if ($dice <= $p);
 	    }
 	    print "selected: $new\n" if (defined $debug);
 	    if ($new =~ m/SIMPLE/) {
@@ -952,8 +952,8 @@ sub getInsert {
 	    foreach my $ins (@ins) {
 	        my @info = split (/:/, $ins);
 	        $new_rep = $ins;
-	        last if ($dice <= $p);
 	        $p += $info[2];
+	        last if ($dice <= $p);
 	    }
         $new_rep = $ins[int(rand @ins)];
         if ($new_rep =~ /SIMPLE/) {
