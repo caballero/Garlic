@@ -196,7 +196,7 @@ unless (defined $no_repeat) {
 }
 
 print "Generated a sequence with ", length $seq, " bases\n" if(defined $debug);
-
+$seq = checkSeqSize($size, $seq);
 $seq = uc($seq) if (defined $no_mask);
 
 # Printing output
