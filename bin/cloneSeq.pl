@@ -158,6 +158,7 @@ while (($id, $seq) = each %seq) {
                 if (defined $repeat) {
                     open R, "fake.inserts" or die "cannot open fake.inserts\n";
                     while (<R>) {
+                        next if (m/POS/);
                         chomp;
                         my ($pos, $info) = split (/\t/, $_);
                         $pos+= $i;
@@ -192,7 +193,7 @@ while (($id, $seq) = each %seq) {
     }
     if (defined $repeat) {
         open  R, ">$repeat" or die "cannot open $repeat\n";
-        print R $rep_info;
+        print R "POS\tINFO\n$rep_info";
         close R;
     }
 }
