@@ -125,7 +125,7 @@ while (($id, $seq) = each %seq) {
         my $slice = substr ($seq, $i, $block);
         my ($min, $max) = minmaxGC($slice);
         my $rep = calcRepBases($slice);
-        system ("perl $creator -m $model -k $kmer -w $win -g $min -c $max -s $block -n fake");
+        system ("perl $creator -m $model -k $kmer -w $win -r $rep -g $min -c $max -s $block -n fake");
         if (-e 'fake.fasta' and -z 'fake.fasta') {
             open F, "fake.fasta" or die "cannot open fake.fasta\n";
             while (<F>) {
@@ -164,7 +164,7 @@ sub calcRepBases {
     my $rrb = $seq =~ tr/acgt//;
     my $eeb = $seq =~ tr/ACGT//;
     my $sum = $rrb + $eeb;
-    $rep = $rrb / $sum if ($sum > 1);
+    $rep = int(100 * $rrb / $sum) if ($sum > 1);
     return $rep;
 }
 
