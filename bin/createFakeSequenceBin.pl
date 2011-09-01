@@ -62,8 +62,6 @@ use List::Util qw/shuffle/;
 my $seq       =       ''; # The sequence itself
 my $model     =    undef; # Model to use
 my $kmer      =        4; # kmer size to use
-my $nrep      =    undef; # Number of repeats to insert
-my $nsim      =    undef; # Number of simple repeats to insert
 my $out       =   'fake'; # Filename to use
 my $size      =    undef; # Final size of the sequence
 my $win       =     1000; # Window size for sequence GC transition
@@ -86,6 +84,8 @@ my @dna       = qw/A C G T/; # yes, the DNA alphabet
 my $no_repeat = undef;
 my $no_mask   = undef;
 
+my $nrep      =        0; # Number of repeats inserted
+my $nsim      =        0; # Number of simple repeats inserted
 
 # GC classes creation
 @classgc      = (37, 39, 42, 45, 100);
