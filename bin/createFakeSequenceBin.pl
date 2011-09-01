@@ -103,18 +103,16 @@ my %repdens   =       (); # Repeat density values
 my $mut_cyc   =       10; # Maximal number of trials
 my $wrbase    =    undef; # write base sequence too
 my $rep_frc   =    undef;
-my @dna       = qw/A C G T/; # yes, the DNA alphabet
-my $no_repeat = undef;
-my $no_mask   = undef;
-
+my @dna       = qw/A C G T/; # DNA alphabet
+my $no_repeat =    undef;
+my $no_mask   =    undef;
+my $mingc     =    undef;
+my $maxgc     =    undef;
 my $nrep      =        0; # Number of repeats inserted
 my $nsim      =        0; # Number of simple repeats inserted
 
 # GC classes creation
-@classgc      = (37, 39, 42, 45, 100);
-%classgc      = (37 => 1, 39 => 1, 42 => 1, 45 => 1, 100 => 1);
-my $mingc     =  $classgc[0];
-my $maxgc     =  $classgc[-1];
+my @valid_gc  = (37, 39, 42, 45, 100);
 
 ## Parameters extraction
 usage() if (!GetOptions( 
@@ -137,6 +135,16 @@ usage() if (!GetOptions(
 
 usage() if (defined $help);
 usage() unless (defined $model and defined $size);
+
+# GC classes creation
+$mingc = $valid_gc[ 0] unless (defined $mingc);
+$maxgc = $valid_gc[-1] unless (defined $maxgc);
+foreach $gc (@valid_gc) {
+    if ($gc >= $mingc and $gc <= $maxgc) {
+        push @classgc, $gc;
+        $classgc{$gc} = 1;
+    }
+}
 
 # Loading model parameters
 #readConfig("$dir/$model/$model.model");
