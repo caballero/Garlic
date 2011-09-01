@@ -148,7 +148,7 @@ while (($id, $seq) = each %seq) {
                 $new_seq .= $new;
                 if (defined $base) {
                     open B, "fake.base.fasta" or die "cannot open fake.base.fasta\n";
-                    while (<>) {
+                    while (<B>) {
                         next if (m/>/);
                         chomp;
                         $bas_seq .= $_;
