@@ -806,8 +806,10 @@ sub insertElements {
         }
         else {
             ($seq, $new) = evolveRepeat($new, $gc, 99999);
+            next if ($seq eq 'BAD');
             $urep++;
         }
+                
         $seq = lc $seq;
         
         # define the position
