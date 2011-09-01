@@ -947,9 +947,9 @@ sub getInsert {
     # our bag of elements to insert
 	my @ins = shuffle(@{ $repeat{$gc} });
 	while (1) {
-	    $dice   = rand;
-	    $p      = 0;
-	    foreach $ins (@ins) {
+	    my $dice = rand;
+	    my $p    = 0;
+	    foreach my $ins (@ins) {
 	        my @info = split (/:/, $ins);
 	        $new_rep = $ins;
 	        last if ($dice <= $p);
