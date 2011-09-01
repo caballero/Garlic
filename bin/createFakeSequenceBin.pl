@@ -156,7 +156,8 @@ if (defined $wrbase) {
 unless (defined $no_repeat) {
     loadRepeatConsensus($model{'repbase'});
     loadRepeats("$dir/$model/" . $model{'repeat_file'});
-	$seq = insertElements($seq);
+    my $gc = calcGC($seq);
+	$seq = insertElements($seq, $gc);
 	print "Inserted [$nsim + $nrep] elements in base sequence\n" if(defined $debug);
 	open  INS, ">$out.inserts" or errorExit("cannot open $out.inserts");
     print INS join "\n", "POS\tREPEAT", @inserts;	
