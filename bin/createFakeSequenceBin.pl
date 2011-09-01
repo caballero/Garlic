@@ -724,6 +724,8 @@ sub createSeq {
 		$seq      .= $subseq;
 		$gc        = transGC($gc);
 	}
+	$seq = checkSeqSize($len, $seq);
+	
 	return $seq;
 }
 
