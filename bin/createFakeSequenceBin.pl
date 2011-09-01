@@ -478,7 +478,7 @@ sub selPosition {
 	if ($num < 2) {
 	    @pos = (0);
 	}
-	else (
+	else {
 	    foreach my $pos (sort { $dat{$a} <=> $dat{$b} } keys %dat) {
 	 	    push (@pos, $pos);
 	    }
