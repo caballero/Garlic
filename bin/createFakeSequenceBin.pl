@@ -508,7 +508,7 @@ sub addDeletions {
 	$skip = $ndel;
 	$eval++;
 	print "  Added $tdel deletions ($skip skipped, GC=$gcl)\n" if(defined $debug);
-	if ($skip > 0) {
+	if ($skip > 0 and $eval < $mut_cyc) {
 		$gcl = newGC();
 		$seq = addDeletions($seq, $skip, $gcl, $eval);
 	}
@@ -524,7 +524,6 @@ sub addInsertions {
 	my $gcl  = shift @_;
 	my $tins = 0;
 	my @pos  = selPosition($seq, $gcl);
-	#print "PreInsert: $seq\n" if(defined $debug);
 	while ($nins > 0) {
 		my $ins  = 1;
 		last unless(defined $pos[0]);
@@ -601,7 +600,7 @@ sub addTransitions {
 	$skip = $nsit;
 	$eval++;
 	print "  Added $tsit transitions ($skip skipped, GC=$gcl)\n" if(defined $debug);
-	if ($skip > 0) {
+	if ($skip > 0 and $eval < $mut_cyc) {
 		$gcl = newGC();
 		$seq = addTransitions($seq, $skip, $gcl, $eval);
 	}
@@ -652,7 +651,7 @@ sub addTransversions {
 	$skip = $nver;
 	$eval++;
 	print "  Added $tver transversions ($skip skipped, GC=$gcl)\n" if(defined $debug);
-	if ($skip > 0) {
+	if ($skip > 0  and $eval < $mut_cyc) {
 		$gcl = newGC();
 		$seq = addTransversions($seq, $skip, $gcl, $eval);
 	}
