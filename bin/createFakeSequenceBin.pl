@@ -843,15 +843,15 @@ sub evolveSimple {
     # define values from ranges (if applicable)
     if ($exp =~ /-/) {
         ($min, $max) = split (/-/, $exp);
-        $exp = getRangeValues($min, $max);
+        $exp = getRangeValue($min, $max);
     }
     if ($div =~ /-/) {
         ($min, $max) = split (/-/, $div);
-        $div = getRangeValues($min, $max);
+        $div = getRangeValue($min, $max);
     }
     if ($indel =~ /-/) {
         ($min, $max) = split (/-/, $indel);
-        $indel = getRangeValues($min, $max);
+        $indel = getRangeValue($min, $max);
     }
     
     # create the sequence
@@ -886,23 +886,23 @@ sub evolveRepeat {
     # get values from ranges (if applicable)
     if ($div =~ /-/) {
         ($min, $max) = split (/-/, $div);
-        $div = getRangeValues($min, $max);
+        $div = getRangeValue($min, $max);
     }
     if ($ins =~ /-/) {
         ($min, $max) = split (/-/, $ins);
-        $ins = getRangeValues($min, $max);
+        $ins = getRangeValue($min, $max);
     }
     if ($del =~ /-/) {
         ($min, $max) = split (/-/, $del);
-        $del = getRangeValues($min, $max);
+        $del = getRangeValue($min, $max);
     }
     if ($break =~ /-/) {
         ($min, $max) = split (/-/, $break);
-        $break = getRangeValues($min, $max);
+        $break = getRangeValue($min, $max);
     }
     if ($frag =~ /-/) {
         ($min, $max) = split (/-/, $frag);
-        $frag = getRangeValues($min, $max);
+        $frag = getRangeValue($min, $max);
         $frag = length $rep_seq{$type} if ($frag > length $rep_seq{$type});
     }
     
