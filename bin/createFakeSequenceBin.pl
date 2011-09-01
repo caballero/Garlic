@@ -34,7 +34,7 @@ Optional or automatic parameters:
   -k --kmer        Seed size to use
   -g --mingc       Minimal GC content to use
   -c --maxgc       Maximal GC content to use
-  -r --repeat      Repetitive fraction
+  -r --repeat      Repetitive fraction [0-100]
 
   --write_base     Write base sequence (pre-repeats) 
   --no_repeat      Don't insert repeats (just base sequence)
@@ -218,7 +218,7 @@ Optional or automatic parameters:
   -k --kmer        Seed size to use                        Default = $kmer
   -g --mingc       Minimal GC content to use               Default = $mingc
   -c --maxgc       Maximal GC content to use               Default = $maxgc
-  -r --repeat      Repetitive fraction                     Default = auto
+  -r --repeat      Repetitive fraction [0-100]             Default = auto
 
   --write_base     Write base sequence (pre-repeats) 
   --no_repeat      Don't insert repeats (just base sequence)
@@ -974,7 +974,7 @@ sub evolveRepeat {
     $seq  = addInsertions(   $seq, $nins, $gc, 0) if($nins > 0);
 
     # split the repeat if required    
-    if ($break > 1) {
+    if ($break > 1 and $age == 99999) {
         my $num = 1;
         while ($num < $break) {
             $num++;
