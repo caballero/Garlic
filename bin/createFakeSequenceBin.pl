@@ -798,6 +798,7 @@ sub insertElements {
 	        last if ($dice <= $p);
 	        $p += $info[2];
 	    }
+	    print "selected: $new\n" if (defined $debug);
 	    if ($new =~ m/SIMPLE/) {
             $seq = evolveSimple($new, $gc);
             $usim++;
