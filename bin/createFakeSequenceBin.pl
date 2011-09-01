@@ -9,8 +9,8 @@ createFakeSequence.pl
 Perl script to create a sequence similar to the intergenic regions from
 the model used. The models are described in parts:
 
-a) The composition background with Markov models from 0 to 5 in fixed windows.
-b) The repeats parsed from the alignements described by RepeatMasker and 
+a) The composition background with kmer models in fixed windows.
+b) The repeats parsed from the alignments described by RepeatMasker and 
 consensus bases acording to RepBase.
 c) Transitional frecuencies for fixed windows in GC% classes (0-90).
 
@@ -23,11 +23,33 @@ sequences as real as the intergenic regions of a genome.
 
 =head1 USAGE
 
-perl createFakeSequence.pl [OPTIONS]
+Usage: perl createSequence.pl -m MODEL -s SIZE -n OUFILE [PARAMETERS] 
+Required parameters:
+  -m --model       Model to use (like hg19, mm9, ... etc).
+  -s --size        Size in bases [kb, Mb, Gb accepted].
+  -n --name        Output files to create [*.fasta and *.log].
+	
+Optional or automatic parameters:
+  -w --window      Window size for base generation         
+  -k --kmer        Seed size to use
+  -g --mingc       Minimal GC content to use
+  -c --maxgc       Maximal GC content to use
+  -r --repeat      Repetitive fraction
 
+  --write_base     Write base sequence (pre-repeats) 
+  --no_repeat      Don't insert repeats (just base sequence)
+  --no_mask        Don't lower-case repeats
+
+  -v --verbose     Verbose output for debug
+  -h --help        Print this screen
+  
 =head1 EXAMPLES
 
-** Examples
+  perl createSequence.pl -m hg19 -s 1Mb -n fake
+
+  perl createSequence.pl -m hg19 -s 1Mb -n fake -w 2000 -k 6
+
+  perl createSequence.pl -m hg19 -s 1Mb -n fake --write_base --no_repeat
 
 =head1 AUTHOR
 
@@ -80,6 +102,7 @@ my %rep_seq   =       (); # Hash with consensus sequences from RepBase
 my %repdens   =       (); # Repeat density values
 my $mut_cyc   =       10; # Maximal number of trials
 my $wrbase    =    undef; # write base sequence too
+my $rep_frc   =    undef;
 my @dna       = qw/A C G T/; # yes, the DNA alphabet
 my $no_repeat = undef;
 my $no_mask   = undef;
@@ -105,6 +128,7 @@ usage() if (!GetOptions(
 				'c|maxgc:i'     => \$maxgc,
 				'v|verbose'     => \$debug,
 				'd|dir:s'       => \$dir,
+				'r|repeat:s'    => \$rep_frc,
 				'write_base'    => \$wrbase,
 				'no_repeats'    => \$no_repeat,
 				'no_mask'       => \$no_mask
@@ -194,6 +218,7 @@ Optional or automatic parameters:
   -k --kmer        Seed size to use                        Default = $kmer
   -g --mingc       Minimal GC content to use               Default = $mingc
   -c --maxgc       Maximal GC content to use               Default = $maxgc
+  -r --repeat      Repetitive fraction                     Default = auto
 
   --write_base     Write base sequence (pre-repeats) 
   --no_repeat      Don't insert repeats (just base sequence)
@@ -784,19 +809,26 @@ sub insertElements {
 	my $urep   = 0;
 	my $usim   = 0;
 	
-	# select a repetitive fraction based in the GC bin values
+	# check if we already have repeats in sequence
 	$rbase  = $s =~ tr/acgt/acgt/;
 	$repfra = 100 * $rbase / length $s;
-	$dice   = rand;
-	$p      = 0;
-	$range  = $repdens{$gc}[0];
-	foreach my $elem ( @{$repdens{$gc}} ) {
-	    ($r, $q) = split (/=/, $elem);
-	    $range   = $r if ($dice >= $p);
-	    $p += $q;
+	    
+	if (defined $rep_frc) {
+	    $repthr = $rep_frc;
 	}
-	($minf, $maxf) = split (/-/, $range);
-	$repthr  = getRangeValue($minf, $maxf);
+	else {
+	    # select a repetitive fraction based in the GC bin values
+	    $dice   = rand;
+	    $p      = 0;
+	    $range  = $repdens{$gc}[0];
+	    foreach my $elem ( @{$repdens{$gc}} ) {
+	        ($r, $q) = split (/=/, $elem);
+	        $range   = $r if ($dice >= $p);
+	        $p += $q;
+    	}
+	    ($minf, $maxf) = split (/-/, $range);
+	    $repthr  = getRangeValue($minf, $maxf);
+	}
 	
 	# our bag of elements to insert
 	my @ins = shuffle(@{ $repeat{$gc} });
