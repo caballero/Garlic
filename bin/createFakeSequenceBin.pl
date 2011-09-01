@@ -420,6 +420,7 @@ sub loadRepeatConsensus {
 		chomp;
 		if (m/^ID\s+(.+?)\s+/) {
 			$rep = $1;
+			$rep =~ s/_\dend//;
 			$alt = undef;
 		}
 		elsif (m/^DE\s+RepbaseID:\s+(.+)/) {
@@ -454,6 +455,7 @@ sub loadRepeats {
             @{ $repdens{$gc} } = @d;
         }
         else {
+            s/-int//;
             s/^ALR\/Alpha/ALR/;
             s/^L1M4b/L1M4B/;
             push @{ $repeat{$gc} }, $_;
@@ -461,7 +463,7 @@ sub loadRepeats {
         }
     }
     close R;
-    print "readed SIMPLE=$nsim REPEAT=$nrep\n"; 
+    print "readed SIMPLE=$nsim REPEAT=$nrep\n" if (defined $debug); 
 }
 
 # selPosition => find where to put a change
@@ -895,7 +897,7 @@ sub evolveRepeat {
     $dir = rand; # direction is random
     
     unless (defined $rep_seq{$type}) {
-        print "sequence for $type ($fam) not found!\n";
+        print "sequence for $type ($fam) not found!\n" if (defined $debug);
         return ('BAD', $rep);
     }
     
