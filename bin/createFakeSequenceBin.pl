@@ -460,7 +460,7 @@ sub loadRepeats {
     print "readed SIMPLE=$nsim REPEAT=$nrep\n"; 
 }
 
-# selPosition => find where to put an insert
+# selPosition => find where to put a change
 sub selPosition {
 	my $seq = shift @_;
 	my $gc  = shift @_;
@@ -883,7 +883,7 @@ sub evolveRepeat {
     
     unless (defined $rep_seq{$type}) {
         print "sequence for $type ($fam) not found!\n";
-        return 'BAD';
+        return ('BAD', $rep);
     }
     
     # get values from ranges (if applicable)
@@ -910,7 +910,7 @@ sub evolveRepeat {
     }
     
     $age  = $div + $ins + $del + ($break * 10); # how old are you?
-    return 'BAD' if ($age > $old_age);
+    return ('BAD', $rep) if ($age > $old_age);
     
     # ok, evolve the consensus sequence
     $ini  = int( rand( (length $rep_seq{$type}) - $frag));
@@ -964,7 +964,7 @@ sub getInsert {
             #last;
         }
         else {
-            $seq = evolveRepeat($new_rep, $gc, $age);
+            ($seq, $new_rep) = evolveRepeat($new_rep, $gc, $age);
             next if ($seq eq 'BAD');
             last;
         }
