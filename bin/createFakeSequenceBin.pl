@@ -959,8 +959,9 @@ sub getInsert {
 	    }
         $new_rep = $ins[int(rand @ins)];
         if ($new_rep =~ /SIMPLE/) {
-            $seq = evolveSimple($new_rep, $gc);
-            last;
+            next; # only interspersed repeats inside repeats?
+			#$seq = evolveSimple($new_rep, $gc);
+            #last;
         }
         else {
             $seq = evolveRepeat($new_rep, $gc, $age);
@@ -996,3 +997,4 @@ sub errorExit {
 }
 
 
+# HEY I'M DONE
