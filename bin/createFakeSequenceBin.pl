@@ -59,49 +59,55 @@ use Pod::Usage;
 use List::Util qw/shuffle/;
 
 ## Global variables
-my $seq     =       ''; # The sequence itself
-my $model   =    undef; # Model to use
-my $kmer    =        4; # kmer size to use
-my $nrep    =    undef; # Number of repeats to insert
-my $nsim    =    undef; # Number of simple repeats to insert
-my $out     =   'fake'; # Filename to use
-my $size    =    undef; # Final size of the sequence
-my $mask    =    undef; # Flag to mask repeats
-my $win     =     1000; # Window size for sequence GC transition
-my $help    =    undef; # Variable to activate help
-my $debug   =    undef; # Variable to activate verbose mode
-my %model   =       (); # Hash to store model parameters
-my %simple  =       (); # Hash to store repeats info
-my %repeat  =       (); # Hash to store repeats info
-my @inserts =       (); # Array to store the insert sequences data
-my %gct     =       (); # Hash for GC transitions GC(n-1) -> GC(n)
-my %elemk   =       (); # Hash for kmers probabilities
-my %gc      =       (); # Hash for GC content probabilities
-my @classgc =       (); # Array for class GC
-my %classgc =       (); # Hash for class GC
-my $mingc   =       10; # Minimal GC content to use
-my $maxgc   =      100; # Maximal GC content to use
-my $dir     = './data'; # Path to models/RebBase directories
-my %rep_seq =       (); # Hash with consensus sequences from RepBase
-my %repdens =       (); # Repeat density values
-my $mut_cyc =       10;
-my @dna     = qw/A C G T/; # yes, the DNA alphabet
+my $seq       =       ''; # The sequence itself
+my $model     =    undef; # Model to use
+my $kmer      =        4; # kmer size to use
+my $nrep      =    undef; # Number of repeats to insert
+my $nsim      =    undef; # Number of simple repeats to insert
+my $out       =   'fake'; # Filename to use
+my $size      =    undef; # Final size of the sequence
+my $win       =     1000; # Window size for sequence GC transition
+my $help      =    undef; # Variable to activate help
+my $debug     =    undef; # Variable to activate verbose mode
+my %model     =       (); # Hash to store model parameters
+my %repeat    =       (); # Hash to store repeats info
+my @inserts   =       (); # Array to store the insert sequences data
+my %gct       =       (); # Hash for GC transitions GC(n-1) -> GC(n)
+my %elemk     =       (); # Hash for kmers probabilities
+my %gc        =       (); # Hash for GC content probabilities
+my @classgc   =       (); # Array for class GC
+my %classgc   =       (); # Hash for class GC
+my $dir       = './data'; # Path to models/RebBase directories
+my %rep_seq   =       (); # Hash with consensus sequences from RepBase
+my %repdens   =       (); # Repeat density values
+my $mut_cyc   =       10; # Maximal number of trials
+my $wrbase    =    undef; # write base sequence too
+my @dna       = qw/A C G T/; # yes, the DNA alphabet
+my $no_repeat = undef;
+my $no_mask   = undef;
+
+
+# GC classes creation
+@classgc      = (37, 39, 42, 45, 100);
+%classgc      = (37 => 1, 39 => 1, 42 => 1, 45 => 1, 100 => 1);
+my $mingc     =  $classgc[0];
+my $maxgc     =  $classgc[-1];
 
 ## Parameters extraction
 usage() if (!GetOptions( 
-				'help|h'    	=> \$help,
-				'model|o=s' 	=> \$model,
-				'length|l=s'  	=> \$size,
-				'name|n=s'   	=> \$out,
-				'kmer|k:i'  	=> \$kmer,
-				'win|w:i'   	=> \$win,
-				'repeats|r:i'  	=> \$nrep,
-				'simple|s:i'  	=> \$nsim,
-				'mingc|g:i'     => \$mingc,
-				'maxgc|c:i'     => \$maxgc,
-				'mask|m'     	=> \$mask,
-				'verbose|v'   	=> \$debug,
-				'dir|d:s'         => \$dir
+				'help|h'        => \$help,
+				'm|model=s'     => \$model,
+				's|size=s'      => \$size,
+				'n|name=s'      => \$out,
+				'k|kmer:i'      => \$kmer,
+				'w|window:i'    => \$win,
+				'g|mingc:i'     => \$mingc,
+				'c|maxgc:i'     => \$maxgc,
+				'v|verbose'     => \$debug,
+				'd|dir:s'       => \$dir,
+				'b|write_base'  => \$wrbase,
+				'R|no_repeats'  => \$no_repeat,
+				'M|no_mask'     => \$no_mask
 				)
 );
 
@@ -114,10 +120,6 @@ $model{'gct_file'}    = "$model.GCt.W$win.data";
 $model{'kmer_file'}   = "$model.kmer.K$kmer.W$win.data";
 $model{'repeat_file'} = "$model.repeats.W$win.data";
 $model{'repbase'}     = "$dir/RepBase/RepeatMaskerLib.embl";    # point to RepBase fasta file
-
-# GC classes creation
-@classgc = (37, 39, 42, 45, 100);
-%classgc = (37 => 1, 39 => 1, 42 => 1, 45 => 1, 100 => 1);
 
 print "Generating a $size sequence with $model model, output in $out\n" if (defined $debug);
 
@@ -132,26 +134,6 @@ print "GC transitions in ", $model{'gct_file'}, " loaded\n" if(defined $debug);
 loadKmers("$dir/$model/" . $model{'kmer_file'});
 print "k-mers in ", $model{'kmer_file'}, " loaded\n" if(defined $debug);
 
-# Number of simple repeats to use
-unless (defined $nsim) {
-	$nsim = calcInsertNum($size, $model{'num_simple'} / $model{'bases'});
-}
-print "$nsim simple repeats to select\n" if(defined $debug);
-
-# Number of interspearsed repeats to use
-unless (defined $nrep) {
-	$nrep = calcInsertNum($size, $model{'num_repeat'} / $model{'bases'});
-}
-print "$nrep interspersed repeats to select\n" if(defined $debug);
-
-if ($nrep > 0) {
-	loadRepeatConsensus($model{'repbase'});
-}
-
-if (($nrep + $nsim) > 0) {
-    loadRepeats("$dir/$model/" . $model{'repeat_file'});
-}
-
 # Generation of base sequence
 my $fgc    = newGC();
 my @fseeds = keys %{ $elemk{$fgc} };
@@ -160,16 +142,30 @@ my $fseed  = $fseeds[int(rand @fseeds)];
 $seq = createSeq($kmer, $fgc, $size, $win, $fseed);
 print "Base sequence generated ($size bases)\n" if(defined $debug);
 
-# Adding new elements
-if ($nsim + $nrep > 0) {
-	$seq = insertElements($seq);
-	print "Inserted [$nsim + $nrep] elements in base sequence\n" if(defined $debug);
+# write base sequence (before repeat insertions)
+if (defined $wrbase) {
+    my $bseq = formatFasta($seq);
+    open  FAS, ">$out.base.fasta" or errorExit("cannot open $out.base.fasta");
+    print FAS  ">artificial_sequence MODEL=$model KMER=$kmer WIN=$win LENGTH=$size\n$bseq";
+    close FAS;
+    
+    exit 1 if (defined $no_repeat);
 }
 
-#print "Verifying sequence final size\n" if(defined $debug);
-#$seq = checkSeqSize($size, $seq);
+# Adding new elements
+unless (defined $no_repeat) {
+    loadRepeatConsensus($model{'repbase'});
+    loadRepeats("$dir/$model/" . $model{'repeat_file'});
+	$seq = insertElements($seq);
+	print "Inserted [$nsim + $nrep] elements in base sequence\n" if(defined $debug);
+	open  INS, ">$out.inserts" or errorExit("cannot open $out.inserts");
+    print INS join "\n", "POS\tREPEAT", @inserts;	
+    close INS;
+}
 
 print "Generated a sequence with ", length $seq, " bases\n" if(defined $debug);
+
+$seq = uc($seq) if (defined $no_mask);
 
 # Printing output
 print "Printing outputs\n" if(defined $debug);
@@ -178,14 +174,8 @@ open  FAS, ">$out.fasta" or errorExit("cannot open $out.fasta");
 print FAS  ">artificial_sequence MODEL=$model KMER=$kmer WIN=$win LENGTH=$size\n$fseq";
 close FAS;
 
-if ($nsim + $nrep > 0) {
-    open  INS, ">$out.inserts" or errorExit("cannot open $out.inserts");
-    print INS  "POS\tREPEAT\n";
-    foreach my $rep (@inserts) {
-        print INS "$rep\n";	
-	}
-    close INS;
-}
+
+#### END MAIN #####
 
 #################################################
 ##      S  U  B  R  O  U  T  I  N  E  S        ##
@@ -194,21 +184,23 @@ if ($nsim + $nrep > 0) {
 sub usage {
 print <<__HELP__
 Usage: perl intergenic.pl [--help|-h] -o MODEL -l SIZE -n OUFILE [PARAMETERS] 
-Parameters:
-  -o --model     Model to use (like hg19, mm9, ... etc).
-  -l --length    Size in bases [kb, Mb, Gb accepted].
-  -n --name      Output files to create [*.fasta and *.log].
+Required parameters:
+  -m --model       Model to use (like hg19, mm9, ... etc).
+  -s --size        Size in bases [kb, Mb, Gb accepted].
+  -n --name        Output files to create [*.fasta and *.log].
 	
 Optional or automatic parameters:
-  -w --win       Window size for base generation profile.     Default =  1000
-  -k --kmer      Seed size to use [available: 1,2,3,4,5,6].   Default =     4
-  -g --mingc     Minimal GC content to use [0,10,..,90].      Default =    10
-  -c --maxgc     Maximal GC content to use [0,10,..,90].      Default =   100
-  -r --repeats   Number of total repeats to insert.           Default =  Auto
-  -s --simple    Number of total simple repeats to insert.    Default =  Auto
-  -m --mask      Mask repeats in final sequence.              Default = False
-  -v --verbose   Verbose output for debug.                    Default = False
-  -h --help      Print this screen.
+  -w --window      Window size for base generation         Default = $win
+  -k --kmer        Seed size to use                        Default = $kmer
+  -g --mingc       Minimal GC content to use               Default = $mingc
+  -c --maxgc       Maximal GC content to use               Default = $maxgc
+
+  -b --write_base  Write base sequence (pre-repeats) 
+  -R --no_repeat   Don't insert repeats (just base sequence)
+  -M --no_mask     Don't lower-case repeats
+
+  -v --verbose    Verbose output for debug
+  -h --help       Print this screen
 	
 __HELP__
 ;
