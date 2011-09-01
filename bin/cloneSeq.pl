@@ -137,7 +137,7 @@ while (($id, $seq) = each %seq) {
             close F;
             #unlink 'fake.fasta';
             #unlink 'fake.inserts';
-            if (length $new == $block) {
+            if ((length $new) > 1) {
                 $new_seq .= $new;
             }
             else {
