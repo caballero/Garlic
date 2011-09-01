@@ -134,8 +134,8 @@ while (($id, $seq) = each %seq) {
                 $new_seq .= $_;
             }
             close F;
-            unlink 'fake.fasta';
-            unlink 'fake.inserts';
+            #unlink 'fake.fasta';
+            #unlink 'fake.inserts';
         }
         else {
             $i--;
