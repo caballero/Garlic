@@ -126,21 +126,29 @@ while (($id, $seq) = each %seq) {
         my ($min, $max) = minmaxGC($slice);
         my $rep = calcRepBases($slice);
         system ("perl $creator -m $model -k $kmer -w $win -r $rep -g $min -c $max -s $block -n fake");
-        if (-e 'fake.fasta' and -z 'fake.fasta') {
+        if (-e 'fake.fasta') {
+            my $new = '';
             open F, "fake.fasta" or die "cannot open fake.fasta\n";
             while (<F>) {
                 chomp;
                 next if (m/>/);
-                $new_seq .= $_;
+                $new .= $_;
             }
             close F;
             #unlink 'fake.fasta';
             #unlink 'fake.inserts';
+            if (length $new == $block) {
+                $new_seq .= $new;
+            }
+            else {
+                $i--;
+            }
         }
         else {
             $i--;
         }
     }
+    
     while ($new_seq) {
         print substr ($seq, 0, 70), "\n";
         substr ($seq, 0, 70) = '';
