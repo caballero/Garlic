@@ -419,7 +419,8 @@ sub loadRepeatConsensus {
 	while (<R>) {
 		chomp;
 		if (m/^ID\s+(.+?)\s+/) {
-			$rep = $1; 
+			$rep = $1;
+			$alt = undef;
 		}
 		elsif (m/^DE\s+RepbaseID:\s+(.+)/) {
 		    $alt = $1;
@@ -428,7 +429,9 @@ sub loadRepeatConsensus {
 		    $seq =  $1;
 		    $seq =~ s/\s//g;
 		    $rep_seq{$rep} .= checkBases($seq);
-		    $rep_seq{$alt} .= checkBases($seq) unless ($rep eq $alt);
+		    if (defined $alt) {
+		        $rep_seq{$alt} .= checkBases($seq) unless ($rep eq $alt);
+		    }
 		}
 	}
 	close R;
