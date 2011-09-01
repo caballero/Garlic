@@ -947,6 +947,14 @@ sub getInsert {
     # our bag of elements to insert
 	my @ins = shuffle(@{ $repeat{$gc} });
 	while (1) {
+	    $dice   = rand;
+	    $p      = 0;
+	    foreach $ins (@ins) {
+	        my @info = split (/:/, $ins);
+	        $new_rep = $ins;
+	        last if ($dice <= $p);
+	        $p += $info[2];
+	    }
         $new_rep = $ins[int(rand @ins)];
         if ($new_rep =~ /SIMPLE/) {
             $seq = evolveSimple($new_rep, $gc);
