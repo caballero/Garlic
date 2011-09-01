@@ -115,7 +115,7 @@ usage() if (defined $help);
 usage() unless (defined $model and defined $size);
 
 # Loading model parameters
-readConfig("$dir/$model/$model.model");
+#readConfig("$dir/$model/$model.model");
 $model{'gct_file'}    = "$model.GCt.W$win.data";
 $model{'kmer_file'}   = "$model.kmer.K$kmer.W$win.data";
 $model{'repeat_file'} = "$model.repeats.W$win.data";
@@ -414,20 +414,21 @@ sub loadRepeatConsensus {
     print "loading interspersed repeats consensus\n" if (defined $debug);
 	my $file  = shift @_;
 	my $fileh = defineFH($file);
-	my ($rep, $seq);
+	my ($rep, $alt, $seq);
 	open R, "$fileh" or errorExit("Cannot open $fileh");
 	while (<R>) {
 		chomp;
 		if (m/^ID\s+(.+?)\s+/) {
 			$rep = $1; 
 		}
-		#elsif (m/^DE\s+RepbaseID:\s+(.+)/) {
-		#    $rep = $1;
-		#}
+		elsif (m/^DE\s+RepbaseID:\s+(.+)/) {
+		    $alt = $1;
+		}
 		elsif (m/^\s+(.+)\s+\d+$/) {
 		    $seq =  $1;
 		    $seq =~ s/\s//g;
 		    $rep_seq{$rep} .= checkBases($seq);
+		    $rep_seq{$alt} .= checkBases($seq) unless ($rep eq $alt);
 		}
 	}
 	close R;
@@ -466,13 +467,22 @@ sub selPosition {
 	my $gc  = shift @_;
 	my @pos = ();
 	my %dat = ();
+	my $num = 0;
 	for (my $i = 0; $i <= ((length $seq) - $kmer - 1); $i++) {
 		my $seed = uc(substr($seq, $i, $kmer));
-		$dat{$i} = $elemk{$gc}{$seed};
+		if (defined $elemk{$gc}{$seed}) {
+		    $dat{$i} = $elemk{$gc}{$seed};
+		    $num++;
+		}
 	}
-	foreach my $pos (sort { $dat{$a} <=> $dat{$b} } keys %dat) {
-	 	push (@pos, $pos);
+	if ($num < 2) {
+	    @pos = (0);
 	}
+	else (
+	    foreach my $pos (sort { $dat{$a} <=> $dat{$b} } keys %dat) {
+	 	    push (@pos, $pos);
+	    }
+    }
 	return @pos;
 }
 
