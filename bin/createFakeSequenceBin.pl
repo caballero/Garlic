@@ -158,7 +158,6 @@ unless (defined $no_repeat) {
     loadRepeats("$dir/$model/" . $model{'repeat_file'});
     my $gc = calcGC($seq);
 	$seq = insertElements($seq, $gc);
-	print "Inserted [$nsim + $nrep] elements in base sequence\n" if(defined $debug);
 	open  INS, ">$out.inserts" or errorExit("cannot open $out.inserts");
     print INS join "\n", "POS\tREPEAT", @inserts;	
     close INS;
@@ -876,8 +875,8 @@ sub evolveSimple {
 sub evolveRepeat {
     my ($rep, $gc, $old_age) = @_;
     my $seq   = '';
-    my ($type, $fam, $freq, $dir, $div, $ins, $del, $ini, $frag, $break) = split (/:/, $rep);
-    my ($mut, $nins, $ndel, $nsit, $nver, $cseq, $min, $max, $age);
+    my ($type, $fam, $freq, $dir, $div, $ins, $del, $frag, $break) = split (/:/, $rep);
+    my ($mut, $nins, $ndel, $nsit, $nver, $cseq, $min, $max, $ini, $age);
     $dir = rand; # direction is random
     
     unless (defined $rep_seq{$type}) {
