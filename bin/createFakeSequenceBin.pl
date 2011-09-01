@@ -467,7 +467,7 @@ sub selPosition {
 	my @pos = ();
 	my %dat = ();
 	for (my $i = 0; $i <= ((length $seq) - $kmer - 1); $i++) {
-		my $seed = substr($seq, $i, $kmer);
+		my $seed = uc(substr($seq, $i, $kmer));
 		$dat{$i} = $elemk{$gc}{$seed};
 	}
 	foreach my $pos (sort { $dat{$a} <=> $dat{$b} } keys %dat) {
