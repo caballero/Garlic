@@ -105,9 +105,9 @@ usage() if (!GetOptions(
 				'c|maxgc:i'     => \$maxgc,
 				'v|verbose'     => \$debug,
 				'd|dir:s'       => \$dir,
-				'b|write_base'  => \$wrbase,
-				'R|no_repeats'  => \$no_repeat,
-				'M|no_mask'     => \$no_mask
+				'write_base'    => \$wrbase,
+				'no_repeats'    => \$no_repeat,
+				'no_mask'       => \$no_mask
 				)
 );
 
@@ -195,12 +195,12 @@ Optional or automatic parameters:
   -g --mingc       Minimal GC content to use               Default = $mingc
   -c --maxgc       Maximal GC content to use               Default = $maxgc
 
-  -b --write_base  Write base sequence (pre-repeats) 
-  -R --no_repeat   Don't insert repeats (just base sequence)
-  -M --no_mask     Don't lower-case repeats
+  --write_base     Write base sequence (pre-repeats) 
+  --no_repeat      Don't insert repeats (just base sequence)
+  --no_mask        Don't lower-case repeats
 
-  -v --verbose    Verbose output for debug
-  -h --help       Print this screen
+  -v --verbose     Verbose output for debug
+  -h --help        Print this screen
 	
 __HELP__
 ;
