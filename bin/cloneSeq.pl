@@ -125,6 +125,7 @@ while (($id, $seq) = each %seq) {
         my $slice = substr ($seq, $i, $block);
         my ($min, $max) = minmaxGC($slice);
         my $rep = calcRepBases($slice);
+        warn "creating subseq $i GC=($min, $max), RF=$rep\n" if (defined $verbose);
         system ("perl $creator -m $model -k $kmer -w $win -r $rep -g $min -c $max -s $block -n fake");
         if (-e 'fake.fasta') {
             my $new = '';
@@ -142,13 +143,15 @@ while (($id, $seq) = each %seq) {
             }
             else {
                 $i--;
+                warn "failed (no sequence found), redoing\n" if (defined $verbose);
             }
         }
         else {
             $i--;
+            warn "failed (no sequence found), redoing\n" if (defined $verbose);
         }
     }
-    
+    warn "writing final sequence\n" if (defined $verbose);
     while ($new_seq) {
         print substr ($seq, 0, 70), "\n";
         substr ($seq, 0, 70) = '';
