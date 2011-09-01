@@ -95,7 +95,7 @@ my $maxgc     =  $classgc[-1];
 
 ## Parameters extraction
 usage() if (!GetOptions( 
-				'help|h'        => \$help,
+				'h|help'        => \$help,
 				'm|model=s'     => \$model,
 				's|size=s'      => \$size,
 				'n|name=s'      => \$out,
@@ -183,7 +183,7 @@ close FAS;
 
 sub usage {
 print <<__HELP__
-Usage: perl intergenic.pl [--help|-h] -o MODEL -l SIZE -n OUFILE [PARAMETERS] 
+Usage: perl createSequence.pl -m MODEL -s SIZE -n OUFILE [PARAMETERS] 
 Required parameters:
   -m --model       Model to use (like hg19, mm9, ... etc).
   -s --size        Size in bases [kb, Mb, Gb accepted].
