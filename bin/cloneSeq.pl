@@ -90,7 +90,7 @@ if (defined $output) {
 }
 
 # Path to the createFakeSequence.pl script
-my $creator = 'bin/createFakeSequence.pl';
+my $creator = 'bin/createFakeSequenceBin.pl';
 
 # main varibles
 my %seq = ();
@@ -134,6 +134,11 @@ while (($id, $seq) = each %seq) {
                 $new_seq .= $_;
             }
             close F;
+            unlink 'fake.fasta';
+            unlink 'fake.inserts';
+        }
+        else {
+            $i--;
         }
     }
     while ($new_seq) {
