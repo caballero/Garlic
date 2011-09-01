@@ -59,14 +59,17 @@ use Getopt::Long;
 use Pod::Usage;
 
 # Parameters initialization
-my $help       = undef;
-my $verbose    = undef;
-my $input      = undef;
-my $output     = undef;
-my $kmer       =     4;
-my $win        =  1000;
-my $block      = '10k';
+my $help       =  undef;
+my $verbose    =  undef;
+my $input      =  undef;
+my $output     =  undef;
+my $kmer       =      4;
+my $win        =   1000;
+my $block      =  '20k';
 my $model      = 'hg19';
+my $dir        = 'data';
+my $base       =  undef;
+my $repeat     =  undef;
 
 # Fetch options
 GetOptions(
@@ -77,7 +80,10 @@ GetOptions(
     'k|kmer:i'        => \$kmer,
     'w|win:i'         => \$win,
     'b|block:s'       => \$block,
-    'm|model:s'       => \$model
+    'm|model:s'       => \$model,
+    'a|base:s'        => \$base,
+    'd|dir:s'         => \$dir,
+    'r|repeat:s'      => \$repeat
 );
 pod2usage(-verbose => 2) if (defined $help);
 
@@ -120,13 +126,15 @@ while (<>) {
 warn "creating homolog sequences\n" if (defined $verbose);
 while (($id, $seq) = each %seq) {
     print ">$id synthetic\n";
-    my $new_seq = undef;
+    my $new_seq  = undef;
+    my $bas_seq  = undef;
+    my $rep_info = undef;
     for (my $i = 0; $i <= (length $seq) - $block; $i += $block) {
         my $slice = substr ($seq, $i, $block);
         my ($min, $max) = minmaxGC($slice);
         my $rep = calcRepBases($slice);
         warn "creating subseq $i GC=($min, $max), RF=$rep\n" if (defined $verbose);
-        system ("perl $creator -m $model -k $kmer -w $win -r $rep -g $min -c $max -s $block -n fake");
+        system ("perl $creator -m $model -k $kmer -w $win -r $rep -g $min -c $max -s $block --write_base -n fake");
         if (-e 'fake.fasta') {
             my $new = '';
             open F, "fake.fasta" or die "cannot open fake.fasta\n";
@@ -136,10 +144,27 @@ while (($id, $seq) = each %seq) {
                 $new .= $_;
             }
             close F;
-            #unlink 'fake.fasta';
-            #unlink 'fake.inserts';
             if ((length $new) > 1) {
                 $new_seq .= $new;
+                if (defined $base) {
+                    open B, "fake.base.fasta" or die "cannot open fake.base.fasta\n";
+                    while (<>) {
+                        next if (m/>/);
+                        chomp;
+                        $bas_seq .= $_;
+                    }
+                    close B;
+                }
+                if (defined $repeat) {
+                    open R, "fake.inserts" or die "cannot open fake.inserts\n";
+                    while (<R>) {
+                        chomp;
+                        my ($pos, $info) = split (/\t/, $_);
+                        $pos+= $i;
+                        $rep_info .= "$pos\t$info\n";
+                    }
+                    close R;
+                }
             }
             else {
                 $i--;
@@ -156,8 +181,27 @@ while (($id, $seq) = each %seq) {
         print substr ($new_seq, 0, 70), "\n";
         substr ($new_seq, 0, 70) = '';
     }
+    if (defined $base) {
+        open  B, ">$base" or die "cannot open $base\n";
+        print B ">$id (base) synthetic\n";
+        while ($bas_seq) {
+            print B substr ($bas_seq, 0, 70), "\n";
+            substr ($bas_seq, 0, 70) = '';
+        }
+        close B;
+    }
+    if (defined $repeat) {
+        open  R, ">$repeat" or die "cannot open $repeat\n";
+        print R $rep_info;
+        close R;
+    }
 }
 
+# cleaning up
+unlink 'fake.fasta';
+unlink 'fake.base.fasta';
+unlink 'fake.inserts';
+            
 #################################################
 ##      S  U  B  R  O  U  T  I  N  E  S        ##
 #################################################
