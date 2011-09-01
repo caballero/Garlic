@@ -153,8 +153,8 @@ while (($id, $seq) = each %seq) {
     }
     warn "writing final sequence\n" if (defined $verbose);
     while ($new_seq) {
-        print substr ($seq, 0, 70), "\n";
-        substr ($seq, 0, 70) = '';
+        print substr ($new_seq, 0, 70), "\n";
+        substr ($new_seq, 0, 70) = '';
     }
 }
 
