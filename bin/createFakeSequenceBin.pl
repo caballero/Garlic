@@ -139,7 +139,7 @@ usage() unless (defined $model and defined $size);
 # GC classes creation
 $mingc = $valid_gc[ 0] unless (defined $mingc);
 $maxgc = $valid_gc[-1] unless (defined $maxgc);
-foreach $gc (@valid_gc) {
+foreach my $gc (@valid_gc) {
     if ($gc >= $mingc and $gc <= $maxgc) {
         push @classgc, $gc;
         $classgc{$gc} = 1;
