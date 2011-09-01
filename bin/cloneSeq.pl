@@ -174,6 +174,7 @@ sub calcGC {
     my $nat = $seq =~ tr/ATat//;
     my $sum = $nat + $ngc;
     my $gc  = undef;
+    my $pgc = undef;
     
     if ($sum >= $win / 10) { # at least 10% of the sequence is useful
         $gc = $ngc / $sum;
@@ -183,12 +184,12 @@ sub calcGC {
         $gc = $gc[int(rand @gc)];
     }
     
-    if    ($gc <= 0.37) { $new_gc =  37; }
-    elsif ($gc <= 0.39) { $new_gc =  39; }   
-    elsif ($gc <= 0.42) { $new_gc =  42; }
-    elsif ($gc <= 0.45) { $new_gc =  45; }
-    else                { $new_gc = 100; }
+    if    ($gc <= 0.37) { $pgc =  37; }
+    elsif ($gc <= 0.39) { $pgc =  39; }   
+    elsif ($gc <= 0.42) { $pgc =  42; }
+    elsif ($gc <= 0.45) { $pgc =  45; }
+    else                { $pgc = 100; }
     
-	return $new_gc;
+	return $pgc;
 }
 
