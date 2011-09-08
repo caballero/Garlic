@@ -120,7 +120,7 @@ while (<>) {
 warn "searching regions\n";
 foreach $id (keys %seq) {
     warn "  processing $id\n";
-    my @frag = split (/(X+)/, $seq{$id});
+    my @frag = split (/(X{100,})/, $seq{$id});
     my $ini = 0;
     foreach my $frag (@frag) {
         unless ($frag =~ m/X/) {
