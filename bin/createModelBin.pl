@@ -116,7 +116,7 @@ my $fasta           =  undef;      # Sequences in fasta files
 my $repeat          =  undef;      # RepeatMasker output
 my $trf             =  undef;      # TRF output
 my $gene            =  undef;      # Gene annotation
-my $region          =  undef;
+my $region          =  undef;      # Define a region to analize
 my $help            =  undef;      # Help flag
 my $verbose         =  undef;      # Verbose mode flag
 my $rm_tmp          =  undef;      # Remove downloaded files
@@ -198,7 +198,7 @@ my %ebases   = (); # effective bases per GC bin
 my @dna      = qw/A C G T/;
 my ($seq, $ss, $seq_id, $ini, $end, $len);
 
-# GC content bins, if you change this array, change the classGC() subroutine too.
+# GC content bins, if you change this array, modify the classGC() subroutine too.
 my @gc = qw/0-37 37-39 39-42 42-45 45-100/;
 
 # Check directories, create them if required
@@ -232,8 +232,12 @@ readFasta();
 calcBinGC()  unless (defined $gc_post_mask);
 maskRepeat() unless (defined $no_mask_repeat);
 maskTRF()    unless (defined $no_mask_trf);
-if (defined $mask_exon) { maskExon(); }
-else { maskGene() unless (defined $no_mask_gene); }
+if (defined $mask_exon) { 
+    maskExon(); 
+}
+else { 
+    maskGene() unless (defined $no_mask_gene); 
+}
 calcBinGC()  if     (defined $gc_post_mask);
 writeMaskSeq("$model.masked.fa") if (defined $write_mask_seq);
 
@@ -728,9 +732,11 @@ sub profileRepeats {
 
 sub calcRepDist {
     # parse the selected repeats, returns the processed list 
-    my $res = undef;
-    my %rep = ();
-    my $tot = 0;
+    my $res  = undef;
+    my %rep  = ();
+    my %keep = ();       
+    my $tot  = 0;
+    my $fil  = 0;
     my ($rep,$rid,$rfam,$con,$per,$dir,$div,$ins,$del,$indel,$ini,$end,$nfrg);
     foreach $rep (@_) {
         $tot++;
@@ -774,25 +780,84 @@ sub calcRepDist {
    
     # create the label with data distributions
     foreach $rep (keys %rep) {
-        my $freq = sprintf ("%.8f", $rep{$rep}{'num'} / $tot);
-        my $lab  = '';
-        my @feat = ();
-        $rep{$rep}{'dir'} =~ s/,$//;
-        $lab    .= calcDirDist($rep{$rep}{'dir'});
+        if ($rep{$rep}{'num'} < 4) {
+            next;
+        }
+        my @feat   = ();
+        my %feat   = ();
+        
         if ($rep =~ m/SIMPLE/) {
             @feat = qw/per div indel/;
+            my %data = ();
+            foreach my $feat (@feat) {
+                my @arr = split (/,/, $rep{$rep}{$feat}); 
+                pop @arr;
+                my @arr_sort = sort {$a<=>$b} @arr;
+                my ($q1, $q2, $q3) = calcQuartiles(@arr_sort);
+                foreach my $x (@arr) {
+                    my $v = undef;
+                    if    ($x <= $q1) { $v = "$arr[0]-$q1";  }
+                    elsif ($x <= $q2) { $v =     "$q1-$q2";  }
+                    elsif ($x <= $q3) { $v =     "$q2-$q3";  }
+                    else              { $v = "$q3-$arr[-1]"; }
+                    push @{ $feat{$feat} }, $v;
+                }                
+            }
+            my $n = length @{ $feat{$feat[0]} };
+            for (my $i = 0; $i <= $n; $i++) {
+                my $per   = $feat{'per'}[$i];
+                my $div   = $feat{'div'}[$i];
+                my $indel = $feat{'indel'}[$i];
+                $data{"$per:$div:$indel"}++;
+            }
+            foreach my $data (keys %data) {
+                if ($data{$data} > 2) {
+                    $keep{$rep}{$data} = $data{$data};
+                    $fil += $data{$data};
+                }
+            }
         }
         else {
             @feat = qw/div ins del len frg/;
+            my %data = ();
+            foreach my $feat (@feat) {
+                my @arr = split (/,/, $rep{$rep}{$feat}); 
+                pop @arr;
+                my @arr_sort = sort {$a<=>$b} @arr;
+                my ($q1, $q2, $q3) = calcQuartiles(@arr_sort);
+                foreach my $x (@arr) {
+                    my $v = undef;
+                    if    ($x <= $q1) { $v = "$arr[0]-$q1";  }
+                    elsif ($x <= $q2) { $v =     "$q1-$q2";  }
+                    elsif ($x <= $q3) { $v =     "$q2-$q3";  }
+                    else              { $v = "$q3-$arr[-1]"; }
+                    push @{ $feat{$feat} }, $v;
+                }                
+            }
+            my $n = length @{ $feat{$feat[0]} };
+            for (my $i = 0; $i <= $n; $i++) {
+                my $div = $feat{'div'}[$i];
+                my $ins = $feat{'ins'}[$i];
+                my $del = $feat{'del'}[$i];
+                my $len = $feat{'len'}[$i];
+                my $frg = $feat{'frg'}[$i];
+                $data{"$div:$ins:$del:$len:$frg"}++;
+            }
+            foreach my $data (keys %data) {
+                if ($data{$data} > 2) {
+                    $keep{$rep}{$data} = $data{$data};
+                    $fil += $data{$data};
+                }
+            }
         }
-       
-        foreach my $feat (@feat) {
-            $rep{$rep}{$feat} =~ s/,$//;
-            $lab .= ':' . calcBinDist(split (/,/, $rep{$rep}{$feat}));
+        
+        foreach my $rep (keys %keep) {
+            foreach my $grp (keys %{ $keep{$rep} }) {
+                my $freq = sprintf ("%.10f", $keep{$rep}{$grp} / $fil);
+                $res .= "$rep:$freq:0.5:$grp\n";
+            }
         }
-        $res .= "$rep:$freq:$lab\n";
     }
-   
     return $res;
 }
 
