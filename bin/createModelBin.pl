@@ -105,6 +105,8 @@ use warnings;
 use Getopt::Long;
 use Pod::Usage;
 use File::Find;
+use lib './lib'; # check where is RSutils.pm
+use RSutils;
 
 # Parameters initialization
 my $model           =  undef;      # Model definition
@@ -134,6 +136,7 @@ my $gc_post_mask    =  undef;      # Compute GC bins before masking
 my $revcomp_kmer    =  undef;      # Count kmers in the reverse-complement chain
 my $mask_exon       =  undef;      # Mask exonic regions (default is whole gene)
 my $no_intron       =  undef;      # No intron filter flag  
+
 # Fetch options
 GetOptions(
     'h|help'             => \$help,
@@ -196,7 +199,9 @@ my %genes    = (); # gene coordinates
 my %region   = (); # regions pre-selected
 my %ebases   = (); # effective bases per GC bin
 my @dna      = qw/A C G T/;
-my ($seq, $ss, $seq_id, $ini, $end, $len);
+my ($seq, $ss, $seq_id, $ini, $end, $len, $name);
+my $RS       = new RSutils;
+
 
 # GC content bins, if you change this array, modify the classGC() subroutine too.
 my @gc = qw/0-37 37-39 39-42 42-45 45-100/;
@@ -443,6 +448,7 @@ sub readFasta {
 sub maskRepeat {
     # mask sequences with RepeatMasker annotation
     warn "masking repeats\n" if (defined $verbose);
+    my %mask = ();
     foreach my $file (@repeat) {
         if (defined $exclude) {
             next if ($file =~ m/$exclude/);
@@ -457,16 +463,26 @@ sub maskRepeat {
             next unless (defined $seq{$seq_id});
             $ini = $arr[5];
             $end = $arr[6];
-            $len = $end - $ini + 1;
-            substr ($seq{$seq_id}, $ini - 1, $len) = 'R' x $len;
+            push @{ $mask{$seq_id} }, "$ini\t$end\tmask";
         }
-        close FH;
+        close FH;        
+    }
+    
+    foreach $seq_id (keys %mask) {
+        my $all   = $RS->RSsort(\@{ $mask{$seq_id} });
+        my $union = $RS->RSunion($all);
+        foreach my $block (@$union) {
+            ($ini, $end, $name) = split (/\t/, $block);
+            $len = $end - $ini - 1;
+            substr($seq{$seq_id}, $ini - 1, $len) = 'R' x $len;
+        }
     }
 }
 
 sub maskTRF {
     # mask sequences with TRF annotation
     warn "masking simple repeats\n" if (defined $verbose);
+    my %mask = ();
     foreach my $file (@trf) {
         if (defined $exclude) {
             next if ($file =~ m/$exclude/);
@@ -479,36 +495,26 @@ sub maskTRF {
             next unless (defined $seq{$seq_id});
             $ini = $arr[1];
             $end = $arr[2];
-            $len = $end - $ini;
-            substr ($seq{$seq_id}, $ini, $len) = 'S' x $len;
+            push @{ $mask{$seq_id} }, "$ini\t$end\tmask";
         }
         close FH;
     }
-}
-
-sub maskGene {
-    # mask sequences with gene annotation
-    warn "masking genes\n" if (defined $verbose);
-    foreach my $file (@gene) {
-        my $fileh = defineFH($file);
-        open FH, "$fileh" or die "cannot open $file\n";
-        while (<FH>) {
-            my @arr = split (/\t/, $_);
-            $seq_id = $arr[2];
-            next unless (defined $seq{$seq_id});
-            $ini = $arr[4];
-            $end = $arr[5];
+    
+    foreach $seq_id (keys %mask) {
+        my $all   = $RS->RSsort(\@{ $mask{$seq_id} });
+        my $union = $RS->RSunion($all);
+        foreach my $block (@$union) {
+            ($ini, $end, $name) = split (/\t/, $block);
             $len = $end - $ini - 1;
-            substr ($seq{$seq_id}, $ini, $len) = 'X' x $len;
-            push @{ $genes{$seq_id} }, "$ini-$end";
+            substr($seq{$seq_id}, $ini - 1, $len) = 'S' x $len;
         }
-        close FH;
     }
 }
 
 sub maskExon {
     # mask exon sequences with gene annotation
     warn "masking exons\n" if (defined $verbose);
+    my %mask = ();
     foreach my $file (@gene) {
         my $fileh = defineFH($file);
         open FH, "$fileh" or die "cannot open $file\n";
@@ -521,11 +527,33 @@ sub maskExon {
             my @ini = split (/,/, $arr[ 9]);
             my @end = split (/,/, $arr[10]);
             for (my $i = 0; $i <= $#ini; $i++) {
-                $len = $end[$i] - $ini[$i] - 1;
-                substr ($seq{$seq_id}, $ini[$i], $len) = 'X' x $len;
+                push @{  $mask{$seq_id} }, "$ini[$i]\t$end[$i]\tmask";
             }
         }
         close FH;
+    }
+    foreach $seq_id (keys %mask) {
+        my $all   = $RS->RSsort(\@{ $mask{$seq_id} });
+        my $union = $RS->RSunion($all);
+        foreach my $block (@$union) {
+            ($ini, $end, $name) = split (/\t/, $block);
+            $len = $end - $ini - 1;
+            substr($seq{$seq_id}, $ini - 1, $len) = 'X' x $len;
+        }
+    }
+}
+
+sub maskGene {
+    # mask sequences with gene annotation
+    warn "masking genes\n" if (defined $verbose);
+    loadGenes();    
+    foreach $seq_id (keys %genes) {
+        next unless (defined $seq{$seq_id});
+        foreach my $block (@{ $genes{$seq_id} }) {
+            ($ini, $end, $name) = split (/\t/, $block);
+            $len = $end - $ini - 1;
+            substr($seq{$seq_id}, $ini - 1, $len) = 'X' x $len;
+        }
     }
 }
 
@@ -541,14 +569,15 @@ sub loadGenes {
             next unless (defined $seq{$seq_id});
             $ini = $arr[4];
             $end = $arr[5];
-            push @{ $genes{$seq_id} }, "$ini-$end";
+            push @{ $genes{$seq_id} }, "$ini\t$end\tgene";
         }
         close FH;
     }
     
     foreach $seq_id (keys %genes) {
-		no warnings; # turn off warn about numerical sorting in num-num
-        @{ $genes{$seq_id} }  = sort {$a<=>$b} @{ $genes{$seq_id} };
+        my $all   = $RS->RSsort(@{ $genes{$seq_id} });
+        my $union = $RS->RSunion($all);
+        @{ $genes{$seq_id} } = @$union;
     }
 }
 
@@ -768,13 +797,12 @@ sub calcRepDist {
                 ($rid,$rfam,$dir,$div,$ins,$del,$ini,$end) = split (/:/, $rep);
             }
             my $len = $end - $ini;
+            $indel = $ins + $del;
             $rep{"$rid:$rfam"}{'num'}++;
-            $rep{"$rid:$rfam"}{'dir'} .= "$dir,";
-            $rep{"$rid:$rfam"}{'div'} .= "$div,";
-            $rep{"$rid:$rfam"}{'ins'} .= "$ins,";
-            $rep{"$rid:$rfam"}{'del'} .= "$del,";
-            $rep{"$rid:$rfam"}{'len'} .= "$len,";
-            $rep{"$rid:$rfam"}{'frg'} .= "$nfrg,";
+            $rep{"$rid:$rfam"}{'dir'}   .= "$dir,";
+            $rep{"$rid:$rfam"}{'div'}   .= "$div,";
+            $rep{"$rid:$rfam"}{'indel'} .= "$indel,";
+            $rep{"$rid:$rfam"}{'len'}   .= "$len,";
         }
     }
    
@@ -818,7 +846,7 @@ sub calcRepDist {
             }
         }
         else {
-            @feat = qw/div ins del len frg/;
+            @feat = qw/div indel len/;
             my %data = ();
             foreach my $feat (@feat) {
                 my @arr = split (/,/, $rep{$rep}{$feat}); 
@@ -837,11 +865,9 @@ sub calcRepDist {
             my $n = length @{ $feat{$feat[0]} };
             for (my $i = 0; $i <= $n; $i++) {
                 my $div = $feat{'div'}[$i];
-                my $ins = $feat{'ins'}[$i];
-                my $del = $feat{'del'}[$i];
+                my $ins = $feat{'indel'}[$i];
                 my $len = $feat{'len'}[$i];
-                my $frg = $feat{'frg'}[$i];
-                $data{"$div:$ins:$del:$len:$frg"}++;
+                $data{"$div:$indel:$len"}++;
             }
             foreach my $data (keys %data) {
                 if ($data{$data} > 2) {
@@ -1013,16 +1039,14 @@ sub profileRM {
 
 sub checkGene {
     # verify is a region is inside gene annotation
-    my ($c, $i, $e) = @_;
+    my ($chr, $ini, $end) = @_;
     my $res = undef;
-    my @genes = @{ $genes{$c} };
-    for (my $j = 0; $j<= $#genes; $j++) {
-        my ($gi, $ge) = split (/-/, $genes[$j]);
-        if ($i >= $gi and $e <= $ge) {
-            $res = 1;
-            last;
-        }
-        last if ($gi > $e);
+    if (defined $genes{$chr}[0]) {
+        my @query = ("$ini\t$end\tquery");
+        my $genes = \@{ $genes{$chr} };
+        my $query = $RS-> RSintersection($genes, \@query);
+        my $hit   = shift @$query;
+        $res = 1 if (defined $hit);
     }
     return $res;
 }
