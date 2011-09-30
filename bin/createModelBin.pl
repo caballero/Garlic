@@ -527,7 +527,7 @@ sub maskExon {
             my @ini = split (/,/, $arr[ 9]);
             my @end = split (/,/, $arr[10]);
             for (my $i = 0; $i <= $#ini; $i++) {
-                push @{  $mask{$seq_id} }, "$ini[$i]\t$end[$i]\tmask";
+                push @{ $mask{$seq_id} }, "$ini[$i]\t$end[$i]\tmask";
             }
         }
         close FH;
@@ -575,7 +575,7 @@ sub loadGenes {
     }
     
     foreach $seq_id (keys %genes) {
-        my $all   = $RS->RSsort(@{ $genes{$seq_id} });
+        my $all   = $RS->RSsort(\@{ $genes{$seq_id} });
         my $union = $RS->RSunion($all);
         @{ $genes{$seq_id} } = @$union;
     }
