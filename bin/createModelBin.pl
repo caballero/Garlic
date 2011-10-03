@@ -555,6 +555,7 @@ sub maskGene {
             substr($seq{$seq_id}, $ini - 1, $len) = 'X' x $len;
         }
     }
+    %genes = (); # Flush
 }
 
 sub loadGenes {
