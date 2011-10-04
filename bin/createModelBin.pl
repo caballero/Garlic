@@ -774,9 +774,9 @@ sub createKmer {
 sub profileRepeats {
     # call the repeat parsers and write the final table
     warn "profiling repeats\n" if (defined $verbose);
-    loadGenes()  if (defined $gene);
-    profileTRF() if (defined $trf);
-    profileRM()  if (defined $repeat);
+    loadGenesBin() if (defined $gene);
+    profileTRF()   if (defined $trf);
+    profileRM()    if (defined $repeat);
     
     my $file = "$model.repeats.W$win.data";
     warn "writing repeats info in \"$file\"\n";
