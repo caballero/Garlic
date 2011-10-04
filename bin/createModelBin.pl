@@ -606,7 +606,7 @@ sub loadGenesBin {
         foreach $bin_ (keys %{ $genes{$seq_id} }) {
             my $all   = $RS->RSsort(\@{ $genes{$seq_id}{$bin_} });
             my $union = $RS->RSunion($all);
-            @{ $genes{$seq_id}[$bin_] } = @$union;
+            @{ $genes{$seq_id}{$bin_} } = @$union;
         }
     }
 }
