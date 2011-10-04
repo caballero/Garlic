@@ -582,6 +582,35 @@ sub loadGenes {
     }
 }
 
+sub loadGenesBin {
+    # load gene annotation
+    warn "reading coordinates for genes\n" if (defined $verbose);
+    my $bin_size = 1e5;
+    my $bin_     = undef;
+    foreach my $file (@gene) {
+        my $fileh = defineFH($file);
+        open FH, "$fileh" or die "cannot open $file\n";
+        while (<FH>) {
+            my @arr = split (/\t/, $_);
+            $seq_id = $arr[2];
+            next unless (defined $seq{$seq_id});
+            $ini  = $arr[4];
+            $end  = $arr[5];
+            $bin_ = int ($ini / $bin_size);
+            push @{ $genes{$seq_id}[$bin_] }, "$ini\t$end\tgene";
+        }
+        close FH;
+    }
+    
+    foreach $seq_id (keys %genes) {
+        foreach $bin_ (@{ $genes{$seq_id} }) {
+            my $all   = $RS->RSsort(\@{ $genes{$seq_id}[$bin_] });
+            my $union = $RS->RSunion($all);
+            @{ $genes{$seq_id}[$bin_] } = @$union;
+        }
+    }
+}
+
 sub loadRegions {
     # load region coordinates
     warn "loading regions\n" if (defined $verbose);
@@ -1041,10 +1070,12 @@ sub profileRM {
 sub checkGene {
     # verify is a region is inside gene annotation
     my ($chr, $ini, $end) = @_;
-    my $res = undef;
-    if (defined $genes{$chr}[0]) {
+    my $res      = undef;
+    my $bin_size = 1e5;
+    my $bin_     = int ($ini / $bin_size);
+    if (defined $genes{$chr}[$bin_][0]) {
         my @query = ("$ini\t$end\tquery");
-        my $genes = \@{ $genes{$chr} };
+        my $genes = \@{ $genes{$chr}[$bin_] };
         my $query = $RS-> RSintersection($genes, \@query);
         my $hit   = shift @$query;
         $res = 1 if (defined $hit);
