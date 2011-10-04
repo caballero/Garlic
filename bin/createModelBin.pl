@@ -597,14 +597,14 @@ sub loadGenesBin {
             $ini  = $arr[4];
             $end  = $arr[5];
             $bin_ = int ($ini / $bin_size);
-            push @{ $genes{$seq_id}[$bin_] }, "$ini\t$end\tgene";
+            push @{ $genes{$seq_id}{$bin_} }, "$ini\t$end\tgene";
         }
         close FH;
     }
     
     foreach $seq_id (keys %genes) {
-        foreach $bin_ (@{ $genes{$seq_id} }) {
-            my $all   = $RS->RSsort(\@{ $genes{$seq_id}[$bin_] });
+        foreach $bin_ (keys %{ $genes{$seq_id} }) {
+            my $all   = $RS->RSsort(\@{ $genes{$seq_id}{$bin_} });
             my $union = $RS->RSunion($all);
             @{ $genes{$seq_id}[$bin_] } = @$union;
         }
@@ -1073,9 +1073,9 @@ sub checkGene {
     my $res      = undef;
     my $bin_size = 1e5;
     my $bin_     = int ($ini / $bin_size);
-    if (defined $genes{$chr}[$bin_][0]) {
+    if (defined $genes{$chr}{$bin_}[0]) {
         my @query = ("$ini\t$end\tquery");
-        my $genes = \@{ $genes{$chr}[$bin_] };
+        my $genes = \@{ $genes{$chr}{$bin_} };
         my $query = $RS-> RSintersection($genes, \@query);
         my $hit   = shift @$query;
         $res = 1 if (defined $hit);
