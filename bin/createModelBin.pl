@@ -785,6 +785,7 @@ sub profileRepeats {
         my $dist = calcGCdist(@{ $ebases{$gc} });
         my $rep  = calcRepDist(@{ $repeat{$gc} });
         print R "#GC=$gc\t$dist\n$rep\n";
+        print   "#GC=$gc\t$dist\n$rep\n"; # debug
     }
     close R;
 }
@@ -806,6 +807,7 @@ sub calcRepDist {
             $rep{"$rfam:$con"}{'per'}   .= "$per,";
             $rep{"$rfam:$con"}{'div'}   .= "$div,";
             $rep{"$rfam:$con"}{'indel'} .= "$indel,";
+            print join "\t", "$rfam:$con", $per, $div, $indel, "\n";
         }
         else { # interspersed repeat
             $nfrg = 1;
@@ -833,6 +835,8 @@ sub calcRepDist {
             $rep{"$rid:$rfam"}{'div'}   .= "$div,";
             $rep{"$rid:$rfam"}{'indel'} .= "$indel,";
             $rep{"$rid:$rfam"}{'len'}   .= "$len,";
+            
+            print join "\t", "$rid:$rfam", $len, $div, $indel, $nfrag, "\n";
         }
     }
    
