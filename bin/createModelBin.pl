@@ -836,7 +836,7 @@ sub calcRepDist {
             $rep{"$rid:$rfam"}{'indel'} .= "$indel,";
             $rep{"$rid:$rfam"}{'len'}   .= "$len,";
             
-            print join "\t", "$rid:$rfam", $len, $div, $indel, $nfrag, "\n";
+            print join "\t", "$rid:$rfam", $len, $div, $indel, $nfrg, "\n";
         }
     }
    
