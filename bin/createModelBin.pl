@@ -575,11 +575,16 @@ sub loadGenes {
         close FH;
     }
     
+    open G, ">genes_blocks.debug" or die;
     foreach $seq_id (keys %genes) {
         my $all   = $RS->RSsort(\@{ $genes{$seq_id} });
         my $union = $RS->RSunion($all);
         @{ $genes{$seq_id} } = @$union;
+        foreach my $elem (@$union) {
+            print G "$seq_id\t$elem\n";
+        }
     }
+    close G;
 }
 
 sub loadGenesBin {
@@ -785,7 +790,7 @@ sub profileRepeats {
         my $dist = calcGCdist(@{ $ebases{$gc} });
         my $rep  = calcRepDist(@{ $repeat{$gc} });
         print R "#GC=$gc\t$dist\n$rep\n";
-        print   "#GC=$gc\t$dist\n$rep\n"; # debug
+        print   "#GC=$gc\t$dist\n"; # debug
     }
     close R;
 }
@@ -914,7 +919,7 @@ sub calcRepDist {
         foreach my $rep (keys %keep) {
             foreach my $grp (keys %{ $keep{$rep} }) {
                 my $freq = sprintf ("%.10f", $keep{$rep}{$grp} / $fil);
-                $res .= "$rep:$freq:0.5:$grp\n";
+                $res .= "$rep:$freq$grp\n";
             }
         }
     }
@@ -1213,6 +1218,7 @@ sub classGC {
 sub calcBinGC {
     # compute the GC content by Bin
     warn "computing GC bins\n" if (defined $verbose);
+    open B, ">gc_bins.debug" or die;
 	while ( ($seq_id, $seq) = each %seq) {
 		my $len  = length $seq;
 		my $gc   = undef;
@@ -1244,8 +1250,10 @@ sub calcBinGC {
 		        $gc = classGC($sum / $num); # average GC
 		    }
 		    push @{ $bingc{$seq_id} }, $gc;
+		    print join "\t", $seq_id, $i * $win, ($i + 1) * $win, "$gc\n";
 		}
-	}			
+	}
+	close B;
 }
 
 sub getBinGC {
