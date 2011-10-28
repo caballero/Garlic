@@ -1250,7 +1250,7 @@ sub calcBinGC {
 		        $gc = classGC($sum / $num); # average GC
 		    }
 		    push @{ $bingc{$seq_id} }, $gc;
-		    print join "\t", $seq_id, $i * $win, ($i + 1) * $win, "$gc\n";
+		    print B join "\t", $seq_id, $i * $win, ($i + 1) * $win, "$gc\n";
 		}
 	}
 	close B;
