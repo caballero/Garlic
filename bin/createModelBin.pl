@@ -252,9 +252,6 @@ profileSeqs() unless (defined $no_kmer_table);
 # Create the Repeat Table
 profileRepeats() unless (defined $no_repeat_table);
 
-# Create the model info file
-writeModelInfo();
-
 # Clean up
 removeTmp() if (defined $rm_tmp);
 
@@ -1041,7 +1038,7 @@ sub profileRM {
             my $rend      = $line[12];
             next unless (defined $seq{$seq_id});
 
-            my $rid       = "$seq_id:$fam:$line[-1]";
+            my $rid       = "REP$line[-1]";
             if ($dir eq 'C') {
                 $rini = $line[13];
                 $rend = $line[12];
@@ -1219,6 +1216,7 @@ sub calcBinGC {
     # compute the GC content by Bin
     warn "computing GC bins\n" if (defined $verbose);
     open B, ">gc_bins.debug" or die;
+    open S, ">gc_signal.debug" or die;
 	while ( ($seq_id, $seq) = each %seq) {
 		my $len  = length $seq;
 		my $gc   = undef;
@@ -1230,6 +1228,9 @@ sub calcBinGC {
 			push @gc, $gc;
 		}
 		push @gc, $gc; # last fragment with length < win
+		
+		print S join "\n", @gc;
+		print S "\n";
 		
 		my $blk = int(($binsize / $win) / 2);
 		for (my $i = 0; $i <= $#gc; $i++) {
@@ -1254,6 +1255,7 @@ sub calcBinGC {
 		}
 	}
 	close B;
+	close S;
 }
 
 sub getBinGC {
