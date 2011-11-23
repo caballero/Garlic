@@ -1190,10 +1190,10 @@ sub removeTmp {
 sub calcGC {
     # calcular GC content (not %)
     my $seq = shift @_;
-    $seq =~ s/[^ACGTacgt]//;
-    my $len = length $seq;
-    return 'NA' if ($len < 1);
     my $ngc = $seq =~ tr/CGcg/CGcg/;
+    my $nat = $seq =~ tr/ATat/ATat/;
+    my $len = $ngc + $nat;
+    return 'NA' if ($len < 1);
     my $gc  = $ngc / $len;
     return $gc;
 }
