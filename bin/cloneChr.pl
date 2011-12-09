@@ -97,6 +97,7 @@ while (($seq_id, $seq) = each %seq) {
         $len   = length $slice;
         system("bin/createFakeSequenceBin.pl -m hg19 -s $len -n new -g $gc -c $gc --no_repeat");
         $new   = '';
+        $/ = "\n";
         open F, "new.fasta" or die "cannot open new.fasta\n";
         while (<F>) {
             next if (m/>/);
