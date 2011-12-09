@@ -89,6 +89,7 @@ while (<>) {
 }
 
 while (($seq_id, $seq) = each %seq) {
+    warn "cloning $seq_id\n" if (defined $verbose);
     $new_seq = '';
     while ($seq) {
         $slice = substr($seq, 0, $bin);
@@ -115,6 +116,7 @@ while (($seq_id, $seq) = each %seq) {
     }
     unlink "new.fasta";
     
+    warn "writing new sequence\n" if (defined $verbose);
     print ">$seq_id\n";
     while ($new_seq) {
         $seq = substr($new_seq, 0, 80);
