@@ -80,24 +80,30 @@ if (defined $output) {
 }
 
 warn "loading sequence\n" if (defined $verbose);
-$/ = "\n>";
 while (<>) {
-    s/>//g;
-    my @lines     = split (/\n/, $_);
-    $seq_id       = shift @lines;
-    $seq{$seq_id} = join ("", @lines);
+    chomp;
+    if (m/>/) {
+        s/>//g;
+        $seq_id = $_;
+    }
+    else {
+        $seq{$seq_id} .= $_;
+    }
 }
 
 while (($seq_id, $seq) = each %seq) {
-    warn "cloning $seq_id\n" if (defined $verbose);
+    $tot = length $seq;
+    warn "cloning $seq_id ($tot bp)\n" if (defined $verbose);
     $new_seq = '';
+    $tot = 0;
     while ($seq) {
         $slice = substr($seq, 0, $bin);
         $gc    = calcGC($slice);
         $len   = length $slice;
+        $tot  += $len;
+        warn "  $tot\n" if (defined $verbose);
         system("bin/createFakeSequenceBin.pl -m hg19 -s $len -n new -g $gc -c $gc --no_repeat");
         $new   = '';
-        $/ = "\n";
         open F, "new.fasta" or die "cannot open new.fasta\n";
         while (<F>) {
             next if (m/>/);
@@ -106,11 +112,6 @@ while (($seq_id, $seq) = each %seq) {
         }
         close F;
         # masking
-        if ($len != length $new) {
-            my $new_len = length $new;
-            die "lengths are different! want: $len, got: $new_len\n";
-        }
-        
         for ($i = 0; $i <= $len; $i++) {
             $n = substr($slice, $i, 1);
             substr($new, $i, 1) = 'N' unless ($n =~ m/[ATGC]/);
