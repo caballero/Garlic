@@ -59,7 +59,7 @@ my $bin        = 10000;
 
 # Global Variables
 my %seq;
-my ($i, $n, $seq_id, $new_seq, $len, $seq, $slice, $new, $gc);
+my ($i, $n, $seq_id, $new_seq, $len, $tot, $seq, $slice, $new, $gc);
 
 # Fetch options
 GetOptions(
