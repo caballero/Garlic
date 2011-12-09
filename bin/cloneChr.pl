@@ -105,6 +105,10 @@ while (($seq_id, $seq) = each %seq) {
         }
         close F;
         # masking
+        if ($len != length $new) {
+            die "lengths are different!\n";
+        }
+        
         for ($i = 0; $i <= $len; $i++) {
             $n = substr($slice, $i, 1);
             substr($new, $i, 1) = 'N' unless ($n =~ m/[ATGC]/);
