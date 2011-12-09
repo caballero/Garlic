@@ -106,7 +106,8 @@ while (($seq_id, $seq) = each %seq) {
         close F;
         # masking
         if ($len != length $new) {
-            die "lengths are different!\n";
+            my $new_len = length $new;
+            die "lengths are different! want: $len, got: $new_len\n";
         }
         
         for ($i = 0; $i <= $len; $i++) {
