@@ -109,6 +109,9 @@ while (($seq_id, $seq) = each %seq) {
             substr($seq, $pos, $len) = 'N' x $len;
         }
     }
+    
+    $seq =~ tr/acgt/NNNN/; #repeats
+    
     warn "writing sequence\n" if (defined $verbose);
     print ">$seq_id\n";
     while ($seq) {
