@@ -1087,7 +1087,7 @@ sub checkGene {
     # verify is a region is inside gene annotation
     my ($chr, $ini, $end) = @_;
     my $res      = undef;
-    my $bin_size = $binsize * 10
+    my $bin_size = $binsize * 10;
     my $bin_     = int ($ini / $bin_size);
     if (defined $genes{$chr}{$bin_}[0]) {
         my @query = ("$ini\t$end\tquery");
@@ -1228,8 +1228,6 @@ sub calcBinGC {
 		    push @{ $bingc{$seq_id} }, $gc;
 		}
 	}
-	close B;
-	close S;
 }
 
 sub getBinGC {
