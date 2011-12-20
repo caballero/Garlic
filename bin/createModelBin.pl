@@ -45,9 +45,9 @@ OPTIONS
     --write_mask_seq   Write the masked sequence
 
   * File can be compressed (.gz/.bz2), if you are passing more than one file 
-    separate them with ',' Example: "-f chr1.fa,chr2.fa,chr3.fa"
- ** This pattern will match the fasta files. Example: "-e hap1" will exclude 
-    all files with "hap1" in the name.
+    separate them with commas. Example: "-f chr1.fa,chr2.fa,chr3.fa"
+ ** This pattern will match the fasta files. Example: "-e hap" will exclude 
+    all files with "hap" in the name.
     
 =head1 EXAMPLES
 
@@ -59,14 +59,14 @@ You can create your own model fetching the data from the UCSC site:
 
   perl createModel.pl -m hg19
 
-The model names are according to UCSC:
+The model names are according to UCSC nomenclature:
   - hg19    -> human genome release 19 (GRCh37)
   - hg18    -> human genome release 18 (GRCh36)
   - mm9     -> mouse genome release 9
   - equCab2 -> horse genome release 2
   - ...
 
-This script will download the required files and process it. Caution, the files
+This script will download the required files and process it. Caution, some files
 are really big and the download time may be large.
 
 Alternatively, you can use your own sequences and annotations to create a model:
@@ -105,7 +105,7 @@ use warnings;
 use Getopt::Long;
 use Pod::Usage;
 use File::Find;
-use lib './lib'; # check where is RSutils.pm
+use lib './lib'; # where is RSutils.pm?
 use RSutils;
 
 # Parameters initialization
@@ -113,7 +113,7 @@ my $model           =  undef;      # Model definition
 my $dir             = 'data';      # Output directory
 my $kmer            =      4;      # K-mer size
 my $win             =   1000;      # Window size (non-overlapping)
-my $binsize         =  20000;      # Bin size
+my $binsize         =  10000;      # Bin size
 my $fasta           =  undef;      # Sequences in fasta files
 my $repeat          =  undef;      # RepeatMasker output
 my $trf             =  undef;      # TRF output
@@ -121,8 +121,8 @@ my $gene            =  undef;      # Gene annotation
 my $region          =  undef;      # Define a region to analize
 my $help            =  undef;      # Help flag
 my $verbose         =  undef;      # Verbose mode flag
-my $rm_tmp          =  undef;      # Remove downloaded files
-my $exclude         =  undef;      # Exclude sequence name pattern
+my $rm_tmp          =  undef;      # Remove temporal files
+my $exclude         =  undef;      # Exclude sequences by name pattern
 my $mask_repeat     =  undef;      # Repeat masking flag
 my $mask_trf        =  undef;      # TRF masking flag
 my $no_mask_gene    =  undef;      # Gene masking flag
@@ -196,11 +196,11 @@ my %bingc    = (); # index to search the regional GC
 my %seq      = (); # complete sequences
 my %repeat   = (); # repeats information
 my %genes    = (); # gene coordinates
-my %region   = (); # regions pre-selected
+my %region   = (); # preselected regions
 my %ebases   = (); # effective bases per GC bin
 my @dna      = qw/A C G T/;
-my ($seq, $ss, $seq_id, $ini, $end, $len, $name);
 my $RS       = new RSutils;
+my ($seq, $ss, $seq_id, $ini, $end, $len, $name);
 
 
 # GC content bins, if you change this array, modify the classGC() subroutine too.
@@ -434,7 +434,7 @@ sub readFasta {
                 $seq_id = $1;        
             }
             else {
-                s/[^ACGTacgt]/N/g;
+                s/[^ACGTNacgt]/N/g;
                 $seq{$seq_id} .= $_; 
             }
         }
@@ -535,7 +535,7 @@ sub maskExon {
         foreach my $block (@$union) {
             ($ini, $end, $name) = split (/\t/, $block);
             $len = $end - $ini - 1;
-            substr($seq{$seq_id}, $ini - 1, $len) = 'X' x $len;
+            substr($seq{$seq_id}, $ini - 1, $len) = 'E' x $len;
         }
     }
 }
@@ -571,23 +571,12 @@ sub loadGenes {
         }
         close FH;
     }
-    
-    open G, ">genes_blocks.debug" or die;
-    foreach $seq_id (keys %genes) {
-        my $all   = $RS->RSsort(\@{ $genes{$seq_id} });
-        my $union = $RS->RSunion($all);
-        @{ $genes{$seq_id} } = @$union;
-        foreach my $elem (@$union) {
-            print G "$seq_id\t$elem\n";
-        }
-    }
-    close G;
 }
 
 sub loadGenesBin {
     # load gene annotation
     warn "reading coordinates for genes\n" if (defined $verbose);
-    my $bin_size = 1e5;
+    my $bin_size = $binsize * 10;
     my $bin_     = undef;
     foreach my $file (@gene) {
         my $fileh = defineFH($file);
@@ -620,11 +609,8 @@ sub loadRegions {
         my $fileh = defineFH($file);
         open FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
-            my @arr = split (/\t/, $_);
-            $seq_id = $arr[0];
+            ($seq_id, $ini, $end) = split (/\t/, $_);
             next unless (defined $seq{$seq_id});
-            $ini = $arr[1];
-            $end = $arr[2];
             push (@{ $region{$seq_id} }, "$ini-$end");
         }
         close FH;
@@ -785,11 +771,46 @@ sub profileRepeats {
     open R, ">$file" or die "cannot open $file\n";
     foreach my $gc (@gc) {
         my $dist = calcGCdist(@{ $ebases{$gc} });
-        my $rep  = calcRepDist(@{ $repeat{$gc} });
+        my $rep  = parseRepeats(@{ $repeat{$gc} });
         print R "#GC=$gc\t$dist\n$rep\n";
-        print   "#GC=$gc\t$dist\n"; # debug
     }
     close R;
+}
+
+sub parseRepeats {
+    # parse the selected repeats, returns the processed list 
+    my $res  = undef;
+    my %rep  = ();
+    my ($rep,$rid,$rfam,$con,$per,$dir,$div,$ins,$del,$indel,$ini,$end,$nfrg);
+    foreach $rep (@_) {
+        if ($rep =~ m/SIMPLE/) {
+            $res .= "$rep\n";
+        }
+        else { # interspersed repeat
+            $nfrg = 1;
+            if ($rep =~ m/;/) {
+                my @frg = split (/;/, $rep);
+                my $frg = shift @frg;
+                ($rid,$rfam,$dir,$div,$ins,$del,$ini,$end) = split (/:/, $frg);
+                foreach $frg (@frg) {
+                    my ($fdiv, $fins, $fdel, $fini, $fend) = split (/:/, $frg);
+                    $div = $fdiv if ($fdiv > $div);
+                    $ins = $fins if ($fins > $ins);
+                    $del = $fdel if ($fdel > $del);
+                    $ini = $fini if ($fini < $ini);
+                    $end = $fend if ($fend > $end);
+                    $nfrg++;
+                }
+            }
+            else {
+                ($rid,$rfam,$dir,$div,$ins,$del,$ini,$end) = split (/:/, $rep);
+            }
+            $len  = $end - $ini;
+			$res .= join ":", $rid,$rfam,$dir,$div,$ins,$del,$len,$nfrg;
+			$res .= "\n";
+        }
+    }
+	return $res;
 }
 
 sub calcRepDist {
@@ -809,7 +830,7 @@ sub calcRepDist {
             $rep{"$rfam:$con"}{'per'}   .= "$per,";
             $rep{"$rfam:$con"}{'div'}   .= "$div,";
             $rep{"$rfam:$con"}{'indel'} .= "$indel,";
-            print join "\t", "$rfam:$con", $per, $div, $indel, "\n";
+            #print join "\t", "$rfam:$con", $per, $div, $indel, "\n";
         }
         else { # interspersed repeat
             $nfrg = 1;
@@ -837,14 +858,13 @@ sub calcRepDist {
             $rep{"$rid:$rfam"}{'div'}   .= "$div,";
             $rep{"$rid:$rfam"}{'indel'} .= "$indel,";
             $rep{"$rid:$rfam"}{'len'}   .= "$len,";
-            
-            print join "\t", "$rid:$rfam", $len, $div, $indel, $nfrg, "\n";
+            #print join "\t", "$rid:$rfam", $len, $div, $indel, $nfrg, "\n";
         }
     }
    
     # create the label with data distributions
     foreach $rep (keys %rep) {
-        if ($rep{$rep}{'num'} < 4) {
+        if ($rep{$rep}{'num'} < 3) {
             next;
         }
         my @feat   = ();
@@ -920,16 +940,6 @@ sub calcRepDist {
             }
         }
     }
-    return $res;
-}
-
-sub calcDirDist {
-    # define the distribution of direction values, returns: "p(+),p(-)"
-    my $dirs = shift @_;
-    my $for  = $dirs =~ tr/+/+/;
-    my $rev  = $dirs =~ tr/-/-/;
-    my $tot  = $rev + $for;
-    my $res  = sprintf ("%.1f", $for / $tot);
     return $res;
 }
 
@@ -1077,7 +1087,7 @@ sub checkGene {
     # verify is a region is inside gene annotation
     my ($chr, $ini, $end) = @_;
     my $res      = undef;
-    my $bin_size = 1e5;
+    my $bin_size = $binsize * 10
     my $bin_     = int ($ini / $bin_size);
     if (defined $genes{$chr}{$bin_}[0]) {
         my @query = ("$ini\t$end\tquery");
@@ -1091,7 +1101,7 @@ sub checkGene {
 
 sub writeMaskSeq {
     # write the masked sequence: [ACGT]=effective bases, N=ambiguous bases,
-    # S=simple repeat bases, R=interspersed repeats, X=gene bases
+    # S=simple repeats, R=interspersed repeats, X=genes
     my $file = shift @_;
     warn "writing sequence in $file\n" if (defined $verbose);
     my $good_bases = 0;
@@ -1128,36 +1138,6 @@ sub writeMaskSeq {
     Total bases                = $tot_bases
 __RES__
 if (defined $verbose);
-}
-
-sub writeModelInfo {
-    # write basic model description and related files created
-    my $tot_bases  = 0;
-    my $tot_null   = 0;
-    my $tot_repeat = 0;
-    my $tot_simple = 0;
-    my $tot_good   = 0;
-    # counting bases
-    foreach my $id (keys %seq) {
-        $tot_bases += length $seq{$id};
-        $tot_null  += $seq{$id} =~ tr/N//;
-        $tot_good  += $seq{$id} =~ tr/ACGT//;
-    }
-    foreach my $gc (@gc) {
-        foreach my $rep (@{ $repeat{$gc} }) {
-            if ($rep =~ m/^SIMPLE/) { $tot_simple++; }
-            else                    { $tot_repeat++; }
-        }
-    }
-    
-    open  M, ">$model.model" or die "cannot open $model.model\n";
-    print M "model=$model\n";
-    print M "bases=$tot_bases\n";
-    print M "intergenic=$tot_good\n";
-    print M "undefined=$tot_null\n";
-    print M "num_repeat=$tot_repeat\n" unless (defined $no_repeat_table);
-    print M "num_simple=$tot_simple\n" unless (defined $no_repeat_table);
-    close M;   
 }
 
 sub removeTmp {
@@ -1215,9 +1195,7 @@ sub classGC {
 sub calcBinGC {
     # compute the GC content by Bin
     warn "computing GC bins\n" if (defined $verbose);
-    open B, ">gc_bins.debug" or die;
-    open S, ">gc_signal.debug" or die;
-	while ( ($seq_id, $seq) = each %seq) {
+    while ( ($seq_id, $seq) = each %seq) {
 		my $len  = length $seq;
 		my $gc   = undef;
 		my $last = $len - $win;
@@ -1228,10 +1206,7 @@ sub calcBinGC {
 			push @gc, $gc;
 		}
 		push @gc, $gc; # last fragment with length < win
-		
-		print S join "\n", @gc;
-		print S "\n";
-		
+			
 		my $blk = int(($binsize / $win) / 2);
 		for (my $i = 0; $i <= $#gc; $i++) {
 		    my $sum = 0;
@@ -1251,7 +1226,6 @@ sub calcBinGC {
 		        $gc = classGC($sum / $num); # average GC
 		    }
 		    push @{ $bingc{$seq_id} }, $gc;
-		    print B join "\t", $seq_id, $i * $win, ($i + 1) * $win, "$gc\n";
 		}
 	}
 	close B;
@@ -1267,11 +1241,10 @@ sub getBinGC {
 }
 
 sub calcGCdist {
-    # compute the dsitribution of GC contents 
+    # compute the distribution of GC contents 
     my $res  = undef;
     my $tot  = 0;
     my @data = sort {$a<=>$b} @_;
-    # this part is ommited
     my ($q1, $q2, $q3) = calcQuartiles(@data);
     my $s1   = 0;
     my $s2   = 0;
@@ -1308,8 +1281,8 @@ sub checkRevComp {
 sub loadFiles {
     # UCSC GB files, hash structure is: $files{MODEL}{TYPE} = FILE
     # TYPE can be FAS=Fasta sequences, RMO=RepeatMasker out, 
-    #             TRF=Tandem Repeat Masker out, GEN=Gene annotation
-    #
+    # TRF=Tandem Repeat Masker out, GEN=Gene annotation
+    
     # Human
     $files{'hg19'   }{'FAS'} = 'chromFa.tar.gz';
     $files{'hg19'   }{'RMO'} = 'chromOut.tar.gz';
@@ -1519,3 +1492,4 @@ sub loadFiles {
     $files{'ce3'    }{'TRF'} = 'chromTrf.tar.gz';
     $files{'ce3'    }{'GEN'} = 'ensGene.txt.gz';
 }
+# EOF
