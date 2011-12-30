@@ -9,7 +9,7 @@ use warnings;
 
 while (<>) {
 	chomp;
-	my ($ini, $end) = split (/t/, $_);
+	my ($ini, $end) = split (/\t/, $_);
 	next unless (defined $end);
 	my $len  = $end - $ini;
 	next unless ($len > 0);
