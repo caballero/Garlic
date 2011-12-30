@@ -202,7 +202,7 @@ sub parseTwinscan {
     while (<>) {
         next if (m/^#/);
         my @line = split (/\t/, $_);
-        next unless ($line[2] eq 'CDS');
+        next unless ($line[2] =~ m/CDS|start_codon|stop_codon/ );
         
         $line[-1] =~ m/gene_id "(.+?)"/;
         my $gen = $1;
