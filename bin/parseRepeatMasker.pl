@@ -11,5 +11,7 @@ while (<>) {
 	my @line = split (/\s+/, $_);
 	my $ini  = $line[5];
 	my $end  = $line[6];
-	print $end - $ini, "\n";
+	my $len  = $end - $ini;
+	next unless ($len > 0);
+	print "$len\n";
 }

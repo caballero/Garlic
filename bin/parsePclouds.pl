@@ -11,5 +11,6 @@ while (<>) {
 	chomp;
 	my ($ini, $end) = split (/t/, $_);
 	next unless (defined $end);
-	print $end - $ini, "\n";
-}
+	my $len  = $end - $ini;
+	next unless ($len > 0);
+	print "$len\n";}
