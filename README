@@ -23,7 +23,7 @@ also you cannot be 100% sure that the regions don't contain genes.
 So, we developed this new tool to recreate realistic sequences based on the 
 properties of the background genome. We define the background genome as the
 remained sequences of a genome after removal of genes (coding and non-coding),
-pseudogenes, interspersed repeats and low complexity sequences (700 Mb in hg19).
+pseudogenes, interspersed repeats and low complexity sequences (600 Mb in hg19).
 
 We modeled: 
 (1) composition of the background genome
