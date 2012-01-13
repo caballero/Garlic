@@ -97,7 +97,7 @@ while (($seq_id, $seq) = each %seq) {
     $new_seq = '';
     $tot = 0;
     while ($seq) {
-	    my $num = 1e6 * rand;
+	    my $num = int(1e10 * rand);
 	    $name  = "fake$num";
         $slice = substr($seq, 0, $bin);
         $gc    = calcGC($slice);
@@ -113,6 +113,9 @@ while (($seq_id, $seq) = each %seq) {
             $new .= $_;
         }
         close F;
+	    unlink "$name.fasta";
+		unlink "$name.inserts";
+		
         # masking
         for ($i = 0; $i <= $len; $i++) {
             $n = substr($slice, $i, 1);
@@ -123,7 +126,6 @@ while (($seq_id, $seq) = each %seq) {
         $new_seq .= $new;
         substr($seq, 0, $bin) = '';
     }
-    unlink "$name.fasta";
     
     warn "writing new sequence\n" if (defined $verbose);
     print ">$seq_id\n";
