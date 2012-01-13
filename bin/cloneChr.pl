@@ -59,7 +59,7 @@ my $bin        = 10000;
 
 # Global Variables
 my %seq;
-my ($i, $n, $seq_id, $new_seq, $len, $tot, $seq, $slice, $new, $gc);
+my ($i, $n, $seq_id, $new_seq, $len, $tot, $seq, $slice, $new, $gc, $name);
 
 # Fetch options
 GetOptions(
@@ -97,14 +97,16 @@ while (($seq_id, $seq) = each %seq) {
     $new_seq = '';
     $tot = 0;
     while ($seq) {
+	    my $num = 1e6 * rand;
+	    $name  = "fake$num";
         $slice = substr($seq, 0, $bin);
         $gc    = calcGC($slice);
         $len   = length $slice;
         $tot  += $len;
         warn "  $tot\n" if (defined $verbose);
-        system("bin/createFakeSequenceBin.pl -m hg19 -s $len -n new -g $gc -c $gc --no_repeat");
+        system("bin/createFakeSequenceBin.pl -m hg19 -s $len -n $name -g $gc -c $gc --no_repeat");
         $new   = '';
-        open F, "new.fasta" or die "cannot open new.fasta\n";
+        open F, "$name.fasta" or die "cannot open $name.fasta\n";
         while (<F>) {
             next if (m/>/);
             chomp;
@@ -121,7 +123,7 @@ while (($seq_id, $seq) = each %seq) {
         $new_seq .= $new;
         substr($seq, 0, $bin) = '';
     }
-    unlink "new.fasta";
+    unlink "$name.fasta";
     
     warn "writing new sequence\n" if (defined $verbose);
     print ">$seq_id\n";
