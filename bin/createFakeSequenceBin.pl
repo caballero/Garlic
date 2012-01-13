@@ -142,7 +142,7 @@ usage() if (!GetOptions(
 	'gct_file:s'     => \$gct_file,
 	'kmer_file:s'    => \$kmer_file,
 	'repeat_file:s'  => \$repeat_file,
-	'repbase_file:s' => \$rebase_file
+	'repbase_file:s' => \$repbase_file
 	)
 );
 pod2usage(-verbose => 2) if (defined $help);
