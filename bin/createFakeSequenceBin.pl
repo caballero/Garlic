@@ -182,7 +182,7 @@ my $fgc    = newGC();
 my @fseeds = keys %{ $elemk{$fgc} };
 my $fseed  = $fseeds[int(rand @fseeds)];
 $seq       = createSeq($kmer, $fgc, $size, $win, $fseed);
-print "Base sequence generated ($size bases)\n" if(defined $debug);
+warn "Base sequence generated ($size bases)\n" if(defined $debug);
 
 # Write base sequence (before repeat insertions)
 if (defined $wrbase) {
@@ -444,13 +444,14 @@ sub loadRepeats {
     open R, "$fileh" or die "cannot open $file\n";
     while (<R>) {
         chomp;
-        if (m/#GC=\d+-(\d+)\t(.+)/) {
+        if (m/#GC=\d+-(\d+)/) {
             $gc = $1;
-            my $d = $2;
-            my @d = split (/,/, $d);
-            @{ $repdens{$gc} } = @d;
+            #my $d = $2;
+            #my @d = split (/,/, $d);
+            #@{ $repdens{$gc} } = @d;
         }
         else {
+			# rename some repeats mislabeled in RepBase
             s/-int//;
             s/^ALR\/Alpha/ALR/;
             s/^L1M4b/L1M4B/;
@@ -517,7 +518,7 @@ sub addDeletions {
 	}
 	$skip = $ndel;
 	$eval++;
-	print "  Added $tdel deletions ($skip skipped, GC=$gcl)\n" if(defined $debug);
+	warn "  Added $tdel deletions ($skip skipped, GC=$gcl)\n" if(defined $debug);
 	if ($skip > 0 and $eval < $mut_cyc) {
 		$gcl = newGC();
 		$seq = addDeletions($seq, $skip, $gcl, $eval);
@@ -547,7 +548,7 @@ sub addInsertions {
 		my $n    = $dna[$#dna];
 		my $p    =  0;
 		unless (defined $elemk{$gcl}{"$seed$n"} and defined $elemk{$gcl}{"$eed$n$post"}) {
-			print "Bad seed ($seed) in $pos ($seq)\n" if (defined $debug);
+			warn "Bad seed ($seed) in $pos ($seq)\n" if (defined $debug);
 			next;
 		}
 		else {
@@ -563,7 +564,7 @@ sub addInsertions {
 		$nins -= $ins;
 		$tins++;
 	}
-	print "  Added $tins insertions, GC=$gcl\n" if(defined $debug);
+	warn "  Added $tins insertions, GC=$gcl\n" if(defined $debug);
 	return $seq;	
 }
 
@@ -609,7 +610,7 @@ sub addTransitions {
 	}
 	$skip = $nsit;
 	$eval++;
-	print "  Added $tsit transitions ($skip skipped, GC=$gcl)\n" if(defined $debug);
+	warn "  Added $tsit transitions ($skip skipped, GC=$gcl)\n" if(defined $debug);
 	if ($skip > 0 and $eval < $mut_cyc) {
 		$gcl = newGC();
 		$seq = addTransitions($seq, $skip, $gcl, $eval);
@@ -660,7 +661,7 @@ sub addTransversions {
 	}
 	$skip = $nver;
 	$eval++;
-	print "  Added $tver transversions ($skip skipped, GC=$gcl)\n" if(defined $debug);
+	warn "  Added $tver transversions ($skip skipped, GC=$gcl)\n" if(defined $debug);
 	if ($skip > 0  and $eval < $mut_cyc) {
 		$gcl = newGC();
 		$seq = addTransversions($seq, $skip, $gcl, $eval);
@@ -675,9 +676,9 @@ sub calcGC {
 	my $tot = length $seq;
 	my $ngc = $seq =~ tr/GCgc//;
 	my $pgc  = int($ngc * 100 / $tot);
-	my $new_gc = 42;
-	# GCbins: 0-37 37-39 39-42 42-45 45-100
 	
+	# GCbins: 0-37 37-39 39-42 42-45 45-100
+	my $new_gc = 42;
 	if    ($pgc < 37) { $new_gc =  37; }
 	elsif ($pgc < 39) { $new_gc =  39; }
 	elsif ($pgc < 42) { $new_gc =  42; }
@@ -715,6 +716,7 @@ sub transGC {
 		last if($dice >= $p and $dice <= $q);
 		$p      = $q;
 	}
+	warn "changing GC content from $old_gc to $new_gc\n" if (defined $debug);
     return $new_gc;
 }
 
@@ -725,7 +727,7 @@ sub createSeq {
 	my $len   = shift @_;
 	my $win   = shift @_;
 	my $seq   = shift @_;
-	print "creating new sequence\n" if (defined $debug);
+	warn "creating new sequence\n" if (defined $debug);
 	
 	for (my $i = length $seq; $i <= $len; $i += $win) {
 	    print "    $i fragment, GC=$gc\n" if (defined $debug);
@@ -791,12 +793,13 @@ sub insertElements {
 	    # select a repetitive fraction based in the GC bin values
 	    $dice   = rand;
 	    $p      = 0;
-	    $range  = $repdens{$gc}[0];
-	    foreach my $elem ( @{$repdens{$gc}} ) {
-	        ($r, $q) = split (/=/, $elem);
-	        $range   = $r if ($dice >= $p);
-	        $p += $q;
-    	}
+	    #$range  = $repdens{$gc}[0];
+	    #foreach my $elem ( @{$repdens{$gc}} ) {
+	    #    ($r, $q) = split (/=/, $elem);
+	    #    $range   = $r if ($dice >= $p);
+	    #    $p += $q;
+    	#}
+		$range = '40-60';
 	    ($minf, $maxf) = split (/-/, $range);
 	    $repthr  = getRangeValue($minf, $maxf);
 	}
@@ -809,14 +812,15 @@ sub insertElements {
 	    $tot_try++;
 	    last if ($tot_try >= $mut_cyc);
 	    # choose a new element
-	    $dice   = rand;
-	    $p      = 0;
-	    foreach $ins (@ins) {
-	        my @info = split (/:/, $ins);
-	        $new = $ins;
-	        $p += $info[2];
-	        last if ($dice <= $p);
-	    }
+	    #$dice   = rand;
+	    #$p      = 0;
+	    #foreach $ins (@ins) {
+	    #    my @info = split (/:/, $ins);
+	    #    $new = $ins;
+	    #    $p += $info[2];
+	    #    last if ($dice <= $p);
+	    #}
+		$new = $ins[ int(rand @ins) ];
 	    print "selected: $new\n" if (defined $debug);
 	    if ($new =~ m/SIMPLE/) {
             $seq = evolveSimple($new, $gc);
@@ -848,7 +852,7 @@ sub insertElements {
 	    $repfra  = 100 * $rbase / length $s;
 	    $tot_try = 0;
 	}
-	print "Inserted: $urep repeats and $usim simple repeats\n" if (defined $debug);
+	warn "Inserted: $urep repeats and $usim simple repeats\n" if (defined $debug);
 	return $s;
 }
 
@@ -857,7 +861,7 @@ sub evolveSimple {
     my $sim   = shift @_;
     my $gc    = shift @_;
     my $seq   = '';
-    my ($lab, $seed, $freq, $dir, $exp, $div, $indel) = split (/:/, $sim);
+    my ($lab, $seed, $dir, $exp, $div, $indel) = split (/:/, $sim);
     my ($min, $max);
     $dir = rand; # direction is random
     
@@ -895,12 +899,12 @@ sub evolveSimple {
 sub evolveRepeat {
     my ($rep, $gc, $old_age) = @_;
     my $seq   = '';
-    my ($type, $fam, $freq, $dir, $div, $ins, $del, $frag, $break) = split (/:/, $rep);
+    my ($type, $fam, $dir, $div, $ins, $del, $frag, $break) = split (/:/, $rep);
     my ($mut, $nins, $ndel, $nsit, $nver, $cseq, $min, $max, $ini, $age);
     $dir = rand; # direction is random
     
     unless (defined $rep_seq{$type}) {
-        print "sequence for $type ($fam) not found!\n" if (defined $debug);
+        warn "sequence for $type ($fam) not found!\n" if (defined $debug);
         return ('BAD', $rep);
     }
     
