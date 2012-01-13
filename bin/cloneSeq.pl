@@ -91,7 +91,10 @@ GetOptions(
 pod2usage(-verbose => 2) if (defined $help);
 
 if (defined $input) {
-    open STDIN, "$input" or die "Cannot read file $input\n";
+    my $infh = $input;
+	$infh = "gunzip  -c $input | " if ($input =~ m/.gz$/);
+	$infh = "bunzip2 -c $input | " if ($input =~ m/.bz2$/);
+    open STDIN, "$infh" or die "Cannot read file $input\n";
 }
 
 if (defined $output) {
@@ -224,7 +227,7 @@ sub minmaxGC {
 
 sub calcRepBases {
     my $seq = shift @_;
-    my $rep = rand;
+    my $rep = int(rand 100);
     my $rrb = $seq =~ tr/acgt//;
     my $eeb = $seq =~ tr/ACGT//;
     my $sum = $rrb + $eeb;
