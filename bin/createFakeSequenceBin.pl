@@ -823,7 +823,7 @@ sub insertElements {
 		$new = $ins[ int(rand @ins) ];
 	    print "selected: $new\n" if (defined $debug);
 	    if ($new =~ m/SIMPLE/) {
-			next if ( 0.5 > rand); # hack to avoid SIMPLE repeats high density
+			next if ( 0.1 > rand); # hack to avoid SIMPLE repeats high density
             $seq = evolveSimple($new, $gc);
             $usim++;
         }
