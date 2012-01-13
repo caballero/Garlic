@@ -802,6 +802,7 @@ sub insertElements {
 	    ($minf, $maxf) = split (/-/, $range);
 	    $repthr  = getRangeValue($minf, $maxf);
 	}
+	warn "Trying to add $repthr repeats\n" if (defined $debug);
 	
 	# our bag of elements to insert
 	my @ins = shuffle(@{ $repeat{$gc} });
@@ -822,6 +823,7 @@ sub insertElements {
 		$new = $ins[ int(rand @ins) ];
 	    print "selected: $new\n" if (defined $debug);
 	    if ($new =~ m/SIMPLE/) {
+			next if ( 0.5 > rand); # hack to avoid SIMPLE repeats high density
             $seq = evolveSimple($new, $gc);
             $usim++;
         }
