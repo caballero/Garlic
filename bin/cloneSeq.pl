@@ -22,6 +22,7 @@ OPTIONS
     -k --kmer        Kmer size                  INT        4
     -b --block       Block size                 INT        20kb
     -m --model       Model to use*              STR        hg19
+	-n --name        Temp files name            STR        fake
     -h --help        Print this screen
     -v --verbose     Verbose mode
 
@@ -73,6 +74,7 @@ my $model      = 'hg19';
 my $dir        = 'data';
 my $base       =  undef;
 my $repeat     =  undef;
+my $name       = 'fake';
 
 # Fetch options
 GetOptions(
@@ -86,7 +88,8 @@ GetOptions(
     'm|model:s'       => \$model,
     'a|base:s'        => \$base,
     'd|dir:s'         => \$dir,
-    'r|repeat:s'      => \$repeat
+    'r|repeat:s'      => \$repeat,
+	'n|name:s'        => \$name
 );
 pod2usage(-verbose => 2) if (defined $help);
 
@@ -140,10 +143,10 @@ while (($id, $seq) = each %seq) {
         my ($min, $max) = minmaxGC($slice);
         my $rep = calcRepBases($slice);
         warn "creating subseq $i GC=($min, $max), RF=$rep\n" if (defined $verbose);
-        system ("perl $creator -m $model -k $kmer -w $win -r $rep -g $min -c $max -s $block --write_base -n fake");
-        if (-e 'fake.fasta') {
+        system ("perl $creator -m $model -k $kmer -w $win -r $rep -g $min -c $max -s $block --write_base -n $name");
+        if (-e "$name.fasta") {
             my $new = '';
-            open F, "fake.fasta" or die "cannot open fake.fasta\n";
+            open F, "$name.fasta" or die "cannot open $name.fasta\n";
             while (<F>) {
                 chomp;
                 next if (m/>/);
@@ -153,7 +156,7 @@ while (($id, $seq) = each %seq) {
             if ((length $new) > 1) {
                 $new_seq .= $new;
                 if (defined $base) {
-                    open B, "fake.base.fasta" or die "cannot open fake.base.fasta\n";
+                    open B, "$name.base.fasta" or die "cannot open $name.base.fasta\n";
                     while (<B>) {
                         next if (m/>/);
                         chomp;
@@ -162,7 +165,7 @@ while (($id, $seq) = each %seq) {
                     close B;
                 }
                 if (defined $repeat) {
-                    open R, "fake.inserts" or die "cannot open fake.inserts\n";
+                    open R, "$name.inserts" or die "cannot open $name.inserts\n";
                     while (<R>) {
                         next if (m/POS/);
                         chomp;
@@ -205,9 +208,9 @@ while (($id, $seq) = each %seq) {
 }
 
 # cleaning up
-unlink 'fake.fasta';
-unlink 'fake.base.fasta';
-unlink 'fake.inserts';
+unlink "$name.fasta";
+unlink "$name.base.fasta";
+unlink "$name.inserts";
             
 #################################################
 ##      S  U  B  R  O  U  T  I  N  E  S        ##
@@ -260,3 +263,4 @@ sub calcGC {
 	return $pgc;
 }
 
+#END
