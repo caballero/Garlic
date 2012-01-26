@@ -19,16 +19,15 @@ REPBASE DATA
 
 The RepBase consensus sequences can be obtained from GIRI 
 [http://www.girinst.org/server/RepBase/index.php], download and unpack the
-Fasta format of RepBase, then run parseRepBase.pl to create one Fasta file.
+EMBL format of RepBase.
   
   > cd data/RepBase
-  > tar zxvf /PATH/TO/RepBaseXXXX.fasta.tar.gz
-  > ../../bin/parseRepBase.pl > RepBase.fa
+  > cp /path/to/RepeatMaskerLib_20090604.embl RepeatMaskerLib.embl
   
   where XXXX is the version number of RepBase.
 
-createFakeSequence.pl looks for "RepBase.fa", adjust the file name if
-required in the code.
+createFakeSequence.pl looks for "RepeatMaskerLib.embl", please adjust the file
+name if required in the code of createFakeSequence.pl.
 
 OTHER
 
