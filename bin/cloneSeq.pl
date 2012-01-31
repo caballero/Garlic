@@ -143,7 +143,7 @@ while (($id, $seq) = each %seq) {
         my ($min, $max) = minmaxGC($slice);
         my $rep = calcRepBases($slice);
         warn "creating subseq $i GC=($min, $max), RF=$rep\n" if (defined $verbose);
-        system ("perl $creator -m $model -k $kmer -w $win -r $rep -g $min -c $max -s $block --write_base -n $name");
+        system ("perl $creator -m $model -k $kmer -w $win -r $rep -g $min -c $max -s $block --write_base -n $name -d $dir");
         if (-e "$name.fasta") {
             my $new = '';
             open F, "$name.fasta" or die "cannot open $name.fasta\n";
