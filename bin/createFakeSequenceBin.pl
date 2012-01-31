@@ -220,6 +220,13 @@ close FAS;
 ##      S  U  B  R  O  U  T  I  N  E  S        ##
 #################################################
 
+# errorExit => catch an error and dies
+sub errorExit {
+    my $mes = shift @_;
+    warn "Fatal error: $mes\nAborting\n";
+    exit 1;
+}
+
 # formatFasta => break a sequence in blocks (80 col/line default)
 sub formatFasta {
 	my $sseq  = shift @_;
