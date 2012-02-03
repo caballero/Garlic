@@ -7,7 +7,8 @@ createModel.pl
 =head1 DESCRIPTION
 
 This script creates a background model for a genome, computing the composition
-of the non-functional sequences and the elements presented naturally.
+of the non-functional non-repetitive sequences and the repetitive elements 
+presented naturally.
 
 =head1 USAGE
 
@@ -22,7 +23,7 @@ OPTIONS
     -d --dir           Write model in directory      Directory      ./data
     -k --kmer          Profile k-mer size            Integer        4
     -w --win           Profile window size           Integer        1000
-	-b --binsize       Bin size (for %GC)            Integer        20000
+	-b --binsize       Bin size (for %GC)            Integer        10000
     
     -f --fasta         Fasta sequences               FileName*
     -r --repeats       RepeatMasker output           FileName*
@@ -1024,10 +1025,12 @@ sub profileRM {
     # parse TRF output, mix spliced repeats
     warn "  parsing RepeatMasker files\n" if (defined $verbose);
     my %repdata = ();
+    my $nf      = 0;
     foreach my $file (@repeat) {
         if (defined $exclude) {
             next if ($file =~ m/$exclude/);
         }
+        $nf++;
         open T, "$file" or die "cannot open $file\n";
         while (<T>) {
             chomp;
@@ -1048,7 +1051,7 @@ sub profileRM {
             my $rend      = $line[12];
             next unless (defined $seq{$seq_id});
 
-            my $rid       = "REP$line[-1]";
+            my $rid       = "REP.$nf.$line[-1]";
             if ($dir eq 'C') {
                 $rini = $line[13];
                 $rend = $line[12];

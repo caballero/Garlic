@@ -75,7 +75,7 @@ GetOptions(
     'v|verbose'       => \$verbose,
     'i|input:s'       => \$input,
     'o|output:s'      => \$output,
-    'w|window:i'      => \$win,
+    'w|window:s'      => \$win,
     'k|kmer:i'        => \$kmer,
     'c|col:i'         => \$col
 );
