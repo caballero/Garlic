@@ -1295,6 +1295,11 @@ sub loadFiles {
     $files{'hg18'   }{'TRF'} = 'chromTrf.tar.gz';
     $files{'hg18'   }{'GEN'} = 'ensGene.txt.gz';
     
+    $files{'hg17'   }{'FAS'} = 'chromFa.zip';
+    $files{'hg17'   }{'RMO'} = 'chromOut.zip';
+    $files{'hg17'   }{'TRF'} = 'chromTrf.zip';
+    $files{'hg17'   }{'GEN'} = 'ensGene.txt.gz';
+    
     # Cat
     $files{'felCat4'}{'FAS'} = 'felCat4.fa.gz';
     $files{'felCat4'}{'RMO'} = 'felCat4.fa.out.gz';
