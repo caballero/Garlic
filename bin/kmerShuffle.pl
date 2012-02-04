@@ -17,6 +17,7 @@ OPTIONS
     -k --kmer        Kmer size                  Int        2
     -w --win         Window size**              Int        1kb
     -c --col         Column size                Int        80
+    -r --repeat      Don't uppercase repeats
     -h --help        Print this screen
     -v --verbose     Verbose mode
 
@@ -61,13 +62,14 @@ use Pod::Usage;
 use List::Util 'shuffle';
 
 # Parameters initialization
-my $help       = undef;
-my $verbose    = undef;
-my $input      = undef;
-my $output     = undef;
-my $win        = '1kb';
-my $kmer       =     2;
-my $col        =    80;
+my $help       =  undef;
+my $verbose    =  undef;
+my $input      =  undef;
+my $output     =  undef;
+my $win        = '10kb';
+my $kmer       =      2;
+my $col        =     80;
+my $repeat     =  undef;
 
 # Fetch options
 GetOptions(
@@ -77,7 +79,8 @@ GetOptions(
     'o|output:s'      => \$output,
     'w|window:s'      => \$win,
     'k|kmer:i'        => \$kmer,
-    'c|col:i'         => \$col
+    'c|col:i'         => \$col,
+    'r|repeat'        => \$repeat
 );
 
 pod2usage(-verbose => 2) if (defined $help);
@@ -113,6 +116,8 @@ while (<>) {
     my $name = shift @seq;
     warn "shuffling $name\n" if (defined $verbose);
     my $seq = join "", @seq;
+    $seq =~ s/[^ACGTacgtNn]/N/g;
+    $seq = uc $seq unless (defined $repeat);
     my $new = '';
     while ($seq) {
         my $s = substr ($seq, 0, $win);
