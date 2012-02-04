@@ -15,7 +15,7 @@ OPTIONS
     -i --input       Input*                     File       STDIN
     -o --output      Output                     File       STDOUT
     -k --kmer        Kmer size                  Int        2
-    -w --win         Window size**              Int        1kb
+    -w --win         Window size**              Int        10kb
     -c --col         Column size                Int        80
     -r --repeat      Don't uppercase repeats
     -h --help        Print this screen
@@ -112,6 +112,7 @@ my $jmer = $kmer - 1;
 # Reading fasta file
 $/ = "\n>"; # slurp mode
 while (<>) {
+    s/>//g;
     my @seq  = split (/\n/, $_);
     my $name = shift @seq;
     warn "shuffling $name\n" if (defined $verbose);
@@ -124,7 +125,7 @@ while (<>) {
         $new .= kshuffle($s);
         substr ($seq, 0, $win) = '';
     }
-    print "$name\n";
+    print ">$name\n";
     while ($new) {
         print substr ($new, 0, $col), "\n";
         substr ($new, 0, $col) = '';
