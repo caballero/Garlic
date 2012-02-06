@@ -818,7 +818,7 @@ sub insertElements {
     my $tot_try = 0; # to avoid infinite loops in dense repetitive sequences
 	while ($repfra < $repthr) {
 	    $tot_try++;
-	    last if ($tot_try >= $ins_cyc);
+	    #last if ($tot_try >= $ins_cyc);
 	    # choose a new element
 	    #$dice   = rand;
 	    #$p      = 0;
