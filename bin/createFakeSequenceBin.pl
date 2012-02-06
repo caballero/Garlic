@@ -104,7 +104,8 @@ my %classgc      =    (); # Hash for class GC
 my $dir          = './data'; # Path to models/RebBase directories
 my %rep_seq      =    (); # Hash with consensus sequences from RepBase
 my %repdens      =    (); # Repeat density values
-my $mut_cyc      =   100; # Maximal number of trials
+my $mut_cyc      =    10; # Maximal number of trials for mutations
+my $ins_cyc      =   100; # Maximal number of trials for insertions
 my $wrbase       = undef; # Write base sequence too
 my $rep_frc      = undef;
 my @dna          = qw/A C G T/; # DNA alphabet
@@ -817,7 +818,7 @@ sub insertElements {
     my $tot_try = 0; # to avoid infinite loops in dense repetitive sequences
 	while ($repfra < $repthr) {
 	    $tot_try++;
-	    last if ($tot_try >= $mut_cyc);
+	    last if ($tot_try >= $ins_cyc);
 	    # choose a new element
 	    #$dice   = rand;
 	    #$p      = 0;
