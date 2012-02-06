@@ -847,12 +847,12 @@ sub insertElements {
         my $try = 0;
         while (1) {
             $try++;
-            last if ($try >= $mut_cyc);
+            last if ($try >= $ins_cyc);
             $pos = int(rand ((length $s) - length $seq));
             my $frag = substr($s, $pos, length $seq);
             last unless ($frag =~ m/[^ACGT]/);
         }
-        next if ($try >= $mut_cyc); # cannot find a good position, changing the repeat
+        next if ($try >= $ins_cyc); # cannot find a good position, changing the repeat
         
         substr($s, $pos, length $seq) = $seq;	    
         push @inserts, "$pos\t$new";
