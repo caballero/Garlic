@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>FakeSequence by caballero</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="javascripts/scale.fix.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>FakeSequence</h1>
+<p>Artificial non-functional DNA generator.</p>
+        <p class="view"><a href="https://github.com/caballero/FakeSequence">View the Project on GitHub <small>caballero/FakeSequence</small></a></p>
+        <ul>
+          <li><a href="https://github.com/caballero/FakeSequence/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/caballero/FakeSequence/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/caballero/FakeSequence">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h2>Fake Sequence</h2>
+
+<p>FakeSequence - An artificial non-functional realistic DNA sequence generator.</p>
+
+<p>Copyright (C) 2011 Juan Caballero [Institute for Systems Biology]</p>
+
+<h3>Description</h3>
+
+<p>Why do we need it? Because with current sequencing technology we can sequence any organism and start mining the genome. Many genomic analysis use strong statistical tests, but until now, a good negative control has never developed.</p>
+
+<p>For example, we can use several programs (Genscan, Augustus, GlimmerHMM, ...) to predict coding genes, all these programs has been properly trained to recognize how a gene looks like using well characterized genes. So you expect a low false negative rate, but none implements a negative control therefore you will find a lot of false positive genes. This is currently true in many model organisms (including human) where the number of predicted coding genes are more than the number of coding genes with evidence. Of course you can use intergenic regions as a negative control, but these regions are limited in number and size, also you cannot be 100% sure that the regions don't contain genes.</p>
+
+<p>So, we developed this new tool to recreate realistic sequences based on the properties of the background genome. We define the background genome as the remained sequences of a genome after removal of genes (coding and non-coding), pseudogenes, interspersed repeats and low complexity sequences (600 Mb in hg19).</p>
+
+<p>We modeled: 
+(1) composition of the background genome
+(2) interspersed repeats
+(3) low complexity sequences</p>
+
+<p>The current algorithm creates a base sequence, then the sequence is bombarded with artificially evolved elements (interspersed repeats, low complexity) as expected in the reference genome. The final output is a Fasta file with the new sequence generated.</p>
+
+<h2>Requeriments</h2>
+
+<ul>
+<li>Perl</li>
+<li>Genome models. You can download from our repository or create your own, see below.</li>
+<li>RepBase consensus sequences. You need to download the EMBL file from RepBase <a href="registration%20required">http://www.girinst.org/repbase</a> and put the file in
+data/repbase.</li>
+</ul><h2>Usage</h2>
+
+<ol>
+<li>Create a new sequence</li>
+</ol><p>perl createFakeSequence.pl -m hg19 -s 1Mb -o fake.fa</p>
+
+<p>For more options, please read the documentation using:</p>
+
+<p>perl createFakeSequence.pl --help</p>
+
+<ol>
+<li>Train a new model</li>
+</ol><p>You can obtain the models from our website, we are currently suporting some organisms with complete annotation in the UCSC Genome Database: [<a href="http://hgdownload.cse.ucsc.edu/downloads.html">http://hgdownload.cse.ucsc.edu/downloads.html</a>]</p>
+
+<p>You can create your own model fetching the data from the UCSC site:</p>
+
+<p>perl createModel.pl -m hg19</p>
+
+<p>Also you can use your own sequences and annotations to create a model:</p>
+
+<p>perl createModel.pl -m myOrg -f myOrg.fa -r RM.out -t TRF.out -g Genes.table</p>
+
+<p>Please read the documentation using:</p>
+
+<p>perl createModel.pl --help</p>
+
+<h2>Citation</h2>
+
+<p>Caballero J ... </p>
+
+<h2>License</h2>
+
+<p>All the code is under the GPLv3 licence, see LICENSE file for details.</p>
+      </section>
+    </div>
+    <footer>
+      <p>Project maintained by <a href="https://github.com/caballero">caballero</a></p>
+      <p>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></p>
+    </footer>
+    <!--[if !IE]><script>fixScale(document);</script><!--<![endif]-->
+  </body>
+</html>
