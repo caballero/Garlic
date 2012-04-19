@@ -810,7 +810,7 @@ sub insertElements {
 	    # select where we want to add a repeat
 	    $pos  = int(rand length $s);
 	    $frag = substr ($s, $pos, 100); # at least 100 bases to try
-	    next if ($seq =~ m/acgt/);
+	    next if ($frag =~ m/acgt/);
 	    $gc   = $gc_bin[int( $pos/ $win)];
 	    
     	# our bag of elements to insert 	
