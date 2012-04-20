@@ -124,8 +124,6 @@ my $help            =  undef;      # Help flag
 my $verbose         =  undef;      # Verbose mode flag
 my $rm_tmp          =  undef;      # Remove temporal files
 my $exclude         =  undef;      # Exclude sequences by name pattern
-my $mask_repeat     =  undef;      # Repeat masking flag
-my $mask_trf        =  undef;      # TRF masking flag
 my $no_mask_gene    =  undef;      # Gene masking flag
 my $no_mask_repeat  =  undef;      # Repeats masking flag
 my $no_mask_trf     =  undef;      # TRF masking flag
@@ -199,6 +197,8 @@ my %repeat   = (); # repeats information
 my %genes    = (); # gene coordinates
 my %region   = (); # preselected regions
 my %ebases   = (); # effective bases per GC bin
+my %rbases   = (); # interspersed repeats bases per GC bin
+my %sbases   = (); # low complexity/simple repeat bases per GC bin
 my @dna      = qw/A C G T/;
 my $RS       = new RSutils;
 my ($seq, $ss, $seq_id, $ini, $end, $len, $name);
@@ -653,9 +653,20 @@ sub profileSeqs {
 	            $last_gc = $gc;
 	            # Effective bases count
 	            my $nbas = $ss =~ tr/ACGT/ACGT/;
-	            my $nrep = $ss =~ tr/acgtRrSs/acgtRrSs/;
-	            my $ntot = $nbas + $nrep;
-	            push (@{ $ebases{$gc} }, int(100*$nbas/$ntot)) if ($ntot > 0);
+	            my $nrep = 0;
+	            my $nsim = 0;
+	            if (defined $no_mask_repeat) {
+	                $nrep = $ss =~ tr/acgt/acgt/;
+	            }
+	            else {
+	                $nrep = $ss =~ tr/Rr/Rr/;
+	                $nsim = $ss =~ tr/Ss/Ss/;
+	            }
+	            my $ntot = $nbas + $nrep + $nsim;
+	            next unless ($ntot > 0);
+	            push (@{ $ebases{$gc} }, int(100 * $nbas / $ntot));
+	            push (@{ $rbases{$gc} }, int(100 * $nrep / $ntot));
+	            push (@{ $sbases{$gc} }, int(100 * $nsim / $ntot));
 	        }
 	        # Kmer counts
 	        for (my $j = $ini; $j <= $end - $kmer; $j++) {
@@ -771,9 +782,11 @@ sub profileRepeats {
     warn "writing repeats info in \"$file\"\n";
     open R, ">$file" or die "cannot open $file\n";
     foreach my $gc (@gc) {
-        my $dist = calcGCdist(@{ $ebases{$gc} });
-        my $rep  = parseRepeats(@{ $repeat{$gc} });
-        print R "#GC=$gc\t$dist\n$rep\n";
+        my $edist = calcGCdist(@{ $ebases{$gc} });
+        my $rdist = calcGCdist(@{ $rbases{$gc} });
+        my $sdist = calcGCdist(@{ $sbases{$gc} });
+        my $rep   = parseRepeats(@{ $repeat{$gc} });
+        print R "#GC=$gc\t$edist\t$rdist\t$sdist\n$rep\n";
     }
     close R;
 }
