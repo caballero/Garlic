@@ -777,9 +777,9 @@ sub profileRepeats {
     warn "writing repeats info in \"$file\"\n";
     open R, ">$file" or die "cannot open $file\n";
     foreach my $gc (@gc) {
-        my $edist = calcGCdist(@{ $ebases{$gc} });
-        my $rdist = calcGCdist(@{ $rbases{$gc} });
-        my $sdist = calcGCdist(@{ $sbases{$gc} });
+        my $edist = calcPercDist(@{ $ebases{$gc} });
+        my $rdist = calcPercDist(@{ $rbases{$gc} });
+        my $sdist = calcPercDist(@{ $sbases{$gc} });
         my $rep   = parseRepeats(@{ $repeat{$gc} });
         print R "#GC=$gc\t$edist\t$rdist\t$sdist\n$rep\n";
     }
@@ -1247,6 +1247,26 @@ sub getBinGC {
 	my $pos = shift @_;
 	my $gc  = $bingc{$id}[int($pos / $win)];
 	return $gc;
+}
+
+sub calcPercDist {
+    # returns the distribution of percents
+    my $res = undef;
+    my @cnt = (0,0,0,0,0,0,0,0,0,0,0);
+    my $tot = 0;
+    foreach my $x (@_) {
+        $tot++;
+        $cnt[ int($x / 10) ]++;
+    }
+    # fusion of last range
+    my $last  = pop @cnt;
+    $cnt[-1] += $last;
+    
+    foreach my $x (@cnt) {
+        $res .= $x / $tot . ',';
+    }
+    $res =~ s/,$//;
+    return $res;
 }
 
 sub calcGCdist {
