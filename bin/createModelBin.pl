@@ -655,13 +655,8 @@ sub profileSeqs {
 	            my $nbas = $ss =~ tr/ACGT/ACGT/;
 	            my $nrep = 0;
 	            my $nsim = 0;
-	            if (defined $no_mask_repeat) {
-	                $nrep = $ss =~ tr/acgt/acgt/;
-	            }
-	            else {
-	                $nrep = $ss =~ tr/Rr/Rr/;
-	                $nsim = $ss =~ tr/Ss/Ss/;
-	            }
+	            $nrep = $ss =~ tr/Rr/Rr/;
+	            $nsim = $ss =~ tr/Ss/Ss/;
 	            my $ntot = $nbas + $nrep + $nsim;
 	            next unless ($ntot > 0);
 	            push (@{ $ebases{$gc} }, int(100 * $nbas / $ntot));
