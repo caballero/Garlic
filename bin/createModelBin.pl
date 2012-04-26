@@ -1263,7 +1263,8 @@ sub calcPercDist {
     $cnt[-1] += $last;
     
     foreach my $x (@cnt) {
-        $res .= $x / $tot . ',';
+        my $p = $x / $tot;
+        $res .=  "$p,";
     }
     $res =~ s/,$//;
     return $res;
