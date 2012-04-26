@@ -8,7 +8,7 @@ org='fr2' # fr2 = Fugu genome
 rm -rf data/$org
 
 # creating the genome model
-perl bin/createModel.pl -v -m $org --rm_tmp
+perl bin/createModel.pl -v -m $org
 
 # create a new sequence
-#perl bin/create/FakeSequence.pl -m $org
+perl bin/createFakeSequence.pl -m $org -s 10kb -n fake
