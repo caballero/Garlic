@@ -796,7 +796,7 @@ sub profileRepeats {
             my $sum = $suminsert{$gc}{$rep1};
             foreach my $rep2 (sort keys %{ $repinsert{$gc}{$rep1} } ) {
                 my $cnt = $repinsert{$gc}{$rep1}{$rep2};
-                my $frq = $cnt / $sum;
+                my $frq = sprintf ("%.8f", $cnt / $sum);
                 print I "$rep1\t$rep2\t$frq\t$cnt\n";
             }
         }
