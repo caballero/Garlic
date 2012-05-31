@@ -1100,7 +1100,7 @@ sub profileRM {
                 $repdata{$rid}{'ini'}    = $ini;
                 $repdata{$rid}{'end'}    = $end;
                 $repdata{$rid}{'seq_id'} = $seq_id;
-                $repdata{$rid}{'type'}   = "$type/$fam";
+                $repdata{$rid}{'type'}   = "$type#$fam";
             }
             $inspatt     .= "$rid:";
         }
