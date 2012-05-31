@@ -1121,7 +1121,7 @@ sub profileRM {
                 my @rins = split (/:/, $frag);
                 foreach my $rins (@rins) {
                     my $rins_type = 'NA';
-                    $rins_type = $repdata{$rins_type}{'type'} if (defined $repdata{$rins_type}{'type'});
+                    $rins_type = $repdata{$rins}{'type'} if (defined $repdata{$rins}{'type'});
                     $repinsert{$gc}{$rep_type}{$rins_type}++;
                     $suminsert{$gc}{$rep_type}++;
                 }
