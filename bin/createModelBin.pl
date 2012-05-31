@@ -186,21 +186,23 @@ my $ucsc_trf      = "$ucsc/$model/bigZips/"  . $files{$model}{'TRF'};
 my $ucsc_gene     = "$ucsc/$model/database/" . $files{$model}{'GEN'}; 
 
 # Main variables
-my @fasta    = (); # list of fasta files
-my @repeat   = (); # list of RepeatMasker output files
-my @trf      = (); # list of TRF ouput files
-my @gene     = (); # list of gene annotation files
-my @region   = (); # list of selected regions
-my %bingc    = (); # index to search the regional GC 
-my %seq      = (); # complete sequences
-my %repeat   = (); # repeats information
-my %genes    = (); # gene coordinates
-my %region   = (); # preselected regions
-my %ebases   = (); # effective bases per GC bin
-my %rbases   = (); # interspersed repeats bases per GC bin
-my %sbases   = (); # low complexity/simple repeat bases per GC bin
-my @dna      = qw/A C G T/;
-my $RS       = new RSutils;
+my @fasta         = (); # list of fasta files
+my @repeat        = (); # list of RepeatMasker output files
+my @trf           = (); # list of TRF ouput files
+my @gene          = (); # list of gene annotation files
+my @region        = (); # list of selected regions
+my %bingc         = (); # index to search the regional GC 
+my %seq           = (); # complete sequences
+my %repeat        = (); # repeats information
+my %repinsert     = (); # repeat insertions
+my %suminsert     = (); # total sum in repeat insertions
+my %genes         = (); # gene coordinates
+my %region        = (); # preselected regions
+my %ebases        = (); # effective bases per GC bin
+my %rbases        = (); # interspersed repeats bases per GC bin
+my %sbases        = (); # low complexity/simple repeat bases per GC bin
+my @dna           = qw/A C G T/;
+my $RS            = new RSutils;
 my ($seq, $ss, $seq_id, $ini, $end, $len, $name);
 
 
@@ -773,9 +775,9 @@ sub profileRepeats {
     profileTRF()   if (defined $trf);
     profileRM()    if (defined $repeat);
     
-    my $file = "$model.repeats.W$win.data";
-    warn "writing repeats info in \"$file\"\n";
-    open R, ">$file" or die "cannot open $file\n";
+    my $repfile = "$model.repeats.W$win.data";
+    warn "writing repeats info in \"$repfile\"\n";
+    open R, ">$repfile" or die "cannot open $repfile\n";
     foreach my $gc (@gc) {
         my $edist = calcPercDist(@{ $ebases{$gc} });
         my $rdist = calcPercDist(@{ $rbases{$gc} });
@@ -784,6 +786,21 @@ sub profileRepeats {
         print R "#GC=$gc\t$edist\t$rdist\t$sdist\n$rep\n";
     }
     close R;
+    
+    my $insfile = "$model.repinserts.W$win.data";
+    open I, ">$insfile" or die "cannot open $insfile\n";
+    foreach my $gc (@gc) {
+        print I "#GC=$gc\n";
+        foreach my $rep1 (sort keys %{ $repinsert{$gc} } ) {
+            my $sum = $suminsert{$gc}{$rep1};
+            foreach my $rep2 (sort keys %{ $repinsert{$gc}{$rep1} } ) {
+                my $cnt = $repinsert{$gc}{$rep1}{$rep2};
+                my $frq = $cnt / $sum;
+                print I "$rep1\t$rep2\t$frq\t$cnt\n";
+            }
+        }
+    }
+    close I;
 }
 
 sub parseRepeats {
@@ -1033,6 +1050,7 @@ sub profileRM {
     # parse TRF output, mix spliced repeats
     warn "  parsing RepeatMasker files\n" if (defined $verbose);
     my %repdata = ();
+    my $inspatt = undef;
     my $nf      = 0;
     foreach my $file (@repeat) {
         if (defined $exclude) {
@@ -1081,17 +1099,37 @@ sub profileRM {
                 $repdata{$rid}{'ini'}    = $ini;
                 $repdata{$rid}{'end'}    = $end;
                 $repdata{$rid}{'seq_id'} = $seq_id;
+                $repdata{$rid}{'type'}   = "$type/$fam";
             }
+            $inspatt     .= "$rid:";
         }
         close T;
     }
+    
+    $inspatt =~ s/:$//;
     
     foreach my $rid (keys %repdata) {
         my $pos = int(($repdata{$rid}{'end'} - $repdata{$rid}{'ini'})/2);
         my $gc  = getBinGC($repdata{$rid}{'seq_id'}, $pos);
         push @{ $repeat{$gc} }, $repdata{$rid}{'label'};
+        my @frag = split (/$rid:/, $inspatt);
+        if ($#frag >= 2) {
+            my $rep_type =  $repdata{$rid}{'type'};
+            shift @frag;
+            pop @frag;
+            foreach my $frag (@frag) {
+                my @rins = split (/:/, $frag);
+                foreach my $rins (@rins) {
+                    my $rins_type = 'NA';
+                    $rins_type = $repdata{$rins_type}{'type'} if (defined $repdata{$rins_type}{'type'});
+                    $repinsert{$gc}{$rep_type}{$rins_type}++;
+                    $suminsert{$gc}{$rep_type}++;
+                }
+            }
+        }
     }
     %repdata = ();
+    $inspatt = undef;
 }
 
 sub checkGene {
