@@ -787,7 +787,7 @@ sub profileRepeats {
     }
     close R;
     
-    my $insfile = "$model.repinserts.W$win.data";
+    my $insfile = "$model.inserts.W$win.data";
     warn "writing repeats inserts info in \"$insfile\"\n";
     open I, ">$insfile" or die "cannot open $insfile\n";
     foreach my $gc (@gc) {
@@ -1297,6 +1297,10 @@ sub calcPercDist {
         $tot++;
         $cnt[ int($x / 10) ]++;
     }
+    if ($tot == 0) {
+        return join ",", @cnt;
+    }
+    
     # fusion of last range
     my $last  = pop @cnt;
     $cnt[-1] += $last;
