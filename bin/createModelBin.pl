@@ -1048,7 +1048,7 @@ sub profileTRF {
 }
 
 sub profileRM {
-    # parse TRF output, mix spliced repeats
+    # parse RepeatMasker output, mix spliced repeats
     warn "  parsing RepeatMasker files\n" if (defined $verbose);
     my %repdata = ();
     my $inspatt = undef;
