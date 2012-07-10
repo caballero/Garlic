@@ -41,7 +41,7 @@ while (<>) {
     next unless (m/^\s*\d+/);
     chomp;
     s/^\s+//;
-    ($id, $type, $dir, $ini, $end, $len) = split (/\s+/, $_);
+    ($gid, $type, $dir, $ini, $end, $len) = split (/\s+/, $_);
     $gid =~ s/\.\d+$//;
     $id = "$name.$gid"; 
     $end++;
