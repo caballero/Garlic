@@ -33,7 +33,7 @@ use strict;
 use warnings;
 
 my %seq = ();
-my ($id, $gid, $type, $dir, $ini, $end, $len, $name, $gsize, $msize, $csize);
+my ($id, $gid, $type, $dir, $tmp, $ini, $end, $len, $name, $gsize, $msize, $csize);
 while (<>) {
     if (m/^Sequence (.+?) :/) {
         $name = $1;
@@ -45,6 +45,12 @@ while (<>) {
     $gid =~ s/\.\d+$//;
     $id = "$name.$gid"; 
     $end++;
+    
+    if ($ini > $end) { #flip coordinates
+        $tmp = $ini;
+        $ini = $end;
+        $end = $tmp;
+    }
     
     # genomic start and genomic end
     if (defined $seq{$id}{'ini'} ) {
