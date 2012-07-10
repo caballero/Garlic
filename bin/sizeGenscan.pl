@@ -44,13 +44,14 @@ while (<>) {
     ($gid, $type, $dir, $ini, $end, $len) = split (/\s+/, $_);
     $gid =~ s/\.\d+$//;
     $id = "$name.$gid"; 
-    $end++;
     
     if ($ini > $end) { #flip coordinates
         $tmp = $ini;
         $ini = $end;
         $end = $tmp;
     }
+    
+    $end++; # 0-based
     
     # genomic start and genomic end
     if (defined $seq{$id}{'ini'} ) {
