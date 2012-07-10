@@ -33,7 +33,7 @@ use strict;
 use warnings;
 
 my %seq = ();
-my ($id, $gid, $type, $dir, $ini, $end, $len, $name, $gsize $msize $csize);
+my ($id, $gid, $type, $dir, $ini, $end, $len, $name, $gsize, $msize, $csize);
 while (<>) {
     if (m/^Sequence (.+?) :/) {
         $name = $1;
