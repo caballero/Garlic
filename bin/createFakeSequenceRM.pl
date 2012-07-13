@@ -34,8 +34,7 @@ Optional or automatic parameters:
   -g --mingc       Minimal GC content to use
   -c --maxgc       Maximal GC content to use
   -r --repeat      Repetitive fraction [0-100]
-  -t --type        Only include this type of repeat [*regex] (and low 
-                   complexity sequences)
+  -t --type        Only include this type of repeat [*regex] 
 
   --write_base     Write the sequence pre-repeats [*.base.fasta]
   --no_repeat      Don't insert repeats (just base sequence)
@@ -474,7 +473,7 @@ sub loadRepeats {
             s/^ALR\/Alpha/ALR/;
             s/^L1M4b/L1M4B/;
             if (defined $rep_type) {
-                next unless (m/$rep_type/ or m/SIMPLE/);
+                next unless (m/$rep_type/);
             }
             push @{ $repeat{$gc} }, $_;
             (m/SIMPLE/) ? $nsim++ : $nrep++;
