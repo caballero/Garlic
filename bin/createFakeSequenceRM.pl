@@ -472,6 +472,7 @@ sub loadRepeats {
             s/-int//;
             s/^ALR\/Alpha/ALR/;
             s/^L1M4b/L1M4B/;
+            s/\?//;
             if (defined $rep_type) {
                 next unless (m/$rep_type/);
             }
