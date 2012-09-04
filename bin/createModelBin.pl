@@ -80,7 +80,7 @@ text file similar to the UCSC ensGenes.txt format (not knownGene.txt).
   
 =head1 AUTHOR
 
-Juan Caballero, Institute for Systems Biology @ 2011
+Juan Caballero, Institute for Systems Biology @ 2012
 
 =head1 CONTACT
 
@@ -166,8 +166,8 @@ GetOptions(
 ) or pod2usage(-verbose => 2);
 
 # Call help if required
-pod2usage(-verbose => 2)     if (defined $help);
-pod2usage(-verbose => 2) unless (defined $model);
+pod2usage(-verbose => 2) if  (defined $help);
+pod2usage(-verbose => 2) if !(defined $model);
 
 # UCSC model files
 my %files = ();
@@ -275,10 +275,10 @@ sub searchFiles {
 sub getUCSC_gene {
     # Gene models to mask functional regions
     $gene = $files{$model}{'GEN'};
-    die "Sorry, $model don't have gene annotation\n" unless (defined $gene);
+    die "Sorry, $model gene annotation is missing\n" unless (defined $gene);
 
     if (-e $gene) {
-        warn "$gene present, using it\n" if (defined $verbose);
+        warn "File $gene present, using it\n" if (defined $verbose);
     }
     else {
         warn "obtaining Gene files from $ucsc\n" if (defined $verbose);
@@ -290,7 +290,7 @@ sub getUCSC_gene {
 sub getUCSC_trf {
     # TRF output is used for simple repeat annotation
     my $target_file = $files{$model}{'TRF'};
-    die "Sorry, $model don't have TRF\n" unless (defined $target_file);
+    die "Sorry, $model TRF file is missing\n" unless (defined $target_file);
 
     if (-e "TRF/$target_file") {
         warn "$target_file present, using it\n" if (defined $verbose);
@@ -305,23 +305,7 @@ sub getUCSC_trf {
         die "cannot find TRF output in $ucsc_trf" unless (-e $target_file);
     }
     
-    if ($target_file =~ m/tar.gz$/) {
-        warn "unpacking TAR\n" if (defined $verbose);
-        system ("$unpack $target_file");
-    }
-    elsif ($target_file =~ m/.zip$/) {
-        warn "unpacking ZIP\n" if (defined $verbose);
-        system ("$unzip $target_file");
-    }
-    elsif($target_file =~ m/.gz$/) {
-        warn "unzipping GZ\n" if (defined $verbose);
-		my $out_file = $target_file;
-		$out_file =~ s/.gz$//;
-        system ("$gunzip $target_file > $out_file");
-    }
-    else {
-        die "cannot recognize the file format of $target_file\n";
-    }
+    unpackFiles($target_file);
     
     chdir '..';
     warn "searching TRF files\n" if (defined $verbose);
@@ -332,7 +316,7 @@ sub getUCSC_trf {
 sub getUCSC_repeat {
     # RepeatMasker output
     my $target_file = $files{$model}{'RMO'};
-    die "Sorry, $model don't have RepeatMasker\n" unless (defined $target_file);
+    die "Sorry, $model RepeatMasker file is missing\n" unless (defined $target_file);
 
     if (-e "RM/$target_file") {
         warn "$target_file present, using it\n" if (defined $verbose);
@@ -347,23 +331,7 @@ sub getUCSC_repeat {
         die "cannot find RepeatMasker out in $ucsc_repeat" unless (-e $target_file);
     }
     
-    if ($target_file =~ m/tar.gz$/) {
-        warn "unpacking TAR\n" if (defined $verbose);
-        system ("$unpack $target_file");
-    }
-    elsif ($target_file =~ m/.zip$/) {
-        warn "unpacking ZIP\n" if (defined $verbose);
-        system ("$unzip $target_file");
-    }
-    elsif($target_file =~ m/.gz$/) {
-        warn "unzipping GZ\n" if (defined $verbose);
-		my $out_file = $target_file;
-		$out_file =~ s/.gz$//;
-        system ("$gunzip $target_file > $out_file");
-    }
-    else {
-        die "cannot recognize the file format of $target_file\n";
-    }
+    unpackFiles($target_file);
     
     chdir '..';
     warn "searching RM files\n" if (defined $verbose);
@@ -388,23 +356,7 @@ sub getUCSC_fasta {
         die "cannot find genomic seq in $ucsc_genome" unless (-e $target_file);
     }
     
-    if ($target_file =~ m/tar.gz$/) {
-        warn "unpacking TAR\n" if (defined $verbose);
-        system ("$unpack $target_file");
-    }
-    elsif ($target_file =~ m/.zip$/) {
-        warn "unpacking ZIP\n" if (defined $verbose);
-        system ("$unzip $target_file");
-    }
-    elsif($target_file =~ m/.gz$/) {
-        warn "unzipping GZ\n" if (defined $verbose);
-		my $out_file = $target_file;
-		$out_file =~ s/.gz$//;
-        system ("$gunzip $target_file > $out_file");
-    }
-    else {
-        die "cannot recognize the file format of $target_file\n";
-    }
+    unpackFiles($target_file);
     
     chdir '..';
     warn "searching fasta files\n" if (defined $verbose);
@@ -412,9 +364,30 @@ sub getUCSC_fasta {
     die "cannot find fasta files!" unless (defined $fasta);
 }
 
+sub unpackFiles {
+    my $file  = shift;
+    if ($file =~ m/tar.gz$/) {
+        warn "unpacking TAR: $file\n" if (defined $verbose);
+        system ("$unpack $file");
+    }
+    elsif ($file =~ m/.zip$/) {
+        warn "unpacking ZIP: $file\n" if (defined $verbose);
+        system ("$unzip $file");
+    }
+    elsif($file =~ m/.gz$/) {
+        warn "unzipping GZ: $file\n" if (defined $verbose);
+		my $out_file = $file;
+		$out_file =~ s/.gz$//;
+        system ("$gunzip $file > $out_file");
+    }
+    else {
+        die "Abort, cannot recognize the file format of $file\n";
+    }
+}
+
 sub defineFH {
     # define how to read a file
-	my $fi = shift @_;
+	my $fi = shift;
 	my $fh = $fi;
     $fh = "gunzip  -c $fi | " if ($fi =~ m/\.gz$/);
     $fh = "bunzip2 -c $fi | " if ($fi =~ m/\.bz2$/);
@@ -555,7 +528,7 @@ sub maskGene {
             substr($seq{$seq_id}, $ini - 1, $len) = 'X' x $len;
         }
     }
-    %genes = (); # Flush
+    %genes = ();
 }
 
 sub loadGenes {
@@ -655,10 +628,8 @@ sub profileSeqs {
 	            $last_gc = $gc;
 	            # Effective bases count
 	            my $nbas = $ss =~ tr/ACGT/ACGT/;
-	            my $nrep = 0;
-	            my $nsim = 0;
-	            $nrep = $ss =~ tr/Rr/Rr/;
-	            $nsim = $ss =~ tr/Ss/Ss/;
+	            my $nrep = $ss =~ tr/Rr/Rr/;
+	            my $nsim = $ss =~ tr/Ss/Ss/;
 	            my $ntot = $nbas + $nrep + $nsim;
 	            next unless ($ntot > 0);
 	            push (@{ $ebases{$gc} }, int(100 * $nbas / $ntot));
@@ -746,8 +717,6 @@ sub profileSeqs {
 	    }
     }
     close G;
-    %kmer = ();
-    %gct  = ();
 }
 
 sub createKmer {
@@ -783,7 +752,7 @@ sub profileRepeats {
         my $rdist = calcPercDist(@{ $rbases{$gc} });
         my $sdist = calcPercDist(@{ $sbases{$gc} });
         my $rep   = parseRepeats(@{ $repeat{$gc} });
-        print R "#GC=$gc\t$edist\t$rdist\t$sdist\n$rep\n";
+        print R "#GC=$gc\tBASES=$edist\tREPEATS=$rdist\tSIMPLE=$sdist\n$rep\n";
     }
     close R;
     
@@ -1306,7 +1275,7 @@ sub calcPercDist {
     $cnt[-1] += $last;
     
     foreach my $x (@cnt) {
-        my $p = $x / $tot;
+        my $p = sprintf("%.4f", $x / $tot);
         $res .=  "$p,";
     }
     $res =~ s/,$//;
