@@ -482,6 +482,7 @@ sub loadInserts {
     my $fileh = defineFH($file);
     
 }
+
 # selPosition => find where to put a change
 sub selPosition {
 	my $seq = shift @_;
