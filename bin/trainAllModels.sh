@@ -8,11 +8,11 @@ do
     for WIN in 500 1000 2000
     do
         echo "  using window $win"
-        bin/createModelBin.pl -m $SP -w $WIN --keep_dw_files --no_kmer_table
+        bin/createModelBin.pl -m $SP -w $WIN -d data2 --keep_dw_files --no_kmer_table
         for KMER in 4 6 8
         do 
             echo "    using kmer $KMER"
-            bin/createModelBin.pl -m $SP -w $WIN -k $KMER --keep_dw_files --no_--no_repeat_table
+            bin/createModelBin.pl -m $SP -w $WIN -k $KMER -d data2 --keep_dw_files --no_--no_repeat_table
         done
     done
 done
