@@ -436,7 +436,7 @@ sub maskRepeat {
             next unless (defined $seq{$seq_id});
             $ini = $arr[5];
             $end = $arr[6];
-            push @{ $mask{$seq_id} }, "$ini    $end    mask";
+            push @{ $mask{$seq_id} }, "$ini\t$end\tmask";
         }
         close FH;        
     }
@@ -445,7 +445,7 @@ sub maskRepeat {
         my $all   = $RS->RSsort(\@{ $mask{$seq_id} });
         my $union = $RS->RSunion($all);
         foreach my $block (@$union) {
-            ($ini, $end, $name) = split (/    /, $block);
+            ($ini, $end, $name) = split (/\s+/, $block);
             $len = $end - $ini - 1;
             substr($seq{$seq_id}, $ini - 1, $len) = 'R' x $len;
         }
@@ -463,12 +463,12 @@ sub maskTRF {
         my $fileh = defineFH($file);
         open FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
-            my @arr = split (/    /, $_);
+            my @arr = split (/\s+/, $_);
             $seq_id = $arr[0];
             next unless (defined $seq{$seq_id});
             $ini = $arr[1];
             $end = $arr[2];
-            push @{ $mask{$seq_id} }, "$ini    $end    mask";
+            push @{ $mask{$seq_id} }, "$ini\t$end\tmask";
         }
         close FH;
     }
@@ -477,7 +477,7 @@ sub maskTRF {
         my $all   = $RS->RSsort(\@{ $mask{$seq_id} });
         my $union = $RS->RSunion($all);
         foreach my $block (@$union) {
-            ($ini, $end, $name) = split (/    /, $block);
+            ($ini, $end, $name) = split (/\s+/, $block);
             $len = $end - $ini - 1;
             substr($seq{$seq_id}, $ini - 1, $len) = 'S' x $len;
         }
@@ -492,7 +492,7 @@ sub maskExon {
         my $fileh = defineFH($file);
         open FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
-            my @arr = split (/    /, $_);
+            my @arr = split (/\s+/, $_);
             $seq_id = $arr[2];
             next unless (defined $seq{$seq_id});
             $arr[ 9] =~ s/,$//;
@@ -500,7 +500,7 @@ sub maskExon {
             my @ini = split (/,/, $arr[ 9]);
             my @end = split (/,/, $arr[10]);
             for (my $i = 0; $i <= $#ini; $i++) {
-                push @{ $mask{$seq_id} }, "$ini[$i]    $end[$i]    mask";
+                push @{ $mask{$seq_id} }, "$ini[$i]\t$end[$i]\tmask";
             }
         }
         close FH;
@@ -509,7 +509,7 @@ sub maskExon {
         my $all   = $RS->RSsort(\@{ $mask{$seq_id} });
         my $union = $RS->RSunion($all);
         foreach my $block (@$union) {
-            ($ini, $end, $name) = split (/    /, $block);
+            ($ini, $end, $name) = split (/\s+/, $block);
             $len = $end - $ini - 1;
             substr($seq{$seq_id}, $ini - 1, $len) = 'E' x $len;
         }
@@ -523,7 +523,7 @@ sub maskGene {
     foreach $seq_id (keys %genes) {
         next unless (defined $seq{$seq_id});
         foreach my $block (@{ $genes{$seq_id} }) {
-            ($ini, $end, $name) = split (/    /, $block);
+            ($ini, $end, $name) = split (/\s+/, $block);
             $len = $end - $ini - 1;
             substr($seq{$seq_id}, $ini - 1, $len) = 'X' x $len;
         }
@@ -538,12 +538,12 @@ sub loadGenes {
         my $fileh = defineFH($file);
         open FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
-            my @arr = split (/    /, $_);
+            my @arr = split (/\s+/, $_);
             $seq_id = $arr[2];
             next unless (defined $seq{$seq_id});
             $ini = $arr[4];
             $end = $arr[5];
-            push @{ $genes{$seq_id} }, "$ini    $end    gene";
+            push @{ $genes{$seq_id} }, "$ini\t$end\tgene";
         }
         close FH;
     }
@@ -558,13 +558,13 @@ sub loadGenesBin {
         my $fileh = defineFH($file);
         open FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
-            my @arr = split (/    /, $_);
+            my @arr = split (/\s+/, $_);
             $seq_id = $arr[2];
             next unless (defined $seq{$seq_id});
             $ini  = $arr[4];
             $end  = $arr[5];
             $bin_ = int ($ini / $bin_size);
-            push @{ $genes{$seq_id}{$bin_} }, "$ini    $end    gene";
+            push @{ $genes{$seq_id}{$bin_} }, "$ini\t$end\tgene";
         }
         close FH;
     }
@@ -585,7 +585,7 @@ sub loadRegions {
         my $fileh = defineFH($file);
         open FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
-            ($seq_id, $ini, $end) = split (/    /, $_);
+            ($seq_id, $ini, $end) = split (/\s+/, $_);
             next unless (defined $seq{$seq_id});
             push (@{ $region{$seq_id} }, "$ini-$end");
         }
@@ -686,7 +686,7 @@ sub profileSeqs {
 	            foreach my $b (@dna) {
 	                my $frq = sprintf ("%.8f", $p / 2);
 					   $frq = sprintf ("%.8f", $q / 2) if ($b =~ m/[AT]/);
-	                print K "$w$b    $frq    0    0\n";   
+	                print K "$w$b\t$frq\t0\t0\n";   
 	            }
 	        }
 	    }
@@ -705,14 +705,14 @@ sub profileSeqs {
                 my $cnt = 0;
                 $cnt = $gct{$gc1}{$gc2} if (defined $gct{$gc1}{$gc2});
                 my $frq = sprintf ("%.8f", $cnt / $tot);
-	            print G "$gc1    $gc2    $frq    $cnt\n";
+	            print G "$gc1\t$gc2\t$frq\t$cnt\n";
 	        }
 	    }
 	    else {
 	        foreach my $gc2 (@gc) {
                 my $cnt = 0;
                 my $frq = sprintf ("%.8f", 1 / @gc);
-	            print G "$gc1    $gc2    $frq    $cnt\n";
+	            print G "$gc1\t$gc2\t$frq\t$cnt\n";
 	        }
 	    }
     }
@@ -766,7 +766,7 @@ sub profileRepeats {
             foreach my $rep2 (sort keys %{ $repinsert{$gc}{$rep1} } ) {
                 my $cnt = $repinsert{$gc}{$rep1}{$rep2};
                 my $frq = sprintf ("%.8f", $cnt / $sum);
-                print I "$rep1    $rep2    $frq    $cnt\n";
+                print I "$rep1\t$rep2\t$frq\t$cnt\n";
             }
         }
     }
@@ -974,7 +974,7 @@ sub profileTRF {
         open T, "$file" or die "cannot open $file\n";
         while (<T>) {
             chomp;
-            my @line      = split (/    /, $_);
+            my @line      = split (/\s+/, $_);
             my $seq_id    = $line[0];
             my $ini       = $line[1];
             my $end       = $line[2];
@@ -1109,7 +1109,7 @@ sub checkGene {
     my $bin_size = $binsize * 10;
     my $bin_     = int ($ini / $bin_size);
     if (defined $genes{$chr}{$bin_}[0]) {
-        my @query = ("$ini    $end    query");
+        my @query = ("$ini\t$end\tquery");
         my $genes = \@{ $genes{$chr}{$bin_} };
         my $query = $RS-> RSintersection($genes, \@query);
         my $hit   = shift @$query;
