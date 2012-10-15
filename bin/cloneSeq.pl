@@ -203,7 +203,7 @@ while (($id, $seq) = each %seq) {
     warn "masking N regions\n" if (defined $verbose);
     for (my $i = 0; $i <= $total_len; $i++) {
         my $orig = substr($seq, $i, 1);
-        if ($orig eq 'N';) {
+        if ($orig eq 'N') {
             my $new = substr($new_seq, $i, 1);
             next if ($new eq 'N');
             substr($new_seq, $i, 1) = 'N';
