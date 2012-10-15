@@ -19,8 +19,8 @@ OPTIONS
     -r --repeat      write repeats info here    File
     -d --dir         Directory of models        Dir        ./data
     -w --win         Window size                INT        1000
-    -k --kmer        Kmer size                  INT        4
-    -b --block       Block size                 INT        1Mb
+    -k --kmer        Kmer size                  INT        8
+    -b --block       Block size                 INT        100kb
     -m --model       Model to use*              STR        hg19
 	-n --name        Temp files name            STR        fake
     -h --help        Print this screen
@@ -63,18 +63,18 @@ use Getopt::Long;
 use Pod::Usage;
 
 # Parameters initialization
-my $help       =  undef;
-my $verbose    =  undef;
-my $input      =  undef;
-my $output     =  undef;
-my $kmer       =      4;
-my $win        =   1000;
-my $block      =   '1M';
-my $model      = 'hg19';
-my $dir        = 'data';
-my $base       =  undef;
-my $repeat     =  undef;
-my $name       = 'fake';
+my $help       =   undef;
+my $verbose    =   undef;
+my $input      =   undef;
+my $output     =   undef;
+my $kmer       =       8;
+my $win        =    1000;
+my $block      = '100kb';
+my $model      =  'hg19';
+my $dir        =  'data';
+my $base       =   undef;
+my $repeat     =   undef;
+my $name       =  'fake';
 
 # Fetch options
 GetOptions(
@@ -135,13 +135,26 @@ while (<>) {
 warn "creating homolog sequences\n" if (defined $verbose);
 while (($id, $seq) = each %seq) {
     print ">$id synthetic\n";
-    my $new_seq  = undef;
-    my $bas_seq  = undef;
-    my $rep_info = undef;
-    for (my $i = 0; $i <= (length $seq) - $block; $i += $block) {
-        my $slice = substr ($seq, $i, $block);
+    my $new_seq   = undef;
+    my $bas_seq   = undef;
+    my $rep_info  = undef;
+    my $total_len = length $seq;
+    for (my $i = 0; $i <= $total_len; $i += $block) {
+        my $block_size = $block;
+        if ( ($i + $block) > $total_len) {
+            $block_size = $total_len - (length $new_seq);
+        }
+        
+        my $slice = substr ($seq, $i, $block_size);
+        
+        if ($slice =~ m/^N+$/) {
+            $new_seq .= 'N' x $block;
+            $bas_seq .= 'N' x $block;
+            next;
+        }
+        
         my ($min, $max) = minmaxGC($slice);
-        my $rep = calcRepBases($slice);
+        my $rep         = calcRepBases($slice);
         warn "creating subseq $i GC=($min, $max), RF=$rep\n" if (defined $verbose);
         system ("perl $creator -m $model -k $kmer -w $win -r $rep -g $min -c $max -s $block --write_base -n $name -d $dir");
         if (-e "$name.fasta") {
@@ -186,6 +199,18 @@ while (($id, $seq) = each %seq) {
             warn "failed (no sequence found), redoing\n" if (defined $verbose);
         }
     }
+    
+    warn "masking N regions\n" if (defined $verbose);
+    for (my $i = 0; $i <= $total_len; $i++) {
+        my $orig = substr($seq, $i, 1);
+        if ($orig eq 'N';) {
+            my $new = substr($new_seq, $i, 1);
+            next if ($new eq 'N');
+            substr($new_seq, $i, 1) = 'N';
+            substr($bas_seq, $i, 1) = 'N';
+        }
+    }          
+    
     warn "writing final sequence\n" if (defined $verbose);
     while ($new_seq) {
         print substr ($new_seq, 0, 70), "\n";
