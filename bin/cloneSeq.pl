@@ -201,15 +201,14 @@ while (($id, $seq) = each %seq) {
     }
     
     warn "masking N regions\n" if (defined $verbose);
-    for (my $i = 0; $i <= $total_len; $i++) {
-        my $orig = substr($seq, $i, 1);
-        if ($orig eq 'N') {
-            my $new = substr($new_seq, $i, 1);
-            next if ($new eq 'N');
-            substr($new_seq, $i, 1) = 'N';
-            substr($bas_seq, $i, 1) = 'N';
+    if ($seq =~ m/(N+)/g) {
+        my $m = 0;
+        foreach my $pos (@-) {
+            my $nnum = $+[$m] - $-[$m];
+            substr($new_seq, $pos, $nnum) = 'N' x $nnum;
+            substr($bas_seq, $pos, $nnum) = 'N' x $nnum;
         }
-    }          
+    }
     
     warn "writing final sequence\n" if (defined $verbose);
     while ($new_seq) {
