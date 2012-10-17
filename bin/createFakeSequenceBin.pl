@@ -862,6 +862,7 @@ sub insertElements {
         $frag = substr ($s, $pos, 100); # at least 100 bases to try
         next if ($frag =~ m/acgt/);
         $gc   = $gc_bin[int($pos/ $win)];
+        next unless (defined $gc);
         next unless (defined $repeat{$gc}[0]); # at least one element
         
         # our bag of elements to insert
