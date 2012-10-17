@@ -862,13 +862,14 @@ sub insertElements {
         $frag = substr ($s, $pos, 100); # at least 100 bases to try
         next if ($frag =~ m/acgt/);
         $gc   = $gc_bin[int($pos/ $win)];
+        next unless (defined $repeat{$gc}[0]); # at least one element
         
-        # our bag of elements to insert     
+        # our bag of elements to insert
         my @ins = shuffle(@{ $repeat{$gc} });
         $new = $ins[int(rand @ins)];
         warn "selected: $new\n" if (defined $debug);
         if ($new =~ m/SIMPLE/) {
-            next if ( 0.8 > rand); # hack to avoid SIMPLE repeats high density
+            next if ( 0.9 > rand); # hack to avoid SIMPLE repeats high density
             $seq = evolveSimple($new, $gc);
             $usim++;
         }
@@ -936,6 +937,8 @@ sub evolveSimple {
 # evolveRepeat => return the evolved repeat
 sub evolveRepeat {
     my ($rep, $gc, $old_age) = @_;
+    return ('BAD', $rep) unless ($rep =~ m/:/);
+
     my $seq   = '';
     my ($type, $fam, $dir, $div, $ins, $del, $frag, $break) = split (/:/, $rep);
     my ($mut, $nins, $ndel, $nsit, $nver, $cseq, $min, $max, $ini, $age);
