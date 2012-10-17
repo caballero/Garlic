@@ -941,6 +941,8 @@ sub evolveRepeat {
     my ($mut, $nins, $ndel, $nsit, $nver, $cseq, $min, $max, $ini, $age);
     $dir = rand; # direction is random
     
+    return ('BAD', $rep) unless (defined $type);
+    
     unless (defined $rep_seq{$type}) {
         warn "sequence for $type ($fam) not found!\n" if (defined $debug);
         return ('BAD', $rep);

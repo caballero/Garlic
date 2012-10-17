@@ -20,7 +20,7 @@ OPTIONS
     -d --dir         Directory of models        Dir        ./data
     -w --win         Window size                INT        1000
     -k --kmer        Kmer size                  INT        8
-    -b --block       Block size                 INT        100kb
+    -b --block       Block size                 INT        1Mb
     -m --model       Model to use*              STR        hg19
 	-n --name        Temp files name            STR        fake
     -h --help        Print this screen
@@ -69,7 +69,7 @@ my $input      =   undef;
 my $output     =   undef;
 my $kmer       =       8;
 my $win        =    1000;
-my $block      = '100kb';
+my $block      =   '1Mb';
 my $model      =  'hg19';
 my $dir        =  'data';
 my $base       =   undef;
