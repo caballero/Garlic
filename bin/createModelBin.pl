@@ -23,7 +23,7 @@ OPTIONS
     -d --dir           Write model in directory      Directory      ./data
     -k --kmer          Profile k-mer size            Integer        4
     -w --win           Profile window size           Integer        1000
-	-b --binsize       Bin size (for %GC)            Integer        10000
+    -b --binsize       Bin size (for %GC)            Integer        10000
     
     -f --fasta         Fasta sequences               FileName*
     -r --repeats       RepeatMasker output           FileName*
@@ -144,7 +144,7 @@ GetOptions(
     'd|dir:s'            => \$dir,
     'k|kmer:i'           => \$kmer,
     'w|win:i'            => \$win,
-	'b|binsize:i'        => \$binsize,
+    'b|binsize:i'        => \$binsize,
     'f|fasta:s'          => \$fasta,
     'r|repeat:s'         => \$repeat,
     't|trf:s'            => \$trf,
@@ -246,7 +246,7 @@ if (defined $mask_exon) {
 else { 
     maskGene() unless (defined $no_mask_gene); 
 }
-calcBinGC()  if     (defined $gc_post_mask);
+calcBinGC() if (defined $gc_post_mask);
 writeMaskSeq("$model.masked.fa") if (defined $write_mask_seq);
 
 # Create the K-mer/Window and GCt tables
@@ -283,7 +283,7 @@ sub getUCSC_gene {
     else {
         warn "obtaining Gene files from $ucsc\n" if (defined $verbose);
         system ("$get $ucsc_gene");
-        die "cannot find gene ann in $ucsc_gene" unless (-e $gene and -s $gene);
+        die "cannot find gene ann in $ucsc_gene\n" unless (-e $gene);
     }
 }
 
@@ -302,7 +302,7 @@ sub getUCSC_trf {
         mkdir 'TRF' unless (-e 'TRF' and -d 'TRF');
         chdir 'TRF' or die "cannot move to TRF directory\n";
         system ("$get $ucsc_trf");
-        die "cannot find TRF output in $ucsc_trf" unless (-e $target_file);
+        die "cannot find TRF output in $ucsc_trf\n" unless (-e $target_file);
     }
     
     unpackFiles($target_file);
@@ -328,7 +328,7 @@ sub getUCSC_repeat {
         mkdir 'RM' unless (-e 'RM' and -d 'RM');
         chdir 'RM' or die "cannot move to RM directory\n";
         system ("$get $ucsc_repeat");
-        die "cannot find RepeatMasker out in $ucsc_repeat" unless (-e $target_file);
+        die "cannot find RepeatMasker out in $ucsc_repeat\n" unless (-e $target_file);
     }
     
     unpackFiles($target_file);
@@ -353,7 +353,7 @@ sub getUCSC_fasta {
         mkdir 'fasta' unless (-e 'fasta' and -d 'fasta');
         chdir 'fasta' or die "cannot move to fasta directory\n";
         system ("$get $ucsc_genome");
-        die "cannot find genomic seq in $ucsc_genome" unless (-e $target_file);
+        die "cannot find genomic seq in $ucsc_genome\n" unless (-e $target_file);
     }
     
     unpackFiles($target_file);
@@ -387,8 +387,8 @@ sub unpackFiles {
 
 sub defineFH {
     # define how to read a file
-	my $fi = shift;
-	my $fh = $fi;
+    my $fi = shift;
+    my $fh = $fi;
     $fh = "gunzip  -c $fi | " if ($fi =~ m/\.gz$/);
     $fh = "bunzip2 -c $fi | " if ($fi =~ m/\.bz2$/);
 	return $fh;
@@ -431,6 +431,7 @@ sub maskRepeat {
         while (<FH>) {
             s/^\s*//;
             next unless (m/^\d+/); # skip headers
+            next if (m/Simple_repeat|Low_complexity|Unknown|Satellite/);
             my @arr = split (/\s+/, $_);
             $seq_id = $arr[4];
             next unless (defined $seq{$seq_id});
@@ -511,7 +512,7 @@ sub maskExon {
         foreach my $block (@$union) {
             ($ini, $end, $name) = split (/\s+/, $block);
             $len = $end - $ini - 1;
-            substr($seq{$seq_id}, $ini - 1, $len) = 'E' x $len;
+            substr($seq{$seq_id}, $ini, $len) = 'X' x $len;
         }
     }
 }
@@ -525,7 +526,7 @@ sub maskGene {
         foreach my $block (@{ $genes{$seq_id} }) {
             ($ini, $end, $name) = split (/\s+/, $block);
             $len = $end - $ini - 1;
-            substr($seq{$seq_id}, $ini - 1, $len) = 'X' x $len;
+            substr($seq{$seq_id}, $ini, $len) = 'X' x $len;
         }
     }
     %genes = ();
@@ -1104,17 +1105,19 @@ sub profileRM {
 
 sub checkGene {
     # verify is a region is inside gene annotation
-    my ($chr, $ini, $end) = @_;
-    my $res      = undef;
-    my $bin_size = $binsize * 10;
-    my $bin_     = int ($ini / $bin_size);
-    if (defined $genes{$chr}{$bin_}[0]) {
-        my @query = ("$ini\t$end\tquery");
-        my $genes = \@{ $genes{$chr}{$bin_} };
-        my $query = $RS-> RSintersection($genes, \@query);
-        my $hit   = shift @$query;
-        $res = 1 if (defined $hit);
-    }
+    my ($seq_id, $ini, $end) = @_;
+    my $res = undef;
+    my $seq = substr ($seq{$seq_id}, $ini - 1, $end - $ini);
+    $res = 1 if ($seq =~ m/X/); 
+    #my $bin_size = $binsize * 10;
+    #my $bin_     = int ($ini / $bin_size);
+    #if (defined $genes{$chr}{$bin_}[0]) {
+    #    my @query = ("$ini\t$end\tquery");
+    #    my $genes = \@{ $genes{$chr}{$bin_} };
+    #    my $query = $RS-> RSintersection($genes, \@query);
+    #    my $hit   = shift @$query;
+    #    $res = 1 if (defined $hit);
+    #}
     return $res;
 }
 
@@ -1130,8 +1133,7 @@ sub writeMaskSeq {
     my $func_bases = 0;
     my $tot_bases  = 0;
     open F, ">$file" or die "cannot write $file\n";
-    foreach my $id (keys %seq) {
-        my $seq = $seq{$id};
+    while (my ($id, $seq) = each %seq) {
         print F ">$id\n";
         while ($seq) {
             my $s = substr ($seq, 0, 70);
