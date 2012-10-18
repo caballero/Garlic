@@ -12,7 +12,7 @@ do
         for KMER in 4 6 8
         do 
             echo "    using kmer $KMER"
-            bin/createModelBin.pl -m $SP -w $WIN -k $KMER -d data2 -e chrM --keep_dw_files --no_--no_repeat_table -v
+            bin/createModelBin.pl -m $SP -w $WIN -k $KMER -d data2 -e chrM --keep_dw_files --no_repeat_table -v
         done
     done
 done
