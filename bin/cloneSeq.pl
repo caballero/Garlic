@@ -155,6 +155,7 @@ while (($id, $seq) = each %seq) {
         
         my ($min, $max) = minmaxGC($slice);
         my $rep         = calcRepBases($slice);
+        $rep = 95 if ($rep > 95);
         warn "creating subseq $i GC=($min, $max), RF=$rep\n" if (defined $verbose);
         system ("perl $creator -m $model -k $kmer -w $win -r $rep -g $min -c $max -s $block --write_base -n $name -d $dir");
         if (-e "$name.fasta") {
