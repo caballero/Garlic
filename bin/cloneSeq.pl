@@ -250,6 +250,8 @@ sub minmaxGC {
         $min_gc = $gc if ($gc < $min_gc);
         $max_gc = $gc if ($gc > $max_gc);
     }
+    $min_gc =  37 if ($min_gc == 1000);
+    $max_gc = 100 if ($max_gc ==   -1);
     return ($min_gc, $max_gc);
 }
 
