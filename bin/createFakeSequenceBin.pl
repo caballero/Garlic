@@ -33,6 +33,7 @@ Optional or automatic parameters:
   -g --mingc       Minimal GC content to use                     [   0]
   -c --maxgc       Maximal GC content to use                     [ 100]
   -r --repeat      Repetitive fraction [0-100]                   [auto]
+  -l --lowcomplex  Low complexity seq fraction [0-100]           [auto]
   -d --dir         Directory with model                          [data]
   -t --type        Include only this type of repeats             [ all]
 
@@ -105,6 +106,7 @@ my $help         =       undef; # Variable to activate help
 my $debug        =       undef; # Variable to activate verbose mode
 my %model        =          (); # Hash to store model parameters
 my %repeat       =          (); # Hash to store repeats info
+my %simple       =          (); # Hash to store low complex seqs info
 my %inserts      =          (); # Hash to store repeat inserts info
 my @inserts      =          (); # Array to store the insert sequences data
 my %gct          =          (); # Hash for GC transitions GC(n-1) -> GC(n)
@@ -119,7 +121,8 @@ my %repdens      =          (); # Repeat density values
 my $mut_cyc      =          10; # Maximal number of trials for mutations
 my $ins_cyc      =         100; # Maximal number of trials for insertions
 my $wrbase       =       undef; # Write base sequence too
-my $rep_frc      =       undef; # Repetitive fraction
+my $rep_frc      =       undef; # Repeats fraction
+my $sim_frc      =       undef; # Low complexity fraction
 my @dna          = qw/A C G T/; # DNA alphabet
 my $no_repeat    =       undef; # No repeats flag
 my $no_simple    =       undef; # No simple repeats flag
@@ -151,6 +154,7 @@ pod2usage(-verbose => 2) if (!GetOptions(
     'd|dir:s'        => \$dir,
     't|type:s'       => \$type,
     'r|repeat:s'     => \$rep_frc,
+    'l|lowcomplex:s' => \$sim_frc,
     'write_base'     => \$wrbase,
     'no_repeats'     => \$no_repeat,
     'no_simple'      => \$no_simple,
@@ -192,7 +196,7 @@ warn "Generating a $size sequence with $model model, output in $out\n" if (defin
 
 # Checking the size (conversion of symbols)
 $size = checkSize($size);
-errorExit("$size isn't a number") unless ($size > 100);
+errorExit("$size isn't a number") unless ($size > 1000);
 
 # Loading background models
 loadGCt($gct_file);
@@ -226,7 +230,8 @@ loadRepeats($repeat_file);
 warn "Reading repeat insertions from $insert_file\n" if (defined $debug);
 loadInserts($insert_file);
 warn "Adding repeats elements\n" if (defined $debug);
-$seq   = insertElements($seq);
+$seq   = insertRepeats($seq);
+$seq   = insertLowComplex($seq);
 open  INS, ">$out.inserts" or errorExit("cannot open $out.inserts");
 print INS join "\n", "POS\tREPEAT", @inserts;
 close INS;
@@ -485,8 +490,15 @@ sub loadRepeats {
             if (defined $no_simple) {
                 next if (m/SIMPLE/);
             }
-            push @{ $repeat{$gc} }, $_;
-            (m/SIMPLE/) ? $nsim++ : $nrep++;
+            
+            if (m/SIMPLE/) {
+                push @{ $simple{$gc} }, $_;
+                $nsim++;
+            }
+            else {                            
+                push @{ $repeat{$gc} }, $_;
+                $nrep++;
+            }
         }
     }
     close R;
@@ -830,9 +842,9 @@ sub getRangeValue {
     return $val;
 }
 
-# insertElements => insert the elements
-sub insertElements {
-    warn "inserting elements\n" if (defined $debug);
+# insertRepeat => insert repeat elements
+sub insertRepeat {
+    warn "inserting repeat elements\n" if (defined $debug);
     my $s       = shift @_;
     my $urep    = 0;
     my $usim    = 0;
@@ -844,13 +856,11 @@ sub insertElements {
     $repfra = 100 * $rbase / length $s;
     
     # compute how much repeats we want
-    if (defined $rep_frc) {
-        $repthr = $rep_frc;
-    }
-    else {
+    unless (defined $rep_frc) {
         # select a random repetitive fraction
-        $repthr  = getRangeValue(40, 60);
+        $rep_frc = getRangeValue(30, 70);
     }
+    $repthr  = $rep_frc;
     warn "Trying to add $repthr repeats\n" if (defined $debug);
     
     while ($repfra < $repthr) {
@@ -869,16 +879,9 @@ sub insertElements {
         my @ins = shuffle(@{ $repeat{$gc} });
         $new = $ins[int(rand @ins)];
         warn "selected: $new\n" if (defined $debug);
-        if ($new =~ m/SIMPLE/) {
-            next if ( 0.9 > rand); # hack to avoid SIMPLE repeats high density
-            $seq = evolveSimple($new, $gc);
-            $usim++;
-        }
-        else {
-            ($seq, $new) = evolveRepeat($new, $gc, 99999);
-            next if ($seq eq 'BAD');
-            $urep++;
-        }        
+        ($seq, $new) = evolveRepeat($new, $gc, 99999);
+        next if ($seq eq 'BAD');
+        $urep++;
         $seq = lc $seq;
         
         # insert the new sequence (if we can)
@@ -892,7 +895,64 @@ sub insertElements {
         $repfra  = 100 * $rbase / length $s;
         $tot_try = 0;
     }
-    warn "Inserted: $urep repeats and $usim simple repeats\n" if (defined $debug);
+    warn "Inserted: $urep repeats\n" if (defined $debug);
+    return $s;
+}
+
+# insertRepeat => insert repeat elements
+sub insertLowComplex {
+    warn "inserting low complex elements\n" if (defined $debug);
+    my $s       = shift @_;
+    my $usim    = 0;
+    my $tot_try = 0; # to avoid infinite loops in dense repetitive sequences
+    my ($pos, $gc, $new, $seq, $frag, $rbase, $repfra, $repthr);
+    
+    # check if we already have repeats in sequence
+    $rbase  = $s =~ tr/acgt/acgt/;
+    $repfra = 100 * $rbase / length $s;
+    
+    # compute how much repeats we want
+    unless (defined $sim_frc) {
+        # select a random repetitive fraction
+        $sim_frc = getRangeValue(0, 5);
+    }
+    $repthr = $rep_frc + $sim_frc;
+    $repthr = 95 if ($repthr > 95);
+    warn "Trying to add $repthr low complexity sequences\n" if (defined $debug);
+    
+    while ($repfra < $repthr) {
+        $tot_try++;
+        last if ($tot_try >= $ins_cyc);
+        
+        # select where we want to add a repeat
+        $pos  = int(rand ( (length $s) - 100));
+        $frag = substr ($s, $pos, 100); # at least 100 bases to try
+        next if ($frag =~ m/acgt/);
+        $gc   = $gc_bin[int($pos/ $win)];
+        next unless (defined $gc);
+        next unless (defined $simple{$gc}[0]); # at least one element
+        
+        # our bag of elements to insert
+        my @ins = shuffle(@{ $simple{$gc} });
+        $new = $ins[int(rand @ins)];
+        warn "selected: $new\n" if (defined $debug);
+        ($seq, $new) = evolveSimple($new, $gc);
+        next if ($seq eq 'BAD');
+        $usim++;
+        $seq = lc $seq;
+        
+        # insert the new sequence (if we can)
+        $frag = substr ($s, $pos, length $seq);
+        next if ($frag =~ m/acgt/); # we've a repeat here, trying other position
+        
+        substr($s, $pos, length $seq) = $seq;        
+        push @inserts, "$pos\t$new";
+        
+        $rbase   = $s =~ tr/acgt/acgt/;
+        $repfra  = 100 * $rbase / length $s;
+        $tot_try = 0;
+    }
+    warn "Inserted: $usim low complexity sequences\n" if (defined $debug);
     return $s;
 }
 
