@@ -76,8 +76,8 @@ pod2usage(-verbose => 2) if !(defined $fasta);
 pod2usage(-verbose => 2) if !(defined $clouds);
 pod2usage(-verbose => 2) if !(defined $out);
 
-open C, ">Controlfile" or die "cannot write Controlfile\n";
-print <<__FILE__
+open  C, ">Controlfile" or die "cannot write Controlfile\n";
+print C <<__FILE__
 Word size:
 #OligoSize -> $kmer
 
