@@ -915,7 +915,7 @@ sub insertLowComplex {
     unless (defined $sim_frc) {
         # select a random repetitive fraction
         $sim_frc = getRangeValue(0, 5);
-    }cd
+    }
     $repthr = $rep_frc + $sim_frc;
     $repthr = 99 if ($repthr > 99);
     warn "Trying to add $repthr low complexity sequences\n" if (defined $debug);
