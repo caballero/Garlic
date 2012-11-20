@@ -139,7 +139,7 @@ while (($id, $seq) = each %seq) {
     my $bas_seq   = undef;
     my $rep_info  = undef;
     my $total_len = length $seq;
-    for (my $i = 0; $i <= $total_len; $i += $block) {
+    for (my $i = 0; $i <= $total_len - $block; $i += $block) {
         my $block_size = $block;
         if ( ($i + $block) > $total_len) {
             $block_size = $total_len - (length $new_seq);
@@ -212,6 +212,10 @@ while (($id, $seq) = each %seq) {
             substr($bas_seq, $pos, $nnum) = 'N' x $nnum;
         }
     }
+    
+    # trimming if longer than the expected sequence
+    $new_seq = substr($new_seq, 0, $total_len);
+    $bas_seq = substr($bas_seq, 0, $total_len);
     
     warn "writing final sequence\n" if (defined $verbose);
     while ($new_seq) {
