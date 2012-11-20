@@ -915,9 +915,9 @@ sub insertLowComplex {
     unless (defined $sim_frc) {
         # select a random repetitive fraction
         $sim_frc = getRangeValue(0, 5);
-    }
+    }cd
     $repthr = $rep_frc + $sim_frc;
-    $repthr = 95 if ($repthr > 95);
+    $repthr = 99 if ($repthr > 99);
     warn "Trying to add $repthr low complexity sequences\n" if (defined $debug);
     
     while ($repfra < $repthr) {
@@ -936,7 +936,7 @@ sub insertLowComplex {
         my @ins = shuffle(@{ $simple{$gc} });
         $new = $ins[int(rand @ins)];
         warn "selected: $new\n" if (defined $debug);
-        ($seq, $new) = evolveSimple($new, $gc);
+        $seq = evolveSimple($new, $gc);
         next if ($seq eq 'BAD');
         $usim++;
         $seq = lc $seq;
