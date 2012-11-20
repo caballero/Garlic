@@ -230,7 +230,7 @@ loadRepeats($repeat_file);
 warn "Reading repeat insertions from $insert_file\n" if (defined $debug);
 loadInserts($insert_file);
 warn "Adding repeats elements\n" if (defined $debug);
-$seq   = insertRepeats($seq);
+$seq   = insertRepeat($seq);
 $seq   = insertLowComplex($seq);
 open  INS, ">$out.inserts" or errorExit("cannot open $out.inserts");
 print INS join "\n", "POS\tREPEAT", @inserts;
