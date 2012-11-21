@@ -74,6 +74,7 @@ $pred_seq = uc($mask_seq);
 open R, "$region" or die "cannot open file $region\n";
 while (<R>) {
     chomp;
+    next unless (m/\d+\s+\d+/);
     my ($ini, $end) = split (/\s+/, $_);
     my $s = substr ($pred_seq, $ini - 1, $end - $ini);
     substr ($pred_seq, $ini - 1, $end - $ini) = lc $s;
@@ -90,8 +91,8 @@ for (my $i = 0; $i <= length $mask_seq; $i++) {
      else                                        { $nl++; }
 }
 
-my $sp = $tp / ($tp + $fp);
-my $sn = $tp / ($tp + $fn);
+my $sp = sprintf ("%.4f", $tp / ($tp + $fp));
+my $sn = sprintf ("%.4f", $tp / ($tp + $fn));
 
 print join "\t", $name_seq, $tp, $tn, $fp, $fn, $nl, $sp, $sn;
 print "\n";
