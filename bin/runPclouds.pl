@@ -56,7 +56,7 @@ my $out         = undef;
 my $kmer        = undef;
 
 # Main variables
-my $our_version = 0.1;        # Script version number
+my $our_version = 0.1;           # Script version number
 my $pclouds     = '/proj/hoodlab/juan/FakeSequence/PClouds/pcloud';
 
 # Calling options
@@ -75,6 +75,20 @@ pod2usage(-verbose => 2) if  (defined $help);
 pod2usage(-verbose => 2) if !(defined $fasta);
 pod2usage(-verbose => 2) if !(defined $clouds);
 pod2usage(-verbose => 2) if !(defined $out);
+
+my $pre = $fasta;
+$pre    =~ s/fa$/pre/;
+
+unless (-e $pre) {
+    open F, "$fasta" or die "cannot open file $fasta\n";
+    open P,  ">$pre" or die "cannot write file $pre\n";
+    while (<F>) {
+        chomp unless (m/^>/)
+        print P $_;
+    }
+    close F;
+    close P;
+}
 
 open  C, ">Controlfile" or die "cannot write Controlfile\n";
 print C <<__FILE__
@@ -100,7 +114,7 @@ Input file to calculate counts:
 
 Input file to build p clouds and dissection
 #OligoSets -> words$kmer.txt
-#GenomeInput -> $fasta
+#GenomeInput -> $pre
 
 Outputfile:
 Clouds associated:
