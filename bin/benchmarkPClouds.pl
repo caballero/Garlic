@@ -56,7 +56,7 @@ my $fp       =  0; # False positives
 my $tn       =  0; # True negatives
 my $tp       =  0; # True positives
 my $nl       =  0; # Errors
-my $b        =  1;
+my $b        =  0;
 
 open F, "$fasta" or die "cannot open file $fasta\n";
 while (<F>) {
