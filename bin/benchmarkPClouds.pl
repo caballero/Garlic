@@ -56,6 +56,7 @@ my $fp       =  0; # False positives
 my $tn       =  0; # True negatives
 my $tp       =  0; # True positives
 my $nl       =  0; # Errors
+my $b        =  0;
 
 open F, "$fasta" or die "cannot open file $fasta\n";
 while (<F>) {
@@ -76,8 +77,8 @@ while (<R>) {
     chomp;
     next unless (m/\d+\s+\d+/);
     my ($ini, $end) = split (/\s+/, $_);
-    my $s = substr ($pred_seq, $ini - 1, $end - $ini);
-    substr ($pred_seq, $ini - 1, $end - $ini) = lc $s;
+    my $s = substr ($pred_seq, $ini - $b, $end - $ini);
+    substr ($pred_seq, $ini - $b, $end - $ini) = lc $s;
 }
 close R;
 
