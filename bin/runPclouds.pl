@@ -83,7 +83,7 @@ unless (-e $pre) {
     open F, "$fasta" or die "cannot open file $fasta\n";
     open P,  ">$pre" or die "cannot write file $pre\n";
     while (<F>) {
-        chomp unless (m/^>/)
+        chomp unless (m/^>/);
         print P $_;
     }
     close F;
