@@ -70,6 +70,7 @@ while (<F>) {
 }
 close F;
 
+$mask_seq =~ s/bad/NNN/ig;
 $pred_seq = uc($mask_seq);
 
 open R, "$region" or die "cannot open file $region\n";
