@@ -57,6 +57,8 @@ my $tn       =  0; # True negatives
 my $tp       =  0; # True positives
 my $nl       =  0; # Errors
 my $b        =  0;
+my $sp       = 'NA';
+my $sn       = 'NA';
 
 open F, "$fasta" or die "cannot open file $fasta\n";
 while (<F>) {
@@ -79,6 +81,7 @@ while (<R>) {
     next unless (m/\d+\s+\d+/);
     my ($ini, $end) = split (/\s+/, $_);
     next if ($ini > $end);
+    $end = length $mask_seq if ($end > length $mask_seq);
     my $s = substr ($pred_seq, $ini - $b, $end - $ini);
     substr ($pred_seq, $ini - $b, $end - $ini) = lc $s;
 }
@@ -94,8 +97,8 @@ for (my $i = 0; $i <= length $mask_seq; $i++) {
      else                                        { $nl++; }
 }
 
-my $sp = sprintf ("%.4f", $tp / ($tp + $fp));
-my $sn = sprintf ("%.4f", $tp / ($tp + $fn));
+$sp = sprintf ("%.4f", $tp / ($tp + $fp)) if ( ($tp + $fp) > 0);
+$sn = sprintf ("%.4f", $tp / ($tp + $fn)) if ( ($tp + $fn) > 0);
 
 print join "\t", $name_seq, $tp, $tn, $fp, $fn, $nl, $sp, $sn;
 print "\n";
