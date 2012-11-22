@@ -78,6 +78,7 @@ while (<R>) {
     chomp;
     next unless (m/\d+\s+\d+/);
     my ($ini, $end) = split (/\s+/, $_);
+    next if ($ini > $end);
     my $s = substr ($pred_seq, $ini - $b, $end - $ini);
     substr ($pred_seq, $ini - $b, $end - $ini) = lc $s;
 }
