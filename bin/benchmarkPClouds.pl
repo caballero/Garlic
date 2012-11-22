@@ -81,7 +81,7 @@ while (<R>) {
     next unless (m/\d+\s+\d+/);
     my ($ini, $end) = split (/\s+/, $_);
     next if ($ini > $end);
-    $end = length $mask_seq if ($end > length $mask_seq);
+    $end = length $mask_seq if ($end > (length $mask_seq));
     my $s = substr ($pred_seq, $ini - $b, $end - $ini);
     substr ($pred_seq, $ini - $b, $end - $ini) = lc $s;
 }
