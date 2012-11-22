@@ -237,8 +237,8 @@ print INS join "\n", "POS\tREPEAT", @inserts;
 close INS;
 
 warn "Generated a sequence with ", length $seq, " bases\n" if(defined $debug);
-$seq = uc($seq) if (defined $no_mask);
-
+$seq   =  uc($seq) if (defined $no_mask);
+$seq   =~ s/bad/NNN/ig;
 # Printing output
 warn "Printing outputs\n" if(defined $debug);
 my $fseq = formatFasta($seq);
