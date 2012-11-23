@@ -230,8 +230,8 @@ loadRepeats($repeat_file);
 warn "Reading repeat insertions from $insert_file\n" if (defined $debug);
 loadInserts($insert_file);
 warn "Adding repeats elements\n" if (defined $debug);
-$seq   = insertRepeat($seq);
-$seq   = insertLowComplex($seq);
+$seq   = insertRepeat($seq)     unless (defined $no_repeat);
+$seq   = insertLowComplex($seq) unless (defined $no_simple);
 open  INS, ">$out.inserts" or errorExit("cannot open $out.inserts");
 print INS join "\n", "POS\tREPEAT", @inserts;
 close INS;
@@ -485,7 +485,7 @@ sub loadRepeats {
             s/^ALR\/Alpha/ALR/;
             s/^L1M4b/L1M4B/;
             if (defined $type) {
-                next unless (m/$type/);
+                next unless (m/$type/i);
             }
             if (defined $no_simple) {
                 next if (m/SIMPLE/);
