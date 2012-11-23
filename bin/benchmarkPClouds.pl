@@ -44,10 +44,11 @@ along with code.  If not, see <http://www.gnu.org/licenses/>.
 use strict;
 use warnings;
 
-$ARGV[1] or die "use benchmarkPClouds.pl FASTA REGION > OUT\n";
+$ARGV[1] or die "use benchmarkPClouds.pl FASTA REGION [SHUFFLED?] > OUT\n";
 
 my $fasta    = shift @ARGV;
 my $region   = shift @ARGV;
+my $shuf     = shift @ARGV;
 my $mask_seq = '';
 my $pred_seq = '';
 my $name_seq = '';
@@ -75,6 +76,7 @@ while (<F>) {
 close F;
 
 $mask_seq =~ s/bad/NNN/ig;
+$mask_seq = uc($mask_seq) if (defined $shuf);
 $pred_seq = uc($mask_seq);
 
 open R, "$region" or die "cannot open file $region\n";
