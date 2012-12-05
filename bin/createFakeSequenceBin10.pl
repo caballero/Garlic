@@ -136,6 +136,7 @@ my $repeat_file  =       undef; # Repeat file
 my $kmer_file    =       undef; # kmer file
 my $repbase_file =       undef; # RepBase file
 my $insert_file  =       undef; # Repeat insert file
+my $doFrag       =           1;
 
 # GC classes creation
 my @valid_gc  = (10, 20, 30, 40, 50, 60, 70, 80, 90, 100);
@@ -155,6 +156,7 @@ pod2usage(-verbose => 2) if (!GetOptions(
     't|type:s'       => \$type,
     'r|repeat:s'     => \$rep_frc,
     'l|lowcomplex:s' => \$sim_frc,
+    'dofrag:i'       => \$doFrag,
     'write_base'     => \$wrbase,
     'no_repeats'     => \$no_repeat,
     'no_simple'      => \$no_simple,
@@ -1062,7 +1064,7 @@ sub evolveRepeat {
     $seq  = addInsertions(   $seq, $nins, $gc, 0) if($nins > 0);
 
     # split the repeat if required    
-    if ($break > 1 and $age > 10) {
+    if ($break > 1 and $age > 10 and $doFrag == 1) {
         my $num = 1;
         while ($num < $break) {
             $num++;
