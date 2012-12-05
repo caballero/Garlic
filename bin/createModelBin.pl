@@ -827,7 +827,6 @@ sub calcRepDist {
             $rep{"$rfam:$con"}{'per'}   .= "$per,";
             $rep{"$rfam:$con"}{'div'}   .= "$div,";
             $rep{"$rfam:$con"}{'indel'} .= "$indel,";
-            #print join "    ", "$rfam:$con", $per, $div, $indel, "\n";
         }
         else { # interspersed repeat
             $nfrg = 1;
@@ -855,7 +854,6 @@ sub calcRepDist {
             $rep{"$rid:$rfam"}{'div'}   .= "$div,";
             $rep{"$rid:$rfam"}{'indel'} .= "$indel,";
             $rep{"$rid:$rfam"}{'len'}   .= "$len,";
-            #print join "    ", "$rid:$rfam", $len, $div, $indel, $nfrg, "\n";
         }
     }
    
@@ -1109,15 +1107,6 @@ sub checkGene {
     my $res = undef;
     my $seq = substr ($seq{$seq_id}, $ini - 1, $end - $ini);
     $res = 1 if ($seq =~ m/X/); 
-    #my $bin_size = $binsize * 10;
-    #my $bin_     = int ($ini / $bin_size);
-    #if (defined $genes{$chr}{$bin_}[0]) {
-    #    my @query = ("$ini\t$end\tquery");
-    #    my $genes = \@{ $genes{$chr}{$bin_} };
-    #    my $query = $RS-> RSintersection($genes, \@query);
-    #    my $hit   = shift @$query;
-    #    $res = 1 if (defined $hit);
-    #}
     return $res;
 }
 
@@ -1248,11 +1237,6 @@ sub calcBinGC {
 		    }
 		    push @{ $bingc{$seq_id} }, $gc;
 		}
-	}
-	foreach $seq_id (keys %bingc) {
-	    open  GCF, ">$seq_id.gcbins" or die;
-	    print GCF join "\n", $seq_id, @{ $bingc{$seq_id} };
-	    close GCF;
 	}
 }
 
