@@ -434,7 +434,7 @@ sub loadKmers {
     }
     
     foreach my $gc (sort keys %elemk) {
-        foreach my $w (sort keys %$elemk{$gc}) {
+        foreach my $w (sort keys %{ $elemk{$gc} }) {
                 my $v = $elemk{$gc}{$b};
                 print "$gc\t$w\t$v\n";
         }
