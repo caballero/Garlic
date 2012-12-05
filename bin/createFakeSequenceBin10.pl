@@ -432,6 +432,13 @@ sub loadKmers {
     foreach $gc (keys %classgc) { 
         $gc{$gc} /= $tot; 
     }
+    
+    foreach my $gc (sort {$a<=>$b} keys %elemk) {
+        foreach my $w (sort keys %$elemk{$gc} {
+                my $v = $elemk{$gc}{$b};
+                print "$gc\t$w\t$v\n";
+        }
+    }
 }
 
 # loadRepeatConsensus => read file of RepBase consensus
