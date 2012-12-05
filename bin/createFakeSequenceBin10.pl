@@ -410,6 +410,7 @@ sub loadKmers {
     my $gc    = undef; 
     my $tot   = 0;
     my $fileh = defineFH($file);
+    warn "reading kmers from $file\n";
     open K, "$fileh" or errorExit("cannot open $fileh");
     while (<K>) {
         chomp;
@@ -439,6 +440,7 @@ sub loadKmers {
                 print "$gc\t$w\t$v\n";
         }
     }
+    exit 1;
 }
 
 # loadRepeatConsensus => read file of RepBase consensus
