@@ -1249,6 +1249,11 @@ sub calcBinGC {
 		    push @{ $bingc{$seq_id} }, $gc;
 		}
 	}
+	foreach $seq_id (keys %bingc) {
+	    open  GCF, ">$seq_id.gcbins" or die;
+	    print GCF join "\n", $seq_id, @{ $bingc{$seq_id} };
+	    close GCF;
+	}
 }
 
 sub getBinGC {
