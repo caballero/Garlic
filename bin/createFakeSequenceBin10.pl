@@ -412,11 +412,11 @@ sub loadKmers {
     my $fileh = defineFH($file);
     open K, "$fileh" or errorExit("cannot open $fileh");
     while (<K>) {
+        chomp;
         if (m/#GC=\d+-(\d+)/) {
             $gc = $1;
         }
         else {
-            chomp;
             my ($b, $f, @r) = split (/\s+/, $_);
             my $v = pop @r;
             $elemk{$gc}{$b} = $f;
