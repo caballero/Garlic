@@ -417,7 +417,7 @@ sub loadKmers {
         }
         else {
             chomp;
-            my ($b, $f, @r) = split (/\t/, $_);
+            my ($b, $f, @r) = split (/\s+/, $_);
             my $v = pop @r;
             $elemk{$gc}{$b} = $f;
             $v++; # give a chance to zero values
