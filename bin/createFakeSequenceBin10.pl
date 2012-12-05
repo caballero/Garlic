@@ -378,7 +378,7 @@ sub checkSize{
 # loadGCt => load the GC transitions values
 sub loadGCt {
     my $file   = shift @_;
-    warn "reading GC transitions from $file\n" if (defined $verbose);
+    warn "reading GC transitions from $file\n" if (defined $debug);
     my $fileh  = defineFH($file);
     my %gc_sum = ();
     open G, "$fileh" or errorExit("cannot open $file");
@@ -411,7 +411,7 @@ sub loadKmers {
     my $gc    = undef; 
     my $tot   = 0;
     my $fileh = defineFH($file);
-    warn "reading kmers from $file\n" if (defined $verbose);
+    warn "reading kmers from $file\n" if (defined $debug);
     open K, "$fileh" or errorExit("cannot open $fileh");
     while (<K>) {
         chomp;
@@ -439,7 +439,7 @@ sub loadKmers {
 # loadRepeatConsensus => read file of RepBase consensus
 sub loadRepeatConsensus {
     my $file  = shift @_;
-    warn "reading repeat consensi from $file\n" if (defined $verbose);
+    warn "reading repeat consensi from $file\n" if (defined $debug);
     my $fileh = defineFH($file);
     my ($rep, $alt, $seq);
     open R, "$fileh" or errorExit("Cannot open $fileh");
@@ -468,7 +468,7 @@ sub loadRepeatConsensus {
 # loadRepeats => read the repeats info
 sub loadRepeats {
     my $file  = shift @_;
-    warn "reading repeat information from $file\n" if (defined $verbose);
+    warn "reading repeat information from $file\n" if (defined $debug);
     my $fileh = defineFH($file);
     my $gc    = undef;
     my $nsim  = 0;
