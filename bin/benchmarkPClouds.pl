@@ -51,7 +51,7 @@ my $region   = shift @ARGV;
 my $shuf     = shift @ARGV;
 my $mask_seq = '';
 my $pred_seq = '';
-my $name_seq = '';
+my $name_seq = $fasta; $name_seq  =~ s/\.fa$//;
 my $fn       =  0; # False negatives
 my $fp       =  0; # False positives
 my $tn       =  0; # True negatives
@@ -66,10 +66,7 @@ my $fdr      = 'NA';
 open F, "$fasta" or die "cannot open file $fasta\n";
 while (<F>) {
     chomp;
-    if (m/>(\S+)/) {
-        $name_seq = $1; 
-    }
-    else {
+    unless (m/>/) {
         $mask_seq .= $_;
     }
 }
@@ -78,6 +75,9 @@ close F;
 $mask_seq =~ s/bad/NNN/ig;
 $mask_seq = uc($mask_seq) if (defined $shuf);
 $pred_seq = uc($mask_seq);
+my $len   = length $mask_seq;
+my $rep   = $mask_seq =~ tr/acgt/acgt/;
+my $repf  = sprintf ("%.4f", 100 * $rep / $len);
 
 open R, "$region" or die "cannot open file $region\n";
 while (<R>) {
@@ -107,6 +107,6 @@ $sn  = sprintf ("%.4f", $tp / ($tp + $fn)) if ( ($tp + $fn) > 0);
 $acc = sprintf ("%.4f", ($tp + $tn) / ($tp + $tn + $fp + $fn)) if ( ($tp + $tn + $fp + $fn) > 0);
 $fdr = sprintf ("%.4f", $fp / ($fp + $tp)) if ( ($fp + $tp) > 0);
 
-print join "\t", $name_seq, $tp, $tn, $fp, $fn, $nl, $sp, $sn, $acc, $fdr;
+print join "\t", $name_seq, $len, $repf, $tp, $tn, $fp, $fn, $nl, $sp, $sn, $acc, $fdr;
 print "\n";
 
