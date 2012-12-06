@@ -78,7 +78,7 @@ $mask_seq =  uc($mask_seq) if (defined $shuf);
 $pred_seq =  uc($mask_seq);
 my $len   = length $mask_seq;
 my $rep   = $mask_seq =~ tr/acgt/acgt/;
-my $repf  = sprintf ("%.4f", 100 * $rep / $len);
+my $repf  = sprintf ("%.4f", $rep / $len);
 
 open R, "$region" or die "cannot open file $region\n";
 while (<R>) {
