@@ -105,7 +105,7 @@ if (defined $output) {
 }
 
 # Path to the createFakeSequence.pl script
-my $creator = 'bin/createFakeSequenceBin.pl';
+my $creator = 'bin/createFakeSequenceBin10.pl';
 
 # main varibles
 my %seq = ();
@@ -256,7 +256,7 @@ sub minmaxGC {
         $min_gc = $gc if ($gc < $min_gc);
         $max_gc = $gc if ($gc > $max_gc);
     }
-    $min_gc =  37 if ($min_gc == 1000);
+    $min_gc =  10 if ($min_gc == 1000);
     $max_gc = 100 if ($max_gc ==   -1);
     return ($min_gc, $max_gc);
 }
@@ -276,22 +276,15 @@ sub calcGC {
     my $ngc = $seq =~ tr/GCgc//;
     my $nat = $seq =~ tr/ATat//;
     my $sum = $nat + $ngc;
-    my $gc  = undef;
     my $pgc = undef;
     
     if ($sum >= $win / 10) { # at least 10% of the sequence is useful
-        $gc = $ngc / $sum;
+        $pgc  = int(100 * $ngc / $sum);
     }
     else { # no bases, use a random value
-        my @gc = (0.3699, 0.3899, 0.4199, 0.4499, 1);
-        $gc = $gc[int(rand @gc)];
+        my @gc = (10, 20, 30, 40, 40, 40, 50, 50, 50, 60, 60, 60, 70, 80, 90, 100);
+        $pgc   = $gc[int(rand @gc)];
     }
-    
-    if    ($gc <= 0.37) { $pgc =  37; }
-    elsif ($gc <= 0.39) { $pgc =  39; }   
-    elsif ($gc <= 0.42) { $pgc =  42; }
-    elsif ($gc <= 0.45) { $pgc =  45; }
-    else                { $pgc = 100; }
     
 	return $pgc;
 }
