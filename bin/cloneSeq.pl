@@ -279,7 +279,7 @@ sub calcGC {
     my $pgc = undef;
     
     if ($sum >= $win / 10) { # at least 10% of the sequence is useful
-        $pgc  = int(100 * $ngc / $sum);
+        $pgc  = (int(10 * $ngc / $sum) + 1 ) * 10;
     }
     else { # no bases, use a random value
         my @gc = (10, 20, 30, 40, 40, 40, 50, 50, 50, 60, 60, 60, 70, 80, 90, 100);
