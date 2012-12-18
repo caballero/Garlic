@@ -86,7 +86,7 @@ if (defined param('model')) {
         system ($cmd);
         system ("$compress tmp/$id.zip tmp/$id.*");
         system ("rm tmp/$id.fasta tmp/$id.inserts");
-        print p("Your files are in <a href\"tmp/$id.zip\">$id.zip</a>"); 
+        print p("Your files are in <a href=\"tmp/$id.zip\">$id.zip</a>"); 
     }
 }
 else {
