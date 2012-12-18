@@ -61,7 +61,7 @@ print header('text/html');
 print "<html>\n<head>\n<title></title>\n$style\n</head>\n<body>";
 print h2('Artificial Intergenic Sequence Generator'), hr();
 print p('This is a simulator designed to produce a DNA sequence similar to the non-functional (intergenic) regions of a genome to be use in genomic analysis.');
-print p('If you are planning to run a large scale simulations, please install a local version, the source code is available in <a href="http://caballero.github.com/FakeSequence/">here </a>and the models <a href="models/">here.</a>');
+print p('If you are planning to run a large scale simulations, please install a local version, the source code is available <a href="http://caballero.github.com/FakeSequence/">here </a>and the models <a href="models/">here.</a>');
 print hr();
 
 if (defined param('model')) {
@@ -84,8 +84,8 @@ if (defined param('model')) {
         my $cmd = "$create -m $model -s $size -n tmp/$id -k $kmer -r $repfrac -g $min_gc -c $max_gc ";
         $cmd   .= "-t $reptype" if ($reptype ne 'All');
         system ($cmd);
-        system ("$compress tmp/$id.zip tmp/$id.*");
-        system ("rm tmp/$id.fasta tmp/$id.inserts");
+        #system ("$compress tmp/$id.zip tmp/$id.*");
+        #system ("rm tmp/$id.fasta tmp/$id.inserts");
         print p("Your files are in <a href=\"tmp/$id.zip\">$id.zip</a>"); 
     }
 }
