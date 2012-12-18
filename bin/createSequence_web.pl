@@ -42,7 +42,7 @@ my $compress = 'zip';
 my $min_size = 1000;
 my $max_size = 100000;
 my @gc       = (0,10,20,30,40,50,60,70,80,90,100);
-my @models   = qw/hg19 ailMel1 bosTau4 ce3 equCab2 gasAcu1 mm9 oryLat2 susScr2 anoCar2 calJac3 ci2 felCat4 monDom5 oviAri1 rheMac2 taeGut1 anoGam1 canFam2 danRer7 fr2 loxAfr3 ornAna1 panTro3 rn4 tetNig2 apiMel2 cavPor3 dm3 galGal3 mm10 oryCun2 ponAbe2 strPur2	xenTro2/;
+my @models   = qw/hg19 ailMel1 bosTau4 equCab2 gasAcu1 mm9 oryLat2 susScr2 anoCar2 calJac3 ci2 felCat4 monDom5 oviAri1 rheMac2 canFam2 danRer7 fr2 loxAfr3 ornAna1 panTro3 rn4 tetNig2 apiMel2 cavPor3 dm3 galGal3 mm10 oryCun2 strPur2	xenTro2/;
 
 # CSS definition
 my $style    =<<__STYLE__
