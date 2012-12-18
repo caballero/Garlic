@@ -60,7 +60,7 @@ __STYLE__
 print header('text/html'); 
 print "<html>\n<head>\n<title></title>\n$style\n</head>\n<body>";
 print h2('Artificial Intergenic Sequence Generator'), hr();
-print p('This is a simulator designed to produce a DNA sequence similar to the non-functional (interegenic) regions of a genome to be use in genomic analysis.');
+print p('This is a simulator designed to produce a DNA sequence similar to the non-functional (intergenic) regions of a genome to be use in genomic analysis.');
 print p('If you are planning to run a large scale simulations, please install a local version, the source code is available in <a href="http://caballero.github.com/FakeSequence/">here </a>and the models <a href="models/">here.</a>');
 print hr();
 
@@ -100,6 +100,7 @@ print p(i('Institute for Systems Biology (2012)'));
 print end_html();
 
 sub createForm {
+    print start_form();
     print p('Model ', popup_menu(-name => 'model', -values => \@models, -default => 'hg19'));
     print p('Kmer ',  popup_menu(-name => 'kmer', -values => [4, 6, 8], -default => 4));
     print p('Window ',  popup_menu(-name => 'win', -values => [1000], -default => 1000));
