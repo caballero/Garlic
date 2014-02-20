@@ -367,14 +367,14 @@ sub calcInsertNum {
 
 # checkSize => decode kb, Mb and Gb symbols
 sub checkSize{
-    my $size   = shift @_;
-    my $factor = 1;
-    if    ($size =~ m/k/i) { $factor =  1e3; }
-    elsif ($size =~ m/m/i) { $factor =  1e6; }
-    elsif ($size =~ m/g/i) { $factor =  1e9; }
-    $size  =~ s/\D//g;
-    $size *=  $factor;
-    return $size;
+    my $sz = shift @_;
+    my $fc = 1;
+    if    ($sz =~ m/k/i) { $fc =  1e3; }
+    elsif ($sz =~ m/m/i) { $fc =  1e6; }
+    elsif ($sz =~ m/g/i) { $fc =  1e9; }
+    $sz  =~ s/\D//g;
+    $sz *=  $fc;
+    return $sz;
 }
 
 # loadGCt => load the GC transitions values
@@ -480,6 +480,9 @@ sub loadRepeats {
         chomp;
         if (m/#GC=\d+-(\d+)/) {
             $gc = $1;
+            #my $d = $2;
+            #my @d = split (/,/, $d);
+            #@{ $repdens{$gc} } = @d;
         }
         else {
             # rename some repeats mislabeled in RepBase
@@ -866,7 +869,7 @@ sub insertRepeat {
     # compute how much repeats we want
     unless (defined $rep_frc) {
         # select a random repetitive fraction
-        $rep_frc = getRangeValue(10, 60);
+        $rep_frc = getRangeValue(30, 70);
     }
     $repthr  = $rep_frc;
     warn "Trying to add $repthr repeats\n" if (defined $debug);
@@ -893,14 +896,11 @@ sub insertRepeat {
         $seq = lc $seq;
         
         # insert the new sequence (if we can)
-        for (my $try = 0; $try <= $ins_cyc; $try++) {
-            $frag = substr ($s, $pos, length $seq);
-            next if ($frag =~ m/acgt/); # we've a repeat here, trying other position
+        $frag = substr ($s, $pos, length $seq);
+        next if ($frag =~ m/acgt/); # we've a repeat here, trying other position
         
-            substr($s, $pos, length $seq) = $seq;        
-            push @inserts, "$pos\t$new";
-            last;
-        }
+        substr($s, $pos, length $seq) = $seq;        
+        push @inserts, "$pos\t$new";
         
         $rbase   = $s =~ tr/acgt/acgt/;
         $repfra  = 100 * $rbase / length $s;
@@ -953,13 +953,11 @@ sub insertLowComplex {
         $seq = lc $seq;
         
         # insert the new sequence (if we can)
-        for (my $try = 0; $try <= $ins_cyc; $try++) {
-            $frag = substr ($s, $pos, length $seq);
-            next if ($frag =~ m/acgt/); # we've a repeat here, trying other position
-            substr($s, $pos, length $seq) = $seq;        
-            push @inserts, "$pos\t$new";
-            last;
-        }
+        $frag = substr ($s, $pos, length $seq);
+        next if ($frag =~ m/acgt/); # we've a repeat here, trying other position
+        
+        substr($s, $pos, length $seq) = $seq;        
+        push @inserts, "$pos\t$new";
         
         $rbase   = $s =~ tr/acgt/acgt/;
         $repfra  = 100 * $rbase / length $s;
@@ -976,7 +974,7 @@ sub evolveSimple {
     my $seq   = '';
     my ($lab, $seed, $dir, $exp, $div, $indel) = split (/:/, $sim);
     my ($min, $max);
-    $dir = rand; # random direction
+    $dir = rand; # direction is random
     
     # define values from ranges (if applicable)
     if ($exp =~ /-/) {
