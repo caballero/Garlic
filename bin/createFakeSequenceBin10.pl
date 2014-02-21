@@ -36,6 +36,7 @@ Optional or automatic parameters:
   -l --lowcomplex  Low complexity seq fraction [0-100]           [auto]
   -d --dir         Directory with model                          [data]
   -t --type        Include only this type of repeats             [ all]
+  -N --numseqs     Create N sequences                            [   1]
 
   --write_base     Write the sequence pre-repeats (*.base.fasta)
   --no_repeat      Don't insert repeats (just base sequence)
@@ -136,7 +137,8 @@ my $repeat_file  =       undef; # Repeat file
 my $kmer_file    =       undef; # kmer file
 my $repbase_file =       undef; # RepBase file
 my $insert_file  =       undef; # Repeat insert file
-my $doFrag       =           1;
+my $doFrag       =           1; # Fragment repeats flag
+my $numseqs      =           1; # Number of sequences to create
 
 # GC classes creation
 my @valid_gc  = (10, 20, 30, 40, 50, 60, 70, 80, 90, 100);
@@ -156,6 +158,7 @@ pod2usage(-verbose => 2) if (!GetOptions(
     't|type:s'       => \$type,
     'r|repeat:s'     => \$rep_frc,
     'l|lowcomplex:s' => \$sim_frc,
+    'N|numseqs:i'    => \$numseqs,
     'dofrag:i'       => \$doFrag,
     'write_base'     => \$wrbase,
     'no_repeats'     => \$no_repeat,
@@ -200,54 +203,59 @@ warn "Generating a $size sequence with $model model, output in $out\n" if (defin
 $size = checkSize($size);
 errorExit("$size isn't a number or < 1kb") unless ($size >= 1000);
 
-# Loading background models
+# Loading models
+warn "Reading GC transitions in $gct_file\n" if(defined $debug);
 loadGCt($gct_file);
-warn "GC transitions in $gct_file loaded\n" if(defined $debug);
 
+warn "Reading k-mers in $kmer_file\n" if(defined $debug);
 loadKmers($kmer_file);
-warn "k-mers in $kmer_file loaded\n" if(defined $debug);
 
-# Generation of base sequence
-my $fgc    = newGC();
-my @fseeds = keys %{ $elemk{$fgc} };
-my $fseed  = $fseeds[int(rand @fseeds)];
-$seq       = createSeq($kmer, $fgc, $size, $win, $fseed);
-$seq       = checkSeqSize($size, $seq);
-warn "Base sequence generated ($size bases)\n" if(defined $debug);
+unless (defined $no_repeat) {
+    warn "Reading repeat consensi from $repbase_file\n" if (defined $debug);
+    loadRepeatConsensus($repbase_file);
 
-# Write base sequence (before repeat insertions)
-if (defined $wrbase) {
-    my $bseq = formatFasta($seq);
-    open  FAS, ">$out.base.fasta" or errorExit("cannot open $out.base.fasta");
-    print FAS  ">artificial_sequence MODEL=$model KMER=$kmer WIN=$win LENGTH=$size\n$bseq";
-    close FAS;    
-    exit 1 if (defined $no_repeat);
+    warn "Reading repeat information from $repeat_file\n" if (defined $debug);
+    loadRepeats($repeat_file);
+
+    warn "Reading repeat insertions from $insert_file\n" if (defined $debug);
+    loadInserts($insert_file);
 }
 
-# Adding new elements
-warn "Reading repeat consensi from $repbase_file\n" if (defined $debug);
-loadRepeatConsensus($repbase_file);
-warn "Reading repeat information from $repeat_file\n" if (defined $debug);
-loadRepeats($repeat_file);
-warn "Reading repeat insertions from $insert_file\n" if (defined $debug);
-loadInserts($insert_file);
-warn "Adding repeats elements\n" if (defined $debug);
-$seq = insertRepeat($seq)     unless (defined $no_repeat);
-$seq = insertLowComplex($seq) unless (defined $no_simple);
-open  INS, ">$out.inserts" or errorExit("cannot open $out.inserts");
-print INS join "\n", "POS\tREPEAT", @inserts;
-close INS;
+for (my $snum = 1; $snum <= $numseqs; $snum++) {
+    # Generation of base sequence
+    my $fgc    = newGC();
+    my @fseeds = keys %{ $elemk{$fgc} };
+    my $fseed  = $fseeds[int(rand @fseeds)];
+    $seq       = createSeq($kmer, $fgc, $size, $win, $fseed);
+    $seq       = checkSeqSize($size, $seq);
+    warn "Base sequence generated ($size bases)\n" if(defined $debug);
 
-warn "Generated a sequence with ", length $seq, " bases\n" if(defined $debug);
-$seq   =  uc($seq) if (defined $no_mask);
-$seq   =~ s/bad/NNN/ig;
-# Printing output
-warn "Printing outputs\n" if(defined $debug);
-my $fseq = formatFasta($seq);
-open  FAS, ">$out.fasta" or errorExit("cannot open $out.fasta");
-print FAS  ">artificial_sequence MODEL=$model KMER=$kmer WIN=$win LENGTH=$size\n$fseq";
-close FAS;
+    # Write base sequence (before repeat insertions)
+    if (defined $wrbase) {
+        my $bseq = formatFasta($seq);
+        open  FAS, ">>$out.base.fasta" or errorExit("cannot open $out.base.fasta");
+        print FAS  ">artificial_sequence MODEL=$model KMER=$kmer WIN=$win LENGTH=$size\n$bseq";
+        close FAS;    
+    }
+    next if (defined $no_repeat);
+    # Adding new elements
+    warn "Adding repeats elements\n" if (defined $debug);
+    $seq = insertRepeat($seq)     unless (defined $no_repeat);
+    $seq = insertLowComplex($seq) unless (defined $no_simple);
+    open  INS, ">>$out.inserts" or errorExit("cannot open $out.inserts");
+    print INS join "\n", "POS\tREPEAT", @inserts;
+    close INS;
 
+    warn "Generated a sequence with ", length $seq, " bases\n" if(defined $debug);
+    $seq   =  uc($seq) if (defined $no_mask);
+    $seq   =~ s/bad/NNN/ig;
+    # Printing output
+    warn "Printing outputs\n" if(defined $debug);
+    my $fseq = formatFasta($seq);
+    open  FAS, ">>$out.fasta" or errorExit("cannot open $out.fasta");
+    print FAS  ">artificial_sequence MODEL=$model KMER=$kmer WIN=$win LENGTH=$size\n$fseq";
+    close FAS;
+}
 
 #### END MAIN #####
 
@@ -470,7 +478,6 @@ sub loadRepeatConsensus {
 # loadRepeats => read the repeats info
 sub loadRepeats {
     my $file  = shift @_;
-    warn "reading repeat information from $file\n" if (defined $debug);
     my $fileh = defineFH($file);
     my $gc    = undef;
     my $nsim  = 0;
@@ -925,7 +932,7 @@ sub insertLowComplex {
     # compute how much repeats we want
     unless (defined $sim_frc) {
         # select a random repetitive fraction
-        $sim_frc = getRangeValue(0, 5);
+        $sim_frc = getRangeValue(0, 3);
     }
     $repthr = $rep_frc + $sim_frc;
     $repthr = 99 if ($repthr > 99);
