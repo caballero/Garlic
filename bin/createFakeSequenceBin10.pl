@@ -244,6 +244,7 @@ for (my $snum = 1; $snum <= $numseqs; $snum++) {
     $seq = insertLowComplex($seq) unless (defined $no_simple);
     open  INS, ">>$out.inserts" or errorExit("cannot open $out.inserts");
     print INS join "\n", "#POS\tREPEAT", @inserts;
+    print INS "\n";
     close INS;
 
     warn "Generated a sequence with ", length $seq, " bases\n" if(defined $debug);
@@ -894,6 +895,7 @@ sub insertRepeat {
         ($seq, $new) = evolveRepeat($new, $gc, 99999);
         next if ($seq eq 'BAD');
         $urep++;
+        $seq =~ s/BAD//g;
         $seq = lc $seq;
         
         # insert the new sequence (if we can)
@@ -954,6 +956,7 @@ sub insertLowComplex {
         $seq = evolveSimple($new, $gc);
         next if ($seq eq 'BAD');
         $usim++;
+        $seq =~ s/BAD//g;
         $seq = lc $seq;
         
         # insert the new sequence (if we can)
