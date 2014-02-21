@@ -25,7 +25,7 @@ Usage: perl createSequence.pl -m MODEL -s SIZE -n OUFILE [PARAMETERS]
 Required parameters:
   -m --model       Model to use (like hg19, mm9, ... etc)
   -s --size        Size in bases, kb, Mb, Gb are accepted
-  -n --name        Output files to create *.fasta and *.inserts  [fake]
+  -o --out         Output files to create *.fasta and *.inserts  [fake]
     
 Optional or automatic parameters:
   -w --window      Window size for base generation               [1000]
@@ -55,16 +55,16 @@ Optional or automatic parameters:
 =head1 EXAMPLES
 
 a) Basic usage  
-   perl createSequence.pl -m hg19 -s 1Mb -n fake
+   perl createSequence.pl -m hg19 -s 1Mb -o fake
 
 b) Only include Alu sequences
-   perl createSequence.pl -m hg19 -s 1Mb -n fake -t Alu
+   perl createSequence.pl -m hg19 -s 1Mb -o fake -t Alu
 
 c) Change k-mer size to 6 and window size to 2kb
-   perl createSequence.pl -m hg19 -s 1Mb -n fake -w 2000 -k 6
+   perl createSequence.pl -m hg19 -s 1Mb -o fake -w 2000 -k 6
 
 d) Just create a base sequence without repeats
-   perl createSequence.pl -m hg19 -s 1Mb -n fake --write_base --no_repeat
+   perl createSequence.pl -m hg19 -s 1Mb -o fake --write_base --no_repeat
 
 =head1 AUTHOR
 
@@ -148,7 +148,7 @@ pod2usage(-verbose => 2) if (!GetOptions(
     'h|help'         => \$help,
     'm|model=s'      => \$model,
     's|size=s'       => \$size,
-    'n|name:s'       => \$out,
+    'o|out:s'        => \$out,
     'k|kmer:i'       => \$kmer,
     'w|window:i'     => \$win,
     'g|mingc:i'      => \$mingc,
@@ -931,7 +931,7 @@ sub insertLowComplex {
     # compute how much repeats we want
     unless (defined $sim_frc) {
         # select a random repetitive fraction
-        $sim_frc = getRangeValue(0, 3);
+        $sim_frc = getRangeValue(0, 2);
     }
     $repthr = $rep_frc + $sim_frc;
     $repthr = 99 if ($repthr > 99);
