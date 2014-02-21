@@ -243,7 +243,7 @@ for (my $snum = 1; $snum <= $numseqs; $snum++) {
     $seq = insertRepeat($seq)     unless (defined $no_repeat);
     $seq = insertLowComplex($seq) unless (defined $no_simple);
     open  INS, ">>$out.inserts" or errorExit("cannot open $out.inserts");
-    print INS join "\n", "POS\tREPEAT", @inserts;
+    print INS join "\n", "#POS\tREPEAT", @inserts;
     close INS;
 
     warn "Generated a sequence with ", length $seq, " bases\n" if(defined $debug);
@@ -388,7 +388,6 @@ sub checkSize{
 # loadGCt => load the GC transitions values
 sub loadGCt {
     my $file   = shift @_;
-    warn "reading GC transitions from $file\n" if (defined $debug);
     my $fileh  = defineFH($file);
     my %gc_sum = ();
     open G, "$fileh" or errorExit("cannot open $file");
@@ -421,7 +420,6 @@ sub loadKmers {
     my $gc    = undef; 
     my $tot   = 0;
     my $fileh = defineFH($file);
-    warn "reading kmers from $file\n" if (defined $debug);
     open K, "$fileh" or errorExit("cannot open $fileh");
     while (<K>) {
         chomp;
@@ -449,7 +447,6 @@ sub loadKmers {
 # loadRepeatConsensus => read file of RepBase consensus
 sub loadRepeatConsensus {
     my $file  = shift @_;
-    warn "reading repeat consensi from $file\n" if (defined $debug);
     my $fileh = defineFH($file);
     my ($rep, $alt, $seq);
     open R, "$fileh" or errorExit("Cannot open $fileh");
