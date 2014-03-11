@@ -256,6 +256,7 @@ for (my $snum = 1; $snum <= $numseqs; $snum++) {
     open  FAS, ">>$out.fasta" or errorExit("cannot open $out.fasta");
     print FAS  ">artificial_sequence MODEL=$model KMER=$kmer WIN=$win LENGTH=$size\n$fseq";
     close FAS;
+	@inserts = ();
 }
 
 #### END MAIN #####
@@ -916,7 +917,7 @@ sub insertRepeat {
     return $s;
 }
 
-# insertRepeat => insert repeat elements
+# insertLowComplex => insert low complexity/simple repeat elements
 sub insertLowComplex {
     warn "inserting low complex elements\n" if (defined $debug);
     my $s       = shift @_;
