@@ -536,6 +536,9 @@ sub loadInserts {
             $rep2 =~ s/-int//g;
             $rep2 =~ s/^ALR\/Alpha/ALR/g;
             $rep2 =~ s/^L1M4b/L1M4B/g;
+            if (defined $type) {
+                next unless ($rep1 =~ m/$type/i  and $rep2 =~ m/$type/i);
+            }
             $inserts{$gc}{$rep1}{$rep2} = $frq;
         }
     }
@@ -903,9 +906,9 @@ sub insertRepeat {
         for (my $try = 0; $try <= $ins_cyc; $try++) {
             $frag = substr ($s, $pos, length $seq);
             next if ($frag =~ m/acgt/); # we've a repeat here, trying other position
-        
-            substr($s, $pos, length $seq) = $seq;        
-            push @inserts, "$pos\t$new";
+            substr($s, $pos, length $seq) = $seq;
+			my $pos_end = $pos + length $seq;        
+            push @inserts, "$pos\t$pos_end\t$new";
             last;
         }
         
@@ -965,7 +968,8 @@ sub insertLowComplex {
             $frag = substr ($s, $pos, length $seq);
             next if ($frag =~ m/acgt/); # we've a repeat here, trying other position
             substr($s, $pos, length $seq) = $seq;        
-            push @inserts, "$pos\t$new";
+			my $pos_end = $pos + length $seq;        
+            push @inserts, "$pos\t$pos_end\t$new";
             last;
         }
         
