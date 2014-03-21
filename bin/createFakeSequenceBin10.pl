@@ -1080,13 +1080,19 @@ sub evolveRepeat {
     # split the repeat if required    
     if ($break > 1 and $age > 10 and $doFrag == 1) {
         my $num = 1;
-        while ($num < $break) {
+        for (my $try = 0; $try <= $ins_cyc; $try++) {
             $num++;
             warn "generating insert: $gc, $type#$fam, $age\n" if (defined $debug);
             my ($insert, $repinfo) = getInsert($gc, "$type#$fam", $age);
+			if ($insert eq 'BAD' or (length $insert) < 1) {
+				warn "   rejected insert\n";
+				$num--;
+				next;
+			}
             my $target = int(rand(length $seq));
             $rep .= ",$repinfo";
             substr($seq, $target, 1) = $insert;
+			last if ($num > $break);
         }
     }
     
