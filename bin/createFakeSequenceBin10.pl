@@ -549,24 +549,26 @@ sub loadInserts {
 sub selPosition {
     my $seq = shift @_;
     my $gc  = shift @_;
-    my @pos = ();
-    my %dat = ();
-    my $num = 0;
-    for (my $i = 0; $i <= ((length $seq) - $kmer - 1); $i++) {
-        my $seed = uc(substr($seq, $i, $kmer));
-        if (defined $elemk{$gc}{$seed}) {
-            $dat{$i} = $elemk{$gc}{$seed};
-            $num++;
-        }
-    }
-    if ($num < 2) {
-        @pos = (0);
-    }
-    else {
-        foreach my $pos (sort { $dat{$a} <=> $dat{$b} } keys %dat) {
-             push (@pos, $pos);
-        }
-    }
+    my $len = length $seq;
+    my @pos = randSel($len, int($len/2) + 1 );
+    #my @pos = ();
+    #my %dat = ();
+    #my $num = 0;
+    #for (my $i = 0; $i <= ((length $seq) - $kmer - 1); $i++) {
+    #    my $seed = uc(substr($seq, $i, $kmer));
+    #    if (defined $elemk{$gc}{$seed}) {
+    #        $dat{$i} = $elemk{$gc}{$seed};
+    #        $num++;
+    #    }
+    #}
+    #if ($num < 2) {
+    #    @pos = (0);
+    #}
+    #else {
+    #    foreach my $pos (sort { $dat{$a} <=> $dat{$b} } keys %dat) {
+    #         push (@pos, $pos);
+    #    }
+    #}
     return @pos;
 }
 
