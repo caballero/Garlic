@@ -23,11 +23,13 @@ positions and random orientations.
 Usage: perl createSequence.pl -m MODEL -s SIZE -n OUFILE [PARAMETERS] 
 
 Required parameters:
+
   -m --model       Model to use (like hg19, mm9, ... etc)
   -s --size        Size in bases, kb, Mb, Gb are accepted
   -o --out         Output files to create *.fasta and *.inserts  [fake]
     
 Optional or automatic parameters:
+
   -w --window      Window size for base generation               [1000]
   -k --kmer        Seed size to use                              [   8]
   -g --mingc       Minimal GC content to use                     [   0]
@@ -243,7 +245,7 @@ for (my $snum = 1; $snum <= $numseqs; $snum++) {
     $seq = insertRepeat($seq)     unless (defined $no_repeat);
     $seq = insertLowComplex($seq) unless (defined $no_simple);
     open  INS, ">>$out.inserts" or errorExit("cannot open $out.inserts");
-    print INS join "\n", "#POS\tREPEAT", @inserts;
+    print INS join "\n", "#INI\tEND\tREPEAT", @inserts;
     print INS "\n";
     close INS;
 
@@ -352,28 +354,6 @@ sub checkSeqSize {
     checkSeqSize($size, $seq); # Recursion!
 }
 
-# calcInsertNum => return a number of inserts with some variation
-sub calcInsertNum {
-    my $size = shift @_;
-    my $freq = shift @_;
-    my $avg  = int($size * $freq);
-    $avg++;
-    my $num  = 0;
-    my @op   = qw/plus minus none/;
-    my $op   = $op[int(rand(@op))];
-    my $dif  = int(rand($avg) * rand(1));
-    if ($op eq 'plus') { 
-        $num = $avg + $dif; 
-    }
-    elsif ($op eq 'minus') { 
-        $num = $avg - $dif; 
-    }
-    else { 
-        $num = $avg; 
-    }
-    $num = 0 if ($num < 0);
-    return $num;
-}
 
 # checkSize => decode kb, Mb and Gb symbols
 sub checkSize{
@@ -866,7 +846,6 @@ sub insertRepeat {
     warn "inserting repeat elements\n" if (defined $debug);
     my $s       = shift @_;
     my $urep    = 0;
-    my $usim    = 0;
     my $tot_try = 0; # to avoid infinite loops in dense repetitive sequences
     my ($pos, $gc, $new, $seq, $frag, $rbase, $repfra, $repthr);
     
@@ -902,17 +881,15 @@ sub insertRepeat {
         next if ($seq eq 'BAD');
         $urep++;
         $seq =~ s/BAD//g;
+        next if ((length $seq) < 10);
         $seq = lc $seq;
         
-        # insert the new sequence (if we can)
-        for (my $try = 0; $try <= $ins_cyc; $try++) {
-            $frag = substr ($s, $pos, length $seq);
-            next if ($frag =~ m/acgt/); # we've a repeat here, trying other position
-            substr($s, $pos, length $seq) = $seq;
-			my $pos_end = $pos + length $seq;        
-            push @inserts, "$pos\t$pos_end\t$new";
-            last;
-        }
+        $frag = substr ($s, $pos, length $seq);
+        next if ($frag =~ m/acgt/); # we've a repeat here, trying other position
+        substr($s, $pos, length $seq) = $seq;
+		my $pos_end = $pos + length $seq;        
+        push @inserts, "$pos\t$pos_end\t$new\[$seq\]";
+        warn "new repeat inserted in $pos\t$pos_end\t$new\[$seq\]\n" if (defined $debug);
         
         $rbase   = $s =~ tr/acgt/acgt/;
         $repfra  = 100 * $rbase / length $s;
@@ -964,16 +941,14 @@ sub insertLowComplex {
         $usim++;
         $seq =~ s/BAD//g;
         $seq = lc $seq;
+        next if ((length $seq) < 10);
         
-        # insert the new sequence (if we can)
-        for (my $try = 0; $try <= $ins_cyc; $try++) {
-            $frag = substr ($s, $pos, length $seq);
-            next if ($frag =~ m/acgt/); # we've a repeat here, trying other position
-            substr($s, $pos, length $seq) = $seq;        
-			my $pos_end = $pos + length $seq;        
-            push @inserts, "$pos\t$pos_end\t$new";
-            last;
-        }
+        $frag = substr ($s, $pos, length $seq);
+        next if ($frag =~ m/acgt/); # we've a repeat here, trying other position
+        substr($s, $pos, length $seq) = $seq;        
+		my $pos_end = $pos + length $seq;        
+        push @inserts, "$pos\t$pos_end\t$new\[$seq\]";
+        warn "new simple repeat inserted in $pos\t$pos_end\t$new\[$seq\]";
         
         $rbase   = $s =~ tr/acgt/acgt/;
         $repfra  = 100 * $rbase / length $s;
@@ -1087,12 +1062,12 @@ sub evolveRepeat {
             warn "generating insert: $gc, $type#$fam, $age\n" if (defined $debug);
             my ($insert, $repinfo) = getInsert($gc, "$type#$fam", $age);
 			if ($insert eq 'BAD' or (length $insert) < 1) {
-				warn "   rejected insert\n";
+				warn "   insert rejected\n";
 				$num--;
 				next;
 			}
             my $target = int(rand(length $seq));
-            $rep .= ",$repinfo";
+            $rep .= ",$repinfo\[$insert\]";
             substr($seq, $target, 1) = $insert;
 			last if ($num > $break);
         }
