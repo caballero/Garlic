@@ -20,7 +20,7 @@ positions and random orientations.
 
 =head1 USAGE
 
-Usage: perl createSequence.pl -m MODEL -s SIZE -n OUFILE [PARAMETERS] 
+Usage: perl createSequence.pl -m MODEL -s SIZE -o OUFILE [PARAMETERS] 
 
 Required parameters:
 
@@ -41,7 +41,7 @@ Optional or automatic parameters:
   -N --numseqs     Create N sequences                            [   1]
 
   --write_base     Write the sequence pre-repeats (*.base.fasta)
-  --no_repeat      Don't insert repeats (just base sequence)
+  --no_repeat      Don't insert repeats
   --no_simple      Don't insert simple repeats
   --no_mask        Don't lower-case repeats
   
@@ -254,6 +254,7 @@ for (my $snum = 1; $snum <= $numseqs; $snum++) {
     $seq   =~ s/bad/NNN/ig;
     # Printing output
     warn "Printing outputs\n" if(defined $debug);
+    $seq     = checkSeqSize($size, $seq);
     my $fseq = formatFasta($seq);
     open  FAS, ">>$out.fasta" or errorExit("cannot open $out.fasta");
     print FAS  ">artificial_sequence MODEL=$model KMER=$kmer WIN=$win LENGTH=$size\n$fseq";
@@ -348,10 +349,7 @@ sub checkSeqSize {
         my $patch = substr($seq, $pos, $add);
         $seq     .= $patch;
     }
-    else {
-        return $seq;
-    }
-    checkSeqSize($size, $seq); # Recursion!
+    return $seq;
 }
 
 
@@ -846,50 +844,51 @@ sub insertRepeat {
     warn "inserting repeat elements\n" if (defined $debug);
     my $s       = shift @_;
     my $urep    = 0;
-    my $tot_try = 0; # to avoid infinite loops in dense repetitive sequences
-    my ($pos, $gc, $new, $seq, $frag, $rbase, $repfra, $repthr);
+    my $tot_try = 0; # to avoid infinite loops in dense repetitive regions
     
     # check if we already have repeats in sequence
-    $rbase  = $s =~ tr/acgt/acgt/;
-    $repfra = 100 * $rbase / length $s;
+    my $rbase  = $s =~ tr/acgt/acgt/;
+    my $repfra = 100 * $rbase / length $s;
     
     # compute how much repeats we want
     unless (defined $rep_frc) {
         # select a random repetitive fraction
         $rep_frc = getRangeValue(10, 60);
     }
-    $repthr  = $rep_frc;
-    warn "Trying to add $repthr repeats\n" if (defined $debug);
+    my $repthr  = $rep_frc;
+    warn "Trying to add $repthr\% in repeats\n" if (defined $debug);
     
     while ($repfra < $repthr) {
         $tot_try++;
         last if ($tot_try >= $ins_cyc);
         
         # select where we want to add a repeat
-        $pos  = int(rand ( (length $s) - 100));
-        $frag = substr ($s, $pos, 100); # at least 100 bases to try
-        next if ($frag =~ m/acgt/);
-        $gc   = $gc_bin[int($pos/ $win)];
+        my $pos  = int(rand ( (length $s) - 100));
+        my $frag = substr ($s, $pos, 100); # at least 100 clean bases to try
+        next if ($frag =~ m/[acgt]/);
+        my $gc   = $gc_bin[int($pos/ $win)];
         next unless (defined $gc);
         next unless (defined $repeat{$gc}[0]); # at least one element
         
         # our bag of elements to insert
         my @ins = shuffle(@{ $repeat{$gc} });
-        $new = $ins[int(rand @ins)];
+        my $new = $ins[int(rand @ins)];
+        my $seq = '';
         warn "selected: $new\n" if (defined $debug);
         ($seq, $new) = evolveRepeat($new, $gc, 99999);
         next if ($seq eq 'BAD');
-        $urep++;
         $seq =~ s/BAD//g;
         next if ((length $seq) < 10);
         $seq = lc $seq;
         
         $frag = substr ($s, $pos, length $seq);
-        next if ($frag =~ m/acgt/); # we've a repeat here, trying other position
+        next if ($frag =~ m/[acgt]/); # we've a repeat here, trying other position
+        
+        $urep++;
         substr($s, $pos, length $seq) = $seq;
 		my $pos_end = $pos + length $seq;        
-        push @inserts, "$pos\t$pos_end\t$new\[$seq\]";
-        warn "new repeat inserted in $pos\t$pos_end\t$new\[$seq\]\n" if (defined $debug);
+        push @inserts, "$pos\t$pos_end\t$urep\t$new\[$seq\]";
+        warn "new repeat inserted in $pos\t$pos_end\t$urep\t$new\[$seq\]\n" if (defined $debug);
         
         $rbase   = $s =~ tr/acgt/acgt/;
         $repfra  = 100 * $rbase / length $s;
@@ -905,50 +904,49 @@ sub insertLowComplex {
     my $s       = shift @_;
     my $usim    = 0;
     my $tot_try = 0; # to avoid infinite loops in dense repetitive sequences
-    my ($pos, $gc, $new, $seq, $frag, $rbase, $repfra, $repthr);
     
     # check if we already have repeats in sequence
-    $rbase  = $s =~ tr/acgt/acgt/;
-    $repfra = 100 * $rbase / length $s;
+    my $rbase  = $s =~ tr/acgt/acgt/;
+    my $repfra = 100 * $rbase / length $s;
     
     # compute how much repeats we want
     unless (defined $sim_frc) {
         # select a random repetitive fraction
         $sim_frc = getRangeValue(0, 2);
     }
-    $repthr = $rep_frc + $sim_frc;
+    my $repthr = $rep_frc + $sim_frc;
     $repthr = 99 if ($repthr > 99);
-    warn "Trying to add $repthr low complexity sequences\n" if (defined $debug);
+    warn "Trying to add $sim_frc\% of low complexity sequences\n" if (defined $debug);
     
     while ($repfra < $repthr) {
         $tot_try++;
         last if ($tot_try >= $ins_cyc);
         
         # select where we want to add a repeat
-        $pos  = int(rand ( (length $s) - 100));
-        $frag = substr ($s, $pos, 100); # at least 100 bases to try
-        next if ($frag =~ m/acgt/);
-        $gc   = $gc_bin[int($pos/ $win)];
+        my $pos  = int(rand ( (length $s) - 100));
+        my $frag = substr ($s, $pos, 100); # at least 100 bases to try
+        next if ($frag =~ m/[acgt]/);
+        my $gc   = $gc_bin[int($pos/ $win)];
         next unless (defined $gc);
         next unless (defined $simple{$gc}[0]); # at least one element
         
         # our bag of elements to insert
         my @ins = shuffle(@{ $simple{$gc} });
-        $new = $ins[int(rand @ins)];
+        my $new = $ins[int(rand @ins)];
         warn "selected: $new\n" if (defined $debug);
-        $seq = evolveSimple($new, $gc);
+        my $seq = evolveSimple($new, $gc);
         next if ($seq eq 'BAD');
-        $usim++;
         $seq =~ s/BAD//g;
         $seq = lc $seq;
         next if ((length $seq) < 10);
         
         $frag = substr ($s, $pos, length $seq);
-        next if ($frag =~ m/acgt/); # we've a repeat here, trying other position
+        next if ($frag =~ m/[acgt]/); # we've a repeat here, trying other position
+        $usim++;
         substr($s, $pos, length $seq) = $seq;        
 		my $pos_end = $pos + length $seq;        
-        push @inserts, "$pos\t$pos_end\t$new\[$seq\]";
-        warn "new simple repeat inserted in $pos\t$pos_end\t$new\[$seq\]";
+        push @inserts, "$pos\t$pos_end\t$usim\t$new\[$seq\]";
+        warn "new simple repeat inserted in $pos\t$pos_end\t$usim\t$new\[$seq\]";
         
         $rbase   = $s =~ tr/acgt/acgt/;
         $repfra  = 100 * $rbase / length $s;
