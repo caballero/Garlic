@@ -235,7 +235,7 @@ for (my $snum = 1; $snum <= $numseqs; $snum++) {
     # Write base sequence (before repeat insertions)
     if (defined $wrbase) {
         my $bseq = formatFasta($seq);
-        open  FAS, ">>$out.base.fasta" or errorExit("cannot open $out.base.fasta");
+        open  FAS, ">$out.base.fasta" or errorExit("cannot open $out.base.fasta");
         print FAS  ">artificial_sequence MODEL=$model KMER=$kmer WIN=$win LENGTH=$size\n$bseq";
         close FAS;    
     }
@@ -244,8 +244,8 @@ for (my $snum = 1; $snum <= $numseqs; $snum++) {
     warn "Adding repeats elements\n" if (defined $debug);
     $seq = insertRepeat($seq)     unless (defined $no_repeat);
     $seq = insertLowComplex($seq) unless (defined $no_simple);
-    open  INS, ">>$out.inserts" or errorExit("cannot open $out.inserts");
-    print INS join "\n", "#INI\tEND\tREPEAT", @inserts;
+    open  INS, ">$out.inserts" or errorExit("cannot open $out.inserts");
+    print INS join "\n", "#INI\tEND\tNUM\tREPEAT", @inserts;
     print INS "\n";
     close INS;
 
@@ -256,7 +256,7 @@ for (my $snum = 1; $snum <= $numseqs; $snum++) {
     warn "Printing outputs\n" if(defined $debug);
     $seq     = checkSeqSize($size, $seq);
     my $fseq = formatFasta($seq);
-    open  FAS, ">>$out.fasta" or errorExit("cannot open $out.fasta");
+    open  FAS, ">$out.fasta" or errorExit("cannot open $out.fasta");
     print FAS  ">artificial_sequence MODEL=$model KMER=$kmer WIN=$win LENGTH=$size\n$fseq";
     close FAS;
 	@inserts = ();
@@ -1060,7 +1060,7 @@ sub evolveRepeat {
             warn "generating insert: $gc, $type#$fam, $age\n" if (defined $debug);
             my ($insert, $repinfo) = getInsert($gc, "$type#$fam", $age);
 			if ($insert eq 'BAD' or (length $insert) < 1) {
-				warn "   insert rejected\n";
+				warn "   insert rejected\n" if (defined $debug);
 				$num--;
 				next;
 			}
