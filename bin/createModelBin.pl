@@ -7,7 +7,7 @@ createModel.pl
 =head1 DESCRIPTION
 
 This script creates a background model for a genome, computing the composition
-of the non-functional non-repetitive sequences and the repetitive elements 
+of the non-functional, non-repetitive sequences and the repetitive elements 
 presented naturally.
 
 =head1 USAGE
@@ -106,8 +106,6 @@ use warnings;
 use Getopt::Long;
 use Pod::Usage;
 use File::Find;
-use lib './lib'; # where is RSutils.pm?
-use RSutils;
 
 # Parameters initialization
 my $model           =  undef;      # Model definition
@@ -202,7 +200,6 @@ my %ebases        = (); # effective bases per GC bin
 my %rbases        = (); # interspersed repeats bases per GC bin
 my %sbases        = (); # low complexity/simple repeat bases per GC bin
 my @dna           = qw/A C G T/;
-my $RS            = new RSutils;
 my ($seq, $ss, $seq_id, $ini, $end, $len, $name);
 
 
@@ -427,7 +424,7 @@ sub maskRepeat {
             next if ($file =~ m/$exclude/);
         }
         my $fileh = defineFH($file);
-        open FH, "$fileh" or die "cannot open $file\n";
+        open  FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
             s/^\s*//;
             next unless (m/^\d+/); # skip headers
@@ -437,20 +434,11 @@ sub maskRepeat {
             next unless (defined $seq{$seq_id});
             $ini = $arr[5];
             $end = $arr[6];
-            push @{ $mask{$seq_id} }, "$ini\t$end\tmask";
-        }
-        close FH;        
-    }
-    
-    foreach $seq_id (keys %mask) {
-        my $all   = $RS->RSsort(\@{ $mask{$seq_id} });
-        my $union = $RS->RSunion($all);
-        foreach my $block (@$union) {
-            ($ini, $end, $name) = split (/\s+/, $block);
             $len = $end - $ini - 1;
             substr($seq{$seq_id}, $ini - 1, $len) = 'R' x $len;
         }
-    }
+        close  FH;
+    }    
 }
 
 sub maskTRF {
@@ -469,20 +457,11 @@ sub maskTRF {
             next unless (defined $seq{$seq_id});
             $ini = $arr[1];
             $end = $arr[2];
-            push @{ $mask{$seq_id} }, "$ini\t$end\tmask";
-        }
-        close FH;
-    }
-    
-    foreach $seq_id (keys %mask) {
-        my $all   = $RS->RSsort(\@{ $mask{$seq_id} });
-        my $union = $RS->RSunion($all);
-        foreach my $block (@$union) {
-            ($ini, $end, $name) = split (/\s+/, $block);
             $len = $end - $ini - 1;
             substr($seq{$seq_id}, $ini - 1, $len) = 'S' x $len;
         }
-    }
+        close FH;
+    }    
 }
 
 sub maskExon {
@@ -501,19 +480,12 @@ sub maskExon {
             my @ini = split (/,/, $arr[ 9]);
             my @end = split (/,/, $arr[10]);
             for (my $i = 0; $i <= $#ini; $i++) {
-                push @{ $mask{$seq_id} }, "$ini[$i]\t$end[$i]\tmask";
+                $len = $end[$i] - $ini[$i] - 1;
+                substr($seq{$seq_id}, $ini[$i] - 1, $len) = 'X' x $len;
+
             }
         }
         close FH;
-    }
-    foreach $seq_id (keys %mask) {
-        my $all   = $RS->RSsort(\@{ $mask{$seq_id} });
-        my $union = $RS->RSunion($all);
-        foreach my $block (@$union) {
-            ($ini, $end, $name) = split (/\s+/, $block);
-            $len = $end - $ini - 1;
-            substr($seq{$seq_id}, $ini, $len) = 'X' x $len;
-        }
     }
 }
 
@@ -565,18 +537,10 @@ sub loadGenesBin {
             $ini  = $arr[4];
             $end  = $arr[5];
             $bin_ = int ($ini / $bin_size);
-            push @{ $genes{$seq_id}{$bin_} }, "$ini\t$end\tgene";
+            push @{ $genes{$seq_id}{$bin_} }, "$seq_id\t$ini\t$end\tgene";
         }
         close FH;
-    }
-    
-    foreach $seq_id (keys %genes) {
-        foreach $bin_ (keys %{ $genes{$seq_id} }) {
-            my $all   = $RS->RSsort(\@{ $genes{$seq_id}{$bin_} });
-            my $union = $RS->RSunion($all);
-            @{ $genes{$seq_id}{$bin_} } = @$union;
-        }
-    }
+    }    
 }
 
 sub loadRegions {
@@ -749,11 +713,12 @@ sub profileRepeats {
     warn "writing repeats info in \"$repfile\"\n";
     open R, ">$repfile" or die "cannot open $repfile\n";
     foreach my $gc (@gc) {
-        my $edist = calcPercDist(@{ $ebases{$gc} });
-        my $rdist = calcPercDist(@{ $rbases{$gc} });
-        my $sdist = calcPercDist(@{ $sbases{$gc} });
+        #my $edist = calcPercDist(@{ $ebases{$gc} });
+        #my $rdist = calcPercDist(@{ $rbases{$gc} });
+        #my $sdist = calcPercDist(@{ $sbases{$gc} });
         my $rep   = parseRepeats(@{ $repeat{$gc} });
-        print R "#GC=$gc    BASES=$edist    REPEATS=$rdist    SIMPLE=$sdist\n$rep\n";
+        #print R "#GC=$gc    BASES=$edist    REPEATS=$rdist    SIMPLE=$sdist\n$rep\n";
+        print R "#GC=$gc\n$rep\n";
     }
     close R;
     
@@ -882,7 +847,7 @@ sub calcRepDist {
                     push @{ $feat{$feat} }, $v;
                 }                
             }
-            my $n = length @{ $feat{$feat[0]} };
+            my $n = length scalar @{ $feat{$feat[0]} };
             for (my $i = 0; $i <= $n; $i++) {
                 my $per   = $feat{'per'}[$i];
                 my $div   = $feat{'div'}[$i];
@@ -913,7 +878,7 @@ sub calcRepDist {
                     push @{ $feat{$feat} }, $v;
                 }                
             }
-            my $n = length @{ $feat{$feat[0]} };
+            my $n = length scalar @{ $feat{$feat[0]} };
             for (my $i = 0; $i <= $n; $i++) {
                 my $div = $feat{'div'}[$i];
                 my $ins = $feat{'indel'}[$i];

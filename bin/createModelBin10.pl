@@ -7,7 +7,7 @@ createModel.pl
 =head1 DESCRIPTION
 
 This script creates a background model for a genome, computing the composition
-of the non-functional non-repetitive sequences and the repetitive elements 
+of the non-functional, non-repetitive sequences and the repetitive elements 
 presented naturally.
 
 =head1 USAGE
@@ -106,8 +106,6 @@ use warnings;
 use Getopt::Long;
 use Pod::Usage;
 use File::Find;
-use lib './lib'; # where is RSutils.pm?
-use RSutils;
 
 # Parameters initialization
 my $model           =  undef;      # Model definition
@@ -202,7 +200,6 @@ my %ebases        = (); # effective bases per GC bin
 my %rbases        = (); # interspersed repeats bases per GC bin
 my %sbases        = (); # low complexity/simple repeat bases per GC bin
 my @dna           = qw/A C G T/;
-my $RS            = new RSutils;
 my ($seq, $ss, $seq_id, $ini, $end, $len, $name);
 
 
@@ -427,7 +424,7 @@ sub maskRepeat {
             next if ($file =~ m/$exclude/);
         }
         my $fileh = defineFH($file);
-        open FH, "$fileh" or die "cannot open $file\n";
+        open  FH, "$fileh" or die "cannot open $file\n";
         while (<FH>) {
             s/^\s*//;
             next unless (m/^\d+/); # skip headers
@@ -437,20 +434,11 @@ sub maskRepeat {
             next unless (defined $seq{$seq_id});
             $ini = $arr[5];
             $end = $arr[6];
-            push @{ $mask{$seq_id} }, "$ini\t$end\tmask";
-        }
-        close FH;        
-    }
-    
-    foreach $seq_id (keys %mask) {
-        my $all   = $RS->RSsort(\@{ $mask{$seq_id} });
-        my $union = $RS->RSunion($all);
-        foreach my $block (@$union) {
-            ($ini, $end, $name) = split (/\s+/, $block);
             $len = $end - $ini - 1;
             substr($seq{$seq_id}, $ini - 1, $len) = 'R' x $len;
         }
-    }
+        close  FH;
+    }    
 }
 
 sub maskTRF {
@@ -469,20 +457,11 @@ sub maskTRF {
             next unless (defined $seq{$seq_id});
             $ini = $arr[1];
             $end = $arr[2];
-            push @{ $mask{$seq_id} }, "$ini\t$end\tmask";
-        }
-        close FH;
-    }
-    
-    foreach $seq_id (keys %mask) {
-        my $all   = $RS->RSsort(\@{ $mask{$seq_id} });
-        my $union = $RS->RSunion($all);
-        foreach my $block (@$union) {
-            ($ini, $end, $name) = split (/\s+/, $block);
             $len = $end - $ini - 1;
             substr($seq{$seq_id}, $ini - 1, $len) = 'S' x $len;
         }
-    }
+        close FH;
+    }    
 }
 
 sub maskExon {
@@ -501,19 +480,12 @@ sub maskExon {
             my @ini = split (/,/, $arr[ 9]);
             my @end = split (/,/, $arr[10]);
             for (my $i = 0; $i <= $#ini; $i++) {
-                push @{ $mask{$seq_id} }, "$ini[$i]\t$end[$i]\tmask";
+                $len = $end[$i] - $ini[$i] - 1;
+                substr($seq{$seq_id}, $ini[$i] - 1, $len) = 'X' x $len;
+
             }
         }
         close FH;
-    }
-    foreach $seq_id (keys %mask) {
-        my $all   = $RS->RSsort(\@{ $mask{$seq_id} });
-        my $union = $RS->RSunion($all);
-        foreach my $block (@$union) {
-            ($ini, $end, $name) = split (/\s+/, $block);
-            $len = $end - $ini - 1;
-            substr($seq{$seq_id}, $ini, $len) = 'X' x $len;
-        }
     }
 }
 
@@ -550,6 +522,26 @@ sub loadGenes {
     }
 }
 
+sub loadGenesBin {
+    # load gene annotation
+    warn "reading coordinates for genes\n" if (defined $verbose);
+    my $bin_size = $binsize * 10;
+    my $bin_     = undef;
+    foreach my $file (@gene) {
+        my $fileh = defineFH($file);
+        open FH, "$fileh" or die "cannot open $file\n";
+        while (<FH>) {
+            my @arr = split (/\s+/, $_);
+            $seq_id = $arr[2];
+            next unless (defined $seq{$seq_id});
+            $ini  = $arr[4];
+            $end  = $arr[5];
+            $bin_ = int ($ini / $bin_size);
+            push @{ $genes{$seq_id}{$bin_} }, "$seq_id\t$ini\t$end\tgene";
+        }
+        close FH;
+    }    
+}
 
 sub loadRegions {
     # load region coordinates
@@ -713,6 +705,7 @@ sub createKmer {
 sub profileRepeats {
     # call the repeat parsers and write the final table
     warn "profiling repeats\n" if (defined $verbose);
+    loadGenesBin() if (defined $gene);
     profileTRF()   if (defined $trf);
     profileRM()    if (defined $repeat);
     
@@ -720,11 +713,12 @@ sub profileRepeats {
     warn "writing repeats info in \"$repfile\"\n";
     open R, ">$repfile" or die "cannot open $repfile\n";
     foreach my $gc (@gc) {
-        my $edist = calcPercDist(@{ $ebases{$gc} });
-        my $rdist = calcPercDist(@{ $rbases{$gc} });
-        my $sdist = calcPercDist(@{ $sbases{$gc} });
+        #my $edist = calcPercDist(@{ $ebases{$gc} });
+        #my $rdist = calcPercDist(@{ $rbases{$gc} });
+        #my $sdist = calcPercDist(@{ $sbases{$gc} });
         my $rep   = parseRepeats(@{ $repeat{$gc} });
-        print R "#GC=$gc BASES=$edist REPEATS=$rdist SIMPLE=$sdist\n$rep\n";
+        #print R "#GC=$gc    BASES=$edist    REPEATS=$rdist    SIMPLE=$sdist\n$rep\n";
+        print R "#GC=$gc\n$rep\n";
     }
     close R;
     
@@ -853,7 +847,7 @@ sub calcRepDist {
                     push @{ $feat{$feat} }, $v;
                 }                
             }
-            my $n = length @{ $feat{$feat[0]} };
+            my $n = length scalar @{ $feat{$feat[0]} };
             for (my $i = 0; $i <= $n; $i++) {
                 my $per   = $feat{'per'}[$i];
                 my $div   = $feat{'div'}[$i];
@@ -884,7 +878,7 @@ sub calcRepDist {
                     push @{ $feat{$feat} }, $v;
                 }                
             }
-            my $n = length @{ $feat{$feat[0]} };
+            my $n = length scalar @{ $feat{$feat[0]} };
             for (my $i = 0; $i <= $n; $i++) {
                 my $div = $feat{'div'}[$i];
                 my $ins = $feat{'indel'}[$i];
@@ -907,6 +901,19 @@ sub calcRepDist {
         }
     }
     return $res;
+}
+
+sub calcBinDist {
+    # define the distribution of values, returns: "min-max"
+    my $res  = undef;
+    my @data = sort {$a<=>$b} @_;
+    if ($data[0] eq $data[-1]) {
+        $res = $data[0];
+    }
+    else {
+        $res = "$data[0]-$data[-1]";
+    }
+    return $res
 }
 
 sub calcQuartiles {
@@ -1150,20 +1157,18 @@ sub classGC {
     # GC ranges must be equal to @gc values or weird stuff will happen
     my $gc = shift @_;
     return $gc if ($gc eq 'NA');
-    my $res = 'NA';
     
-    if    ($gc <= 0.1) { $res =   '0-10' ; }
-    elsif ($gc <= 0.2) { $res =  '10-20' ; }   
-    elsif ($gc <= 0.3) { $res =  '20-30' ; }
-    elsif ($gc <= 0.4) { $res =  '30-40' ; }
-    elsif ($gc <= 0.5) { $res =  '40-50' ; }
-    elsif ($gc <= 0.6) { $res =  '50-60' ; }
-    elsif ($gc <= 0.7) { $res =  '60-70' ; }
-    elsif ($gc <= 0.8) { $res =  '70-80' ; }
-    elsif ($gc <= 0.9) { $res =  '80-90' ; }
-    elsif ($gc <= 1.0) { $res = '90-100' ; }
-    
-    return $res;
+    if    ($gc <= 0.1) { $gc =  '0-10' ; }
+    elsif ($gc <= 0.2) { $gc = '10-20' ; }
+    elsif ($gc <= 0.3) { $gc = '20-30' ; }
+    elsif ($gc <= 0.4) { $gc = '30-40' ; }
+    elsif ($gc <= 0.5) { $gc = '40-50' ; }
+    elsif ($gc <= 0.6) { $gc = '50-60' ; }
+    elsif ($gc <= 0.7) { $gc = '60-70' ; }
+    elsif ($gc <= 0.8) { $gc = '70-80' ; }
+    elsif ($gc <= 0.9) { $gc = '80-90' ; }   
+    elsif ($gc <= 1.0) { $gc = '90-100' ; }    
+    return $gc;
 }
 
 sub calcBinGC {
@@ -1215,31 +1220,51 @@ sub getBinGC {
 sub calcPercDist {
     # returns the distribution of percents
     my $res = undef;
+    my @cnt = (0,0,0,0,0,0,0,0,0,0,0);
     my $tot = 0;
-    my @cnt = (0,0,0,0,0,0,0,0,0,0);
     foreach my $x (@_) {
-        next unless ($x =~ m/\d+/);
         $tot++;
-        if    ($x <=  10) { $cnt[0]++; }
-        elsif ($x <=  20) { $cnt[1]++; }
-        elsif ($x <=  30) { $cnt[2]++; }
-        elsif ($x <=  40) { $cnt[3]++; }
-        elsif ($x <=  50) { $cnt[4]++; }
-        elsif ($x <=  60) { $cnt[5]++; }
-        elsif ($x <=  70) { $cnt[6]++; }
-        elsif ($x <=  80) { $cnt[7]++; }
-        elsif ($x <=  90) { $cnt[8]++; }
-        elsif ($x <= 100) { $cnt[9]++; }
+        $cnt[ int($x / 10) ]++;
     }
     if ($tot == 0) {
         return join ",", @cnt;
     }
-      
+    
+    # fusion of last range
+    my $last  = pop @cnt;
+    $cnt[-1] += $last;
+    
     foreach my $x (@cnt) {
         my $p = sprintf("%.4f", $x / $tot);
         $res .=  "$p,";
     }
     $res =~ s/,$//;
+    return $res;
+}
+
+sub calcGCdist {
+    # compute the distribution of GC contents 
+    my $res  = undef;
+    my $tot  = 0;
+    my @data = sort {$a<=>$b} @_;
+    my ($q1, $q2, $q3) = calcQuartiles(@data);
+    my $s1   = 0;
+    my $s2   = 0;
+    my $s3   = 0;
+    my $s4   = 0;
+    foreach my $x (@_) {
+        $tot++;
+        if    ($x < $q1) { $s1++; }
+        elsif ($x < $q2) { $s2++; }
+        elsif ($x < $q3) { $s3++; }
+        else             { $s4++; }
+    }
+    return 'NA' if ($tot < 1);
+    $s1  = sprintf ("%.6f", $s1 / $tot);
+    $s2  = sprintf ("%.6f", $s2 / $tot);
+    $s3  = sprintf ("%.6f", $s3 / $tot);
+    $s4  = sprintf ("%.6f", $s4 / $tot);
+    $res = "$data[0]-$q1=$s1,$q1-$q2=$s2,$q2-$q3=$s3,$q3-$data[-1]=$s4";
     return $res;
 }
 
