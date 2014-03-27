@@ -20,14 +20,16 @@ positions and random orientations.
 
 =head1 USAGE
 
-Usage: perl createSequence.pl -m MODEL -s SIZE -n OUFILE [PARAMETERS] 
+Usage: perl createSequence.pl -m MODEL -s SIZE -o OUFILE [PARAMETERS] 
 
 Required parameters:
+
   -m --model       Model to use (like hg19, mm9, ... etc)
   -s --size        Size in bases, kb, Mb, Gb are accepted
-  -n --name        Output files to create *.fasta and *.inserts  [fake]
+  -o --out         Output files to create *.fasta and *.inserts  [fake]
     
 Optional or automatic parameters:
+
   -w --window      Window size for base generation               [1000]
   -k --kmer        Seed size to use                              [   8]
   -g --mingc       Minimal GC content to use                     [   0]
@@ -36,11 +38,13 @@ Optional or automatic parameters:
   -l --lowcomplex  Low complexity seq fraction [0-100]           [auto]
   -d --dir         Directory with model                          [data]
   -t --type        Include only this type of repeats             [ all]
+  -N --numseqs     Create N sequences                            [   1]
 
   --write_base     Write the sequence pre-repeats (*.base.fasta)
-  --no_repeat      Don't insert repeats (just base sequence)
+  --no_repeat      Don't insert repeats
   --no_simple      Don't insert simple repeats
   --no_mask        Don't lower-case repeats
+  --align          Print evolved repeat alignments to consensus
   
   --repbase_file   RepBase file (EMBL format)
   --repeats_file   File with repeats information*
@@ -54,16 +58,16 @@ Optional or automatic parameters:
 =head1 EXAMPLES
 
 a) Basic usage  
-  perl createSequence.pl -m hg19 -s 1Mb -n fake
+   perl createSequence.pl -m hg19 -s 1Mb -o fake
 
-b)Only include Alu sequences
-  perl createSequence.pl -m hg19 -s 1Mb -n fake -t Alu
+b) Only include Alu sequences
+   perl createSequence.pl -m hg19 -s 1Mb -o fake -t Alu
 
 c) Change k-mer size to 6 and window size to 2kb
-  perl createSequence.pl -m hg19 -s 1Mb -n fake -w 2000 -k 6
+   perl createSequence.pl -m hg19 -s 1Mb -o fake -w 2000 -k 6
 
 d) Just create a base sequence without repeats
-  perl createSequence.pl -m hg19 -s 1Mb -n fake --write_base --no_repeat
+   perl createSequence.pl -m hg19 -s 1Mb -o fake --write_base --no_repeat
 
 =head1 AUTHOR
 
@@ -136,6 +140,9 @@ my $repeat_file  =       undef; # Repeat file
 my $kmer_file    =       undef; # kmer file
 my $repbase_file =       undef; # RepBase file
 my $insert_file  =       undef; # Repeat insert file
+my $doFrag       =           1; # Fragment repeats flag
+my $numseqs      =           1; # Number of sequences to create
+my $showAln      =       undef; # print evolved repeats alignment to consensus
 
 # GC classes creation
 my @valid_gc  = (37, 39, 42, 45, 100);
@@ -145,7 +152,7 @@ pod2usage(-verbose => 2) if (!GetOptions(
     'h|help'         => \$help,
     'm|model=s'      => \$model,
     's|size=s'       => \$size,
-    'n|name:s'       => \$out,
+    'o|out:s'        => \$out,
     'k|kmer:i'       => \$kmer,
     'w|window:i'     => \$win,
     'g|mingc:i'      => \$mingc,
@@ -155,6 +162,8 @@ pod2usage(-verbose => 2) if (!GetOptions(
     't|type:s'       => \$type,
     'r|repeat:s'     => \$rep_frc,
     'l|lowcomplex:s' => \$sim_frc,
+    'N|numseqs:i'    => \$numseqs,
+    'dofrag:i'       => \$doFrag,
     'write_base'     => \$wrbase,
     'no_repeats'     => \$no_repeat,
     'no_simple'      => \$no_simple,
@@ -163,7 +172,8 @@ pod2usage(-verbose => 2) if (!GetOptions(
     'kmer_file:s'    => \$kmer_file,
     'repeat_file:s'  => \$repeat_file,
     'insert_file:s'  => \$insert_file,
-    'repbase_file:s' => \$repbase_file )
+    'repbase_file:s' => \$repbase_file,
+    'align'          => \$showAln )
 );
 
 pod2usage(-verbose => 2) if  (defined $help);
@@ -192,60 +202,70 @@ $repeat_file  = "$dir/$model/$model.repeats.W$win.data"     if !(defined $repeat
 $insert_file  = "$dir/$model/$model.inserts.W$win.data"     if !(defined $insert_file);
 $repbase_file = "$dir/RepBase/RepeatMaskerLib.embl"         if !(defined $repbase_file);
 
-warn "Generating a $size sequence with $model model, output in $out\n" if (defined $debug);
+warn "Generating a $size sequence with $model model, output in \"$out.fasta\" and \"$out.inserts\" \n" if (defined $debug);
 
 # Checking the size (conversion of symbols)
 $size = checkSize($size);
-errorExit("$size isn't a number") unless ($size > 1000);
+errorExit("$size isn't a number or < 1kb") unless ($size >= 1000);
 
-# Loading background models
+# Loading models
+warn "Reading GC transitions in $gct_file\n" if(defined $debug);
 loadGCt($gct_file);
-warn "GC transitions in $gct_file loaded\n" if(defined $debug);
 
+warn "Reading k-mers in $kmer_file\n" if(defined $debug);
 loadKmers($kmer_file);
-warn "k-mers in $kmer_file loaded\n" if(defined $debug);
 
-# Generation of base sequence
-my $fgc    = newGC();
-my @fseeds = keys %{ $elemk{$fgc} };
-my $fseed  = $fseeds[int(rand @fseeds)];
-$seq       = createSeq($kmer, $fgc, $size, $win, $fseed);
-$seq       = checkSeqSize($size, $seq);
-warn "Base sequence generated ($size bases)\n" if(defined $debug);
+unless (defined $no_repeat) {
+    warn "Reading repeat consensi from $repbase_file\n" if (defined $debug);
+    loadRepeatConsensus($repbase_file);
 
-# Write base sequence (before repeat insertions)
-if (defined $wrbase) {
-    my $bseq = formatFasta($seq);
-    open  FAS, ">$out.base.fasta" or errorExit("cannot open $out.base.fasta");
-    print FAS  ">artificial_sequence MODEL=$model KMER=$kmer WIN=$win LENGTH=$size\n$bseq";
-    close FAS;    
-    exit 1 if (defined $no_repeat);
+    warn "Reading repeat information from $repeat_file\n" if (defined $debug);
+    loadRepeats($repeat_file);
+
+    warn "Reading repeat insertions from $insert_file\n" if (defined $debug);
+    loadInserts($insert_file);
 }
 
-# Adding new elements
-warn "Reading repeat consensi from $repbase_file\n" if (defined $debug);
-loadRepeatConsensus($repbase_file);
-warn "Reading repeat information from $repeat_file\n" if (defined $debug);
-loadRepeats($repeat_file);
-warn "Reading repeat insertions from $insert_file\n" if (defined $debug);
-loadInserts($insert_file);
-warn "Adding repeats elements\n" if (defined $debug);
-$seq   = insertRepeat($seq)     unless (defined $no_repeat);
-$seq   = insertLowComplex($seq) unless (defined $no_simple);
-open  INS, ">$out.inserts" or errorExit("cannot open $out.inserts");
-print INS join "\n", "POS\tREPEAT", @inserts;
-close INS;
+for (my $snum = 1; $snum <= $numseqs; $snum++) {
+    # Generation of base sequence
+    my $fgc    = newGC();
+    my @fseeds = keys %{ $elemk{$fgc} };
+    my $fseed  = $fseeds[int(rand @fseeds)];
+    $seq       = createSeq($kmer, $fgc, $size, $win, $fseed);
+    $seq       = checkSeqSize($size, $seq);
+    warn "Base sequence generated ($size bases)\n" if(defined $debug);
 
-warn "Generated a sequence with ", length $seq, " bases\n" if(defined $debug);
-$seq   =  uc($seq) if (defined $no_mask);
-$seq   =~ s/bad/NNN/ig;
-# Printing output
-warn "Printing outputs\n" if(defined $debug);
-my $fseq = formatFasta($seq);
-open  FAS, ">$out.fasta" or errorExit("cannot open $out.fasta");
-print FAS  ">artificial_sequence MODEL=$model KMER=$kmer WIN=$win LENGTH=$size\n$fseq";
-close FAS;
+    # Write base sequence (before repeat insertions)
+    if (defined $wrbase) {
+        my $bseq = formatFasta($seq);
+        open  FAS, ">>$out.base.fasta" or errorExit("cannot open $out.base.fasta");
+        print FAS  ">artificial_sequence_$snum MODEL=$model KMER=$kmer WIN=$win LENGTH=$size\n$bseq";
+        close FAS;    
+    }
+    next if (defined $no_repeat);
+    # Adding new elements
+    warn "Adding repeats elements\n" if (defined $debug);
+    $seq = insertRepeat($seq)     unless (defined $no_repeat);
+    $seq = insertLowComplex($seq) unless (defined $no_simple);
+    open  INS, ">>$out.inserts" or errorExit("cannot open $out.inserts");
+    print INS  "### ARTIFICIAL SEQUENCE $snum ###\n";
+    print INS  "#INI\tEND\tNUM\tREPEAT\tREPEAT_EVOL\n", 
+    print INS  join "\n", @inserts;
+    print INS  "\n";
+    close INS;
 
+    warn "Generated a sequence with ", length $seq, " bases\n" if(defined $debug);
+    $seq   =  uc($seq) if (defined $no_mask);
+    $seq   =~ s/bad/NNN/ig;
+    # Printing output
+    warn "Printing outputs\n" if(defined $debug);
+    $seq     = checkSeqSize($size, $seq);
+    my $fseq = formatFasta($seq);
+    open  FAS, ">>$out.fasta" or errorExit("cannot open $out.fasta");
+    print FAS  ">artificial_sequence_$snum MODEL=$model KMER=$kmer WIN=$win LENGTH=$size\n$fseq";
+    close FAS;
+	@inserts = ();
+}
 
 #### END MAIN #####
 
@@ -334,45 +354,20 @@ sub checkSeqSize {
         my $patch = substr($seq, $pos, $add);
         $seq     .= $patch;
     }
-    else {
-        return $seq;
-    }
-    checkSeqSize($size, $seq); # Recursion!
+    return $seq;
 }
 
-# calcInsertNum => return a number of inserts with some variation
-sub calcInsertNum {
-    my $size = shift @_;
-    my $freq = shift @_;
-    my $avg  = int($size * $freq);
-    $avg++;
-    my $num  = 0;
-    my @op   = qw/plus minus none/;
-    my $op   = $op[int(rand(@op))];
-    my $dif  = int(rand($avg) * rand(1));
-    if ($op eq 'plus') { 
-        $num = $avg + $dif; 
-    }
-    elsif ($op eq 'minus') { 
-        $num = $avg - $dif; 
-    }
-    else { 
-        $num = $avg; 
-    }
-    $num = 0 if ($num < 0);
-    return $num;
-}
 
 # checkSize => decode kb, Mb and Gb symbols
 sub checkSize{
-    my $sz = shift @_;
-    my $fc = 1;
-    if    ($sz =~ m/k/i) { $fc =  1e3; }
-    elsif ($sz =~ m/m/i) { $fc =  1e6; }
-    elsif ($sz =~ m/g/i) { $fc =  1e9; }
-    $sz  =~ s/\D//g;
-    $sz *=  $fc;
-    return $sz;
+    my $size   = shift @_;
+    my $factor = 1;
+    if    ($size =~ m/k/i) { $factor =  1e3; }
+    elsif ($size =~ m/m/i) { $factor =  1e6; }
+    elsif ($size =~ m/g/i) { $factor =  1e9; }
+    $size  =~ s/\D//g;
+    $size *=  $factor;
+    return $size;
 }
 
 # loadGCt => load the GC transitions values
@@ -412,12 +407,12 @@ sub loadKmers {
     my $fileh = defineFH($file);
     open K, "$fileh" or errorExit("cannot open $fileh");
     while (<K>) {
+        chomp;
         if (m/#GC=\d+-(\d+)/) {
             $gc = $1;
         }
         else {
-            chomp;
-            my ($b, $f, @r) = split (/\t/, $_);
+            my ($b, $f, @r) = split (/\s+/, $_);
             my $v = pop @r;
             $elemk{$gc}{$b} = $f;
             $v++; # give a chance to zero values
@@ -474,9 +469,6 @@ sub loadRepeats {
         chomp;
         if (m/#GC=\d+-(\d+)/) {
             $gc = $1;
-            #my $d = $2;
-            #my @d = split (/,/, $d);
-            #@{ $repdens{$gc} } = @d;
         }
         else {
             # rename some repeats mislabeled in RepBase
@@ -502,7 +494,7 @@ sub loadRepeats {
         }
     }
     close R;
-    warn "found: SIMPLE=$nsim REPEAT=$nrep\n" if (defined $debug); 
+    warn "found: SIMPLE=$nsim REPEAT=$nrep\n" if (defined $debug);
 }
 
 # loadInserts => read the repeat inserts info
@@ -518,7 +510,7 @@ sub loadInserts {
         }
         else {
             # rename some repeats mislabeled in RepBase
-            my ($rep1, $rep2, $frq)     = split (/\t/, $_);
+            my ($rep1, $rep2, $frq) = split (/\t/, $_);
             $rep1 =~ s/\?//g;
             $rep1 =~ s/-int//g;
             $rep1 =~ s/^ALR\/Alpha/ALR/g;
@@ -527,6 +519,9 @@ sub loadInserts {
             $rep2 =~ s/-int//g;
             $rep2 =~ s/^ALR\/Alpha/ALR/g;
             $rep2 =~ s/^L1M4b/L1M4B/g;
+            if (defined $type) {
+                next unless ($rep1 =~ m/$type/i and $rep2 =~ m/$type/i);
+            }
             $inserts{$gc}{$rep1}{$rep2} = $frq;
         }
     }
@@ -537,24 +532,26 @@ sub loadInserts {
 sub selPosition {
     my $seq = shift @_;
     my $gc  = shift @_;
-    my @pos = ();
-    my %dat = ();
-    my $num = 0;
-    for (my $i = 0; $i <= ((length $seq) - $kmer - 1); $i++) {
-        my $seed = uc(substr($seq, $i, $kmer));
-        if (defined $elemk{$gc}{$seed}) {
-            $dat{$i} = $elemk{$gc}{$seed};
-            $num++;
-        }
-    }
-    if ($num < 2) {
-        @pos = (0);
-    }
-    else {
-        foreach my $pos (sort { $dat{$a} <=> $dat{$b} } keys %dat) {
-             push (@pos, $pos);
-        }
-    }
+    my $len = length $seq;
+    my @pos = randSel($len, int($len/2) + 1 );
+    #my @pos = ();
+    #my %dat = ();
+    #my $num = 0;
+    #for (my $i = 0; $i <= ((length $seq) - $kmer - 1); $i++) {
+    #    my $seed = uc(substr($seq, $i, $kmer));
+    #    if (defined $elemk{$gc}{$seed}) {
+    #        $dat{$i} = $elemk{$gc}{$seed};
+    #        $num++;
+    #    }
+    #}
+    #if ($num < 2) {
+    #    @pos = (0);
+    #}
+    #else {
+    #    foreach my $pos (sort { $dat{$a} <=> $dat{$b} } keys %dat) {
+    #         push (@pos, $pos);
+    #    }
+    #}
     return @pos;
 }
 
@@ -564,16 +561,18 @@ sub addDeletions {
     my $ndel = shift @_;
     my $gcl  = shift @_;
     my $eval = shift @_;
+    my $aln  = shift @_;
     my $tdel = 0;
     my $skip = 0;
     my @pos  = selPosition($seq, $gcl);
     
+    my ($con, $mat, $mut) = split (/\n/, $aln);
     while ($ndel > 0) {
         my $bite = 1;
         last unless(defined $pos[0]);
         my $pos  = shift @pos;
         next if ($pos < $kmer);
-        next if ($pos >= length $seq);
+        next if ($pos >= (length $seq) - $kmer);
         my $pre  = substr($seq, $pos, $kmer - 1);
         my $old  = substr($seq, $pos, $kmer);
         my $new  = substr($seq, $pos + $kmer, 1);
@@ -583,19 +582,22 @@ sub addDeletions {
         }
         
         substr($seq, $pos, $bite) = 'D' x $bite;
+        substr($mat, $pos, $bite) = 'd' x $bite;
+        substr($mut, $pos, $bite) = '-' x $bite;
         $ndel -= $bite;
         $tdel++;
     }
     $skip = $ndel;
     $eval++;
+    $aln = join "\n", $con, $mat, $mut;
     warn "  Added $tdel deletions ($skip skipped, GC=$gcl)\n" if(defined $debug);
     if ($skip > 0 and $eval < $mut_cyc) {
         $gcl = newGC();
-        $seq = addDeletions($seq, $skip, $gcl, $eval);
+        ($seq, $aln) = addDeletions($seq, $skip, $gcl, $eval, $aln);
     }
     
     $seq =~ s/D//g;
-    return $seq;
+    return $seq, $aln;
 }
 
 # addInsertions => add bases
@@ -603,7 +605,9 @@ sub addInsertions {
     my $seq  = shift @_;
     my $nins = shift @_;
     my $gcl  = shift @_;
+    my $aln  = shift @_;
     my $tins = 0;
+    my ($con, $mat, $mut) = split (/\n/, $aln);
     my @pos  = selPosition($seq, $gcl);
     while ($nins > 0) {
         my $ins  = 1;
@@ -630,12 +634,18 @@ sub addInsertions {
             }
             next unless($dice >= $elemk{$gcl}{"$eed$n$post"} + 1e-15);
         }
-        substr($seq, $pos, 1) = $n;
+        my $old = substr($seq, $pos, 1);
+        my $om  = substr($mat, $pos, 1);
+        substr ($seq, $pos, 1) = "$old$n";
+        substr ($con, $pos, 1) = "$old-";
+        substr ($mat, $pos, 1) = $om . "n";
+        substr ($mut, $pos, 1) = "$old$n";
         $nins -= $ins;
         $tins++;
     }
+    $aln = join "\n", $con, $mat, $mut;
     warn "  Added $tins insertions, GC=$gcl\n" if(defined $debug);
-    return $seq;    
+    return $seq, $aln;    
 }
 
 # addTransitions => do transitions (A<=>G, T<=>C)
@@ -644,8 +654,10 @@ sub addTransitions {
     my $nsit = shift @_;
     my $gcl  = shift @_;
     my $eval = shift @_;
+    my $aln  = shift @_;
     my $tsit = 0;
     my $skip = 0;
+    my ($con, $mat, $mut) = split (/\n/, $aln);
     my @pos  = selPosition($seq, $gcl);
     while ($nsit > 0) {
         last unless(defined $pos[0]);
@@ -675,17 +687,20 @@ sub addTransitions {
         }
         
         substr($seq, $pos - 1 , 1) = $new;
+        substr($mat, $pos - 1 , 1) = 'i';
+        substr($mut, $pos - 1 , 1) = $new;
         $nsit--;
         $tsit++;
     }
     $skip = $nsit;
     $eval++;
+    $aln = join "\n", $con, $mat, $mut;
     warn "  Added $tsit transitions ($skip skipped, GC=$gcl)\n" if(defined $debug);
     if ($skip > 0 and $eval < $mut_cyc) {
         $gcl = newGC();
-        $seq = addTransitions($seq, $skip, $gcl, $eval);
+        ($seq, $aln) = addTransitions($seq, $skip, $gcl, $eval, $aln);
     }
-    return $seq;
+    return $seq, $aln;
 }
 
 # addTransversions => do transversions (A<=>T, C<=>G)
@@ -694,8 +709,10 @@ sub addTransversions {
     my $nver = shift @_;
     my $gcl  = shift @_;
     my $eval = shift @_;
+    my $aln  = shift @_;
     my $tver = 0;
     my $skip = 0;
+    my ($con, $mat, $mut) = split (/\n/, $aln);
     my @pos  = selPosition($seq, $gcl);
     
     while ($nver > 0) {
@@ -726,17 +743,20 @@ sub addTransversions {
         }
 
         substr($seq, $pos - 1, 1) = $new;
+        substr($mat, $pos - 1, 1) = 'v';
+        substr($mut, $pos - 1, 1) = $new;
         $nver--;
         $tver++;
     }
     $skip = $nver;
     $eval++;
+    $aln = join "\n", $con, $mat, $mut;
     warn "  Added $tver transversions ($skip skipped, GC=$gcl)\n" if(defined $debug);
     if ($skip > 0  and $eval < $mut_cyc) {
         $gcl = newGC();
-        $seq = addTransversions($seq, $skip, $gcl, $eval);
+        ($seq, $aln) = addTransversions($seq, $skip, $gcl, $eval, $aln);
     }
-    return $seq;
+    return $seq, $aln;
 }
 
 # calGC => calculate the GC content
@@ -748,12 +768,12 @@ sub calcGC {
     my $pgc  = int($ngc * 100 / $tot);
     
     # GCbins: 0-37 37-39 39-42 42-45 45-100
-    my $new_gc = 42;
-    if    ($pgc < 37) { $new_gc =  37; }
-    elsif ($pgc < 39) { $new_gc =  39; }
-    elsif ($pgc < 42) { $new_gc =  42; }
-    elsif ($pgc < 45) { $new_gc =  45; }
-    else              { $new_gc = 100; }
+    my $new_gc = 39;
+    if    ($pgc <  37) { $new_gc =  37; }
+    elsif ($pgc <  39) { $new_gc =  39; }
+    elsif ($pgc <  42) { $new_gc =  42; }
+    elsif ($pgc <  45) { $new_gc =  45; }
+    elsif ($pgc < 100) { $new_gc = 100; }
     
     return $new_gc;
 }
@@ -847,50 +867,74 @@ sub insertRepeat {
     warn "inserting repeat elements\n" if (defined $debug);
     my $s       = shift @_;
     my $urep    = 0;
-    my $usim    = 0;
-    my $tot_try = 0; # to avoid infinite loops in dense repetitive sequences
-    my ($pos, $gc, $new, $seq, $frag, $rbase, $repfra, $repthr);
+    my $tot_try = 0; # to avoid infinite loops in dense repetitive regions
     
     # check if we already have repeats in sequence
-    $rbase  = $s =~ tr/acgt/acgt/;
-    $repfra = 100 * $rbase / length $s;
+    my $rbase  = $s =~ tr/acgt/acgt/;
+    my $repfra = 100 * $rbase / length $s;
     
     # compute how much repeats we want
     unless (defined $rep_frc) {
         # select a random repetitive fraction
-        $rep_frc = getRangeValue(30, 70);
+        $rep_frc = getRangeValue(10, 60);
     }
-    $repthr  = $rep_frc;
-    warn "Trying to add $repthr repeats\n" if (defined $debug);
+    my $repthr  = $rep_frc;
+    warn "Trying to add $repthr\% in repeats\n" if (defined $debug);
     
     while ($repfra < $repthr) {
         $tot_try++;
         last if ($tot_try >= $ins_cyc);
         
         # select where we want to add a repeat
-        $pos  = int(rand ( (length $s) - 100));
-        $frag = substr ($s, $pos, 100); # at least 100 bases to try
-        next if ($frag =~ m/acgt/);
-        $gc   = $gc_bin[int($pos/ $win)];
+        my $pos  = int(rand ( (length $s) - 100));
+        my $frag = substr ($s, $pos, 100); # at least 100 clean bases to try
+        next if ($frag =~ m/[acgt]/);
+        my $gc   = $gc_bin[int($pos/ $win)];
         next unless (defined $gc);
         next unless (defined $repeat{$gc}[0]); # at least one element
         
         # our bag of elements to insert
-        my @ins = shuffle(@{ $repeat{$gc} });
-        $new = $ins[int(rand @ins)];
+        my @ins = @{ $repeat{$gc} };
+        my $ins = join "|", @ins;
+        my $new = $ins[int(rand @ins)];
+        my $seq = '';
+        my $aln = '';
         warn "selected: $new\n" if (defined $debug);
-        ($seq, $new) = evolveRepeat($new, $gc, 99999);
+        ($seq, $new, $aln) = evolveRepeat($new, $gc, 99999);
         next if ($seq eq 'BAD');
-        $urep++;
+        $seq =~ s/BAD//g;
+        next if ((length $seq) < 10);
         $seq = lc $seq;
         
-        # insert the new sequence (if we can)
         $frag = substr ($s, $pos, length $seq);
-        next if ($frag =~ m/acgt/); # we've a repeat here, trying other position
+        next if ($frag =~ m/[acgt]/); # we've a repeat here, trying other position
         
-        substr($s, $pos, length $seq) = $seq;        
-        push @inserts, "$pos\t$new";
+        $urep++;
+        substr($s, $pos, length $seq) = $seq;
+		my $pos_end = $pos + length $seq;
+		my ($con, $mat, $mut) = split (/\n/, $aln);
+		my $old = $con;
+		$old =~ s/-//g;
+		my $inslen = length $old;
+		$con = "CON $con";
+		$mat = "    $mat";
+		$mut = "NEW $mut";
+		my $nsit = $mat =~ tr/i/i/;
+        my $psit = sprintf("%.2f", 100 * $nsit / $inslen);
+        my $nver = $mat =~ tr/v/v/;
+        my $pver = sprintf("%.2f", 100 * $nver / $inslen);
+        my $ndel = $mat =~ tr/d/d/;
+        my $pdel = sprintf("%.2f", 100 * $ndel / $inslen);
+        my $nins = $mat =~ tr/n/n/;
+        my $pins = sprintf("%.2f", 100 * $nins / $inslen);
+        my $info = "Transitions = $nsit ($psit\%), Transversions = $nver ($pver\%), Insertions = $nins ($pins\%), Deletions = $ndel ($pdel\%)"; 
         
+        if (defined $showAln) { 
+            push @inserts, "$pos\t$pos_end\t$urep\t$new\[$seq\]\t$info\n$con\n$mat\n$mut\n";
+        }
+        else {
+            push @inserts, "$pos\t$pos_end\t$urep\t$new\[$seq\]\t$info";
+        }
         $rbase   = $s =~ tr/acgt/acgt/;
         $repfra  = 100 * $rbase / length $s;
         $tot_try = 0;
@@ -899,55 +943,76 @@ sub insertRepeat {
     return $s;
 }
 
-# insertRepeat => insert repeat elements
+# insertLowComplex => insert low complexity/simple repeat elements
 sub insertLowComplex {
     warn "inserting low complex elements\n" if (defined $debug);
     my $s       = shift @_;
     my $usim    = 0;
     my $tot_try = 0; # to avoid infinite loops in dense repetitive sequences
-    my ($pos, $gc, $new, $seq, $frag, $rbase, $repfra, $repthr);
     
     # check if we already have repeats in sequence
-    $rbase  = $s =~ tr/acgt/acgt/;
-    $repfra = 100 * $rbase / length $s;
+    my $rbase  = $s =~ tr/acgt/acgt/;
+    my $repfra = 100 * $rbase / length $s;
     
     # compute how much repeats we want
     unless (defined $sim_frc) {
         # select a random repetitive fraction
-        $sim_frc = getRangeValue(0, 5);
+        $sim_frc = getRangeValue(0, 2);
     }
-    $repthr = $rep_frc + $sim_frc;
+    my $repthr = $rep_frc + $sim_frc;
     $repthr = 99 if ($repthr > 99);
-    warn "Trying to add $repthr low complexity sequences\n" if (defined $debug);
+    warn "Trying to add $sim_frc\% of low complexity sequences\n" if (defined $debug);
     
     while ($repfra < $repthr) {
         $tot_try++;
         last if ($tot_try >= $ins_cyc);
         
         # select where we want to add a repeat
-        $pos  = int(rand ( (length $s) - 100));
-        $frag = substr ($s, $pos, 100); # at least 100 bases to try
-        next if ($frag =~ m/acgt/);
-        $gc   = $gc_bin[int($pos/ $win)];
+        my $pos  = int(rand ( (length $s) - 100));
+        my $frag = substr ($s, $pos, 100); # at least 100 bases to try
+        next if ($frag =~ m/[acgt]/);
+        my $gc   = $gc_bin[int($pos/ $win)];
         next unless (defined $gc);
         next unless (defined $simple{$gc}[0]); # at least one element
         
         # our bag of elements to insert
-        my @ins = shuffle(@{ $simple{$gc} });
-        $new = $ins[int(rand @ins)];
+        my @ins = @{ $simple{$gc} };
+        my $new = $ins[int(rand @ins)];
         warn "selected: $new\n" if (defined $debug);
-        $seq = evolveSimple($new, $gc);
+        my ($seq, $aln) = evolveSimple($new, $gc);
         next if ($seq eq 'BAD');
-        $usim++;
+        $seq =~ s/BAD//g;
         $seq = lc $seq;
+        next if ((length $seq) < 10);
         
-        # insert the new sequence (if we can)
         $frag = substr ($s, $pos, length $seq);
-        next if ($frag =~ m/acgt/); # we've a repeat here, trying other position
-        
+        next if ($frag =~ m/[acgt]/); # we've a repeat here, trying other position
+        $usim++;
         substr($s, $pos, length $seq) = $seq;        
-        push @inserts, "$pos\t$new";
-        
+		my $pos_end = $pos + length $seq;
+	    my ($con, $mat, $mut) = split (/\n/, $aln);
+		my $old = $con; 
+		$old =~ s/-//g;
+		my $inslen = length $old;
+		$con = "CON $con";
+		$mat = "    $mat";
+		$mut = "NEW $mut";
+		my $nsit = $mat =~ tr/i/i/;
+        my $psit = sprintf("%.2f", 100 * $nsit / $inslen);
+        my $nver = $mat =~ tr/v/v/;
+        my $pver = sprintf("%.2f", 100 * $nver / $inslen);
+        my $ndel = $mat =~ tr/d/d/;
+        my $pdel = sprintf("%.2f", 100 * $ndel / $inslen);
+        my $nins = $mat =~ tr/n/n/;
+        my $pins = sprintf("%.2f", 100 * $nins / $inslen);
+        my $info = "Transitions = $nsit ($psit\%), Transversions = $nver ($pver\%), Insertions = $nins ($pins\%), Deletions = $ndel ($pdel\%)"; 
+
+        if (defined $showAln) {
+            push @inserts, "$pos\t$pos_end\t$usim\t$new\[$seq\]\t$info\n$con\n$mat\n$mut\n";
+        }
+        else {
+            push @inserts, "$pos\t$pos_end\t$usim\t$new\[$seq\]\t$info";
+        }
         $rbase   = $s =~ tr/acgt/acgt/;
         $repfra  = 100 * $rbase / length $s;
         $tot_try = 0;
@@ -963,7 +1028,7 @@ sub evolveSimple {
     my $seq   = '';
     my ($lab, $seed, $dir, $exp, $div, $indel) = split (/:/, $sim);
     my ($min, $max);
-    $dir = rand; # direction is random
+    $dir = rand; # random direction
     
     # define values from ranges (if applicable)
     if ($exp =~ /-/) {
@@ -982,17 +1047,19 @@ sub evolveSimple {
     # create the sequence
     $seq      = $seed x (int($exp) + 1);
     $seq      = revcomp($seq) if ($dir > 0.5);
+    my $mat   = '|' x length $seq;
+    my $aln   = join "\n", $seq, $mat, $seq;
     my $mut   = int($div * (length $seq) / 100);
     my $nsit  = int($mut / 2);
     my $nver  = $mut - $nsit;
     my $nid   = int($indel * (length $seq) / 100);
     my $ndel  = int(rand $nid);
     my $nins  = $nid - $ndel;
-    $seq = addDeletions(    $seq, $ndel, $gc, 0) if($ndel > 0);
-    $seq = addTransitions(  $seq, $nsit, $gc, 0) if($nsit > 0);
-    $seq = addTransversions($seq, $nver, $gc, 0) if($nver > 0);
-    $seq = addInsertions(   $seq, $nins, $gc   ) if($nins > 0);
-    return $seq;
+    ($seq, $aln) = addTransitions(  $seq, $nsit, $gc, 0, $aln) if($nsit > 0);
+    ($seq, $aln) = addTransversions($seq, $nver, $gc, 0, $aln) if($nver > 0);
+    ($seq, $aln) = addInsertions(   $seq, $nins, $gc,    $aln) if($nins > 0);
+    ($seq, $aln) = addDeletions(    $seq, $ndel, $gc, 0, $aln) if($ndel > 0);
+    return $seq, $aln;
 }
 
 # evolveRepeat => return the evolved repeat
@@ -1002,7 +1069,7 @@ sub evolveRepeat {
 
     my $seq   = '';
     my ($type, $fam, $dir, $div, $ins, $del, $frag, $break) = split (/:/, $rep);
-    my ($mut, $nins, $ndel, $nsit, $nver, $cseq, $min, $max, $ini, $age);
+    my ($mut, $nins, $ndel, $nsit, $nver, $cseq, $min, $max, $ini, $age, $aln, $mat);
     $dir = rand; # direction is random
     
     return ('BAD', $rep) unless (defined $type);
@@ -1042,38 +1109,57 @@ sub evolveRepeat {
     $ini  = int( rand( (length $rep_seq{$type}) - $frag));
     $seq  = substr ($rep_seq{$type}, $ini, $frag);
     $seq  = revcomp($seq) if ($dir > 0.5);
+    $mat  = '|' x length $seq;
+    $aln  = join "\n", $seq, $mat, $seq;
     $mut  = int($div * (length $seq) / 100);
     $nsit = int($mut / 2);
     $nver = $mut - $nsit;
     $nins = int($ins * (length $seq) / 100);
-    $ndel = int($ins * (length $seq) / 100);
-    $seq  = addDeletions(    $seq, $ndel, $gc, 0) if($ndel > 0);
-    $seq  = addTransitions(  $seq, $nsit, $gc, 0) if($nsit > 0);
-    $seq  = addTransversions($seq, $nver, $gc, 0) if($nver > 0);
-    $seq  = addInsertions(   $seq, $nins, $gc, 0) if($nins > 0);
-
+    $ndel = int($del * (length $seq) / 100);
+    ($seq, $aln) = addTransitions(  $seq, $nsit, $gc, 0, $aln) if($nsit > 0);
+    ($seq, $aln) = addTransversions($seq, $nver, $gc, 0, $aln) if($nver > 0);
+    ($seq, $aln) = addInsertions(   $seq, $nins, $gc,    $aln) if($nins > 0);
+    ($seq, $aln) = addDeletions(    $seq, $ndel, $gc, 0, $aln) if($ndel > 0);
+    
     # split the repeat if required    
-    if ($break > 1 and $age > 10) {
+    if ($break > 1 and $age > 10 and $doFrag == 1) {
         my $num = 1;
-        while ($num < $break) {
+        for (my $try = 0; $try <= $ins_cyc; $try++) {
             $num++;
             warn "generating insert: $gc, $type#$fam, $age\n" if (defined $debug);
-            my ($insert, $repinfo) = getInsert($gc, "$type#$fam", $age);
+            my ($insert, $repinfo, $insaln) = getInsert($gc, "$type#$fam", $age);
+			if ($insert eq 'BAD' or (length $insert) < 1) {
+				warn "   insert rejected\n" if (defined $debug);
+				$num--;
+				next;
+			}
             my $target = int(rand(length $seq));
-            $rep .= ",$repinfo";
+            my ($con, $mat, $mut) = split (/\n/, $aln);
+            my ($inscon, $insmat, $insmut) = split (/\n/, $insaln);
             substr($seq, $target, 1) = $insert;
+			substr($con, $target, 1) = $inscon;
+			substr($mat, $target, 1) = $insmat;
+			substr($mut, $target, 1) = $insmut;
+			$aln  = join "\n", $con, $mat, $mut;
+			$rep .= ",$repinfo\[$insert\]";
+            
+			last if ($num > $break);
         }
     }
     
-    return ($seq, $rep);
+    return ($seq, $rep, $aln);
 }
 
 # getInsert => select a new repeat to insert into another
 sub getInsert {
     my ($gc, $rep, $age) = @_;
     my $new_rep = '';
+    my $new_aln = '';
     my $seq     = 'BAD';
+    my $tries   = 0;
     while (1) {
+        $tries++;
+        last if ($tries > $mut_cyc);
         my $dice = rand;
         my $p    = 0;
         my @rep  = keys %{ $inserts{$gc}{$rep} };
@@ -1096,11 +1182,11 @@ sub getInsert {
         my $new_age = $age - 20;
         $new_age    = 10 if ($new_age < 10);
         $new =~ s/\d+$/1/;
-        ($seq, $new_rep) = evolveRepeat($new, $gc, $new_age);
+        ($seq, $new_rep, $new_aln) = evolveRepeat($new, $gc, $new_age);
         next if ($seq eq 'BAD');
         last;
     }
-    return ($seq, $new_rep);
+    return ($seq, $new_rep, $new_aln);
 }
 
 # randSel => select a random numbers in a finite range

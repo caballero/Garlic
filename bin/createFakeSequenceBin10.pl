@@ -1164,7 +1164,7 @@ sub getInsert {
     my $tries   = 0;
     while (1) {
         $tries++;
-        last if ($tries > $ins_cyc);
+        last if ($tries > $mut_cyc);
         my $dice = rand;
         my $p    = 0;
         my @rep  = keys %{ $inserts{$gc}{$rep} };
