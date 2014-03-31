@@ -31,7 +31,7 @@ Required parameters:
 Optional or automatic parameters:
 
   -w --window      Window size for base generation               [1000]
-  -k --kmer        Seed size to use                              [   8]
+  -k --kmer        Seed size to use                              [   4]
   -g --mingc       Minimal GC content to use                     [   0]
   -c --maxgc       Maximal GC content to use                     [ 100]
   -r --repeat      Repetitive fraction [0-100]                   [auto]
@@ -97,11 +97,13 @@ use warnings;
 use Getopt::Long;
 use Pod::Usage;
 use List::Util qw/shuffle/;
+use Data::Dumper;
+use FindBin;
 
 ## Global variables
 my $seq          =          ''; # The sequence itself
 my $model        =       undef; # Model to use
-my $kmer         =           8; # kmer size to use
+my $kmer         =           4; # kmer size to use
 my $out          =      'fake'; # Filename to use
 my $size         =       undef; # Final size of the sequence
 my $win          =        1000; # Window size for sequence GC transition
@@ -119,14 +121,14 @@ my %gc           =          (); # Hash for GC content probabilities
 my @gc_bin       =          (); # Fixed GC in the new sequence
 my @classgc      =          (); # Array for class GC
 my %classgc      =          (); # Hash for class GC
-my $dir          =    './data'; # Path to models/RebBase directories
+my $dir          = "$FindBin::RealBin/../data"; # Path to models/RebBase directories
 my %rep_seq      =          (); # Hash with consensus sequences from RepBase
 my %repdens      =          (); # Repeat density values
 my $mut_cyc      =          10; # Maximal number of trials for mutations
 my $ins_cyc      =         100; # Maximal number of trials for insertions
 my $wrbase       =       undef; # Write base sequence too
-my $rep_frc      =       undef; # Repeats fraction
-my $sim_frc      =       undef; # Low complexity fraction
+my $rep_frc      =           0; # Repeats fraction
+my $sim_frc      =           0; # Low complexity fraction
 my @dna          = qw/A C G T/; # DNA alphabet
 my $no_repeat    =       undef; # No repeats flag
 my $no_simple    =       undef; # No simple repeats flag
@@ -165,7 +167,7 @@ pod2usage(-verbose => 2) if (!GetOptions(
     'N|numseqs:i'    => \$numseqs,
     'dofrag:i'       => \$doFrag,
     'write_base'     => \$wrbase,
-    'no_repeats'     => \$no_repeat,
+    'no_repeat'      => \$no_repeat,
     'no_simple'      => \$no_simple,
     'no_mask'        => \$no_mask,
     'gct_file:s'     => \$gct_file,
@@ -196,13 +198,18 @@ if (defined $type) {
 }
 
 # Loading model parameters
-$gct_file     = "$dir/$model/$model.GCt.W$win.data"         if !(defined $gct_file);
-$kmer_file    = "$dir/$model/$model.kmer.K$kmer.W$win.data" if !(defined $kmer_file);
-$repeat_file  = "$dir/$model/$model.repeats.W$win.data"     if !(defined $repeat_file);
-$insert_file  = "$dir/$model/$model.inserts.W$win.data"     if !(defined $insert_file);
-$repbase_file = "$dir/RepBase/RepeatMaskerLib.embl"         if !(defined $repbase_file);
+$gct_file     = "$dir/$model/$model.GCt.W$win.data"         if (! defined $gct_file);
+$kmer_file    = "$dir/$model/$model.kmer.K$kmer.W$win.data" if (! defined $kmer_file);
+$repeat_file  = "$dir/$model/$model.repeats.W$win.data"     if (! defined $repeat_file);
+$insert_file  = "$dir/$model/$model.inserts.W$win.data"     if (! defined $insert_file);
+$repbase_file = "$dir/RepBase/RepeatMaskerLib.embl"         if (! defined $repbase_file);
 
 warn "Generating a $size sequence with $model model, output in \"$out.fasta\" and \"$out.inserts\" \n" if (defined $debug);
+open FAS, ">$out.fasta" or errorExit("cannot write $out.fasta");
+open INS, ">$out.inserts" or errorExit("cannot write $out.inserts");
+if (defined $wrbase) {
+    open  BSE, ">$out.base.fasta" or errorExit("cannot open $out.base.fasta");
+}
 
 # Checking the size (conversion of symbols)
 $size = checkSize($size);
@@ -215,12 +222,14 @@ loadGCt($gct_file);
 warn "Reading k-mers in $kmer_file\n" if(defined $debug);
 loadKmers($kmer_file);
 
+unless (defined $no_simple or defined $no_repeat) {
+    warn "Reading repeat information from $repeat_file\n" if (defined $debug);
+    loadRepeats($repeat_file);
+}
+
 unless (defined $no_repeat) {
     warn "Reading repeat consensi from $repbase_file\n" if (defined $debug);
     loadRepeatConsensus($repbase_file);
-
-    warn "Reading repeat information from $repeat_file\n" if (defined $debug);
-    loadRepeats($repeat_file);
 
     warn "Reading repeat insertions from $insert_file\n" if (defined $debug);
     loadInserts($insert_file);
@@ -238,21 +247,17 @@ for (my $snum = 1; $snum <= $numseqs; $snum++) {
     # Write base sequence (before repeat insertions)
     if (defined $wrbase) {
         my $bseq = formatFasta($seq);
-        open  FAS, ">>$out.base.fasta" or errorExit("cannot open $out.base.fasta");
-        print FAS  ">artificial_sequence_$snum MODEL=$model KMER=$kmer WIN=$win LENGTH=$size\n$bseq";
-        close FAS;    
+        print BSE  ">artificial_sequence_$snum MODEL=$model KMER=$kmer WIN=$win LENGTH=$size\n$bseq";
     }
-    next if (defined $no_repeat);
+    next if (defined $no_repeat and defined $no_simple);
     # Adding new elements
     warn "Adding repeats elements\n" if (defined $debug);
     $seq = insertRepeat($seq)     unless (defined $no_repeat);
     $seq = insertLowComplex($seq) unless (defined $no_simple);
-    open  INS, ">>$out.inserts" or errorExit("cannot open $out.inserts");
     print INS  "### ARTIFICIAL SEQUENCE $snum ###\n";
     print INS  "#INI\tEND\tNUM\tREPEAT\tREPEAT_EVOL\n", 
     print INS  join "\n", @inserts;
     print INS  "\n";
-    close INS;
 
     warn "Generated a sequence with ", length $seq, " bases\n" if(defined $debug);
     $seq   =  uc($seq) if (defined $no_mask);
@@ -261,11 +266,12 @@ for (my $snum = 1; $snum <= $numseqs; $snum++) {
     warn "Printing outputs\n" if(defined $debug);
     $seq     = checkSeqSize($size, $seq);
     my $fseq = formatFasta($seq);
-    open  FAS, ">>$out.fasta" or errorExit("cannot open $out.fasta");
     print FAS  ">artificial_sequence_$snum MODEL=$model KMER=$kmer WIN=$win LENGTH=$size\n$fseq";
-    close FAS;
 	@inserts = ();
 }
+close INS;
+close FAS;
+close BSE;
 
 #### END MAIN #####
 
@@ -939,7 +945,7 @@ sub insertRepeat {
         $repfra  = 100 * $rbase / length $s;
         $tot_try = 0;
     }
-    warn "Inserted: $urep repeats\n" if (defined $debug);
+    warn "Inserted: $urep repeats, repetitive sequence = $repfra \%\n" if (defined $debug);
     return $s;
 }
 
@@ -1017,7 +1023,7 @@ sub insertLowComplex {
         $repfra  = 100 * $rbase / length $s;
         $tot_try = 0;
     }
-    warn "Inserted: $usim low complexity sequences\n" if (defined $debug);
+    warn "Inserted: $usim low complexity sequences, repetitive sequence = $repfra \%\n" if (defined $debug);
     return $s;
 }
 
