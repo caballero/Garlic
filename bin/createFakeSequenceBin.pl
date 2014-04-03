@@ -255,7 +255,7 @@ for (my $snum = 1; $snum <= $numseqs; $snum++) {
     $seq = insertRepeat($seq)     unless (defined $no_repeat);
     $seq = insertLowComplex($seq) unless (defined $no_simple);
     print INS  "### ARTIFICIAL SEQUENCE $snum ###\n";
-    print INS  "#INI\tEND\tNUM\tREPEAT\tREPEAT_EVOL\n", 
+    print INS  "#INI\tEND\tNUM\tREPEAT\tREPEAT_EVOL\n";
     print INS  join "\n", @inserts;
     print INS  "\n";
 
