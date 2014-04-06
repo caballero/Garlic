@@ -12,7 +12,7 @@ while (<>) {
 		next;
     }
 	chomp;
-	my ($pos, $rep) = split (/\t/, $_);
+	my ($ini, $end, $rep) = split (/\t/, $_);
 	my @rep = split (/,/, $rep);
 	foreach my $r (@rep) {
 		if ($r =~ m/SIMPLE/) {
