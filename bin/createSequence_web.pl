@@ -206,7 +206,7 @@ else {
 }
 
 # HTML footer
-print p('Citation: Caballero J,   ...');
+print p('Citation: Caballero J, Smit AF, Hood L, Glusman G. <a href="http://nar.oxfordjournals.org/content/early/2014/05/06/nar.gku356.abstract">Realistic artificial DNA sequences as negative controls for computational genomics.</a> <i>Nucl. Acids Res.</i> 2014 doi: 10.1093/nar/gku356');
 print p('Contact: please use the <a href="https://github.com/caballero/FakeSequence/issues">GitHub form.</a>');
 print p(i('Institute for Systems Biology (2012)'));
 print end_html();

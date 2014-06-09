@@ -68,6 +68,7 @@ open F, "$fasta" or die "cannot open file $fasta\n";
 while (<F>) {
     chomp;
     unless (m/>/) {
+		s/[\s\r\n]//g;
         $mask_seq .= $_;
     }
 }
@@ -88,12 +89,12 @@ while (<R>) {
     my @line = split (/\s+/, $_);
     my $ini  = $line[5];
     my $end  = $line[6];
-    my $s = substr ($pred_seq, $ini - $b, $end - $ini);
-    substr ($pred_seq, $ini - $b, $end - $ini) = lc $s;
+    my $s = substr ($pred_seq, $ini - $b, $end - $ini + $b);
+    substr ($pred_seq, $ini - $b, $end - $ini + $b) = lc $s;
 }
 close R;
 
-for (my $i = 0; $i <= length $mask_seq; $i++) {
+for (my $i = 0; $i < length $mask_seq; $i++) {
      my $m = substr ($mask_seq, $i, 1);
      my $p = substr ($pred_seq, $i, 1);
      if    ($m =~ m/[ACGT]/ and $p =~ m/[ACGT]/) { $tn++; }
@@ -109,6 +110,8 @@ $sn  = sprintf ("%.4f", $tp / ($tp + $fn)) if ( ($tp + $fn) > 0);
 $acc = sprintf ("%.4f", ($tp + $tn) / ($tp + $tn + $fp + $fn)) if ( ($tp + $tn + $fp + $fn) > 0);
 $fdr = sprintf ("%.4f", $fp / ($fp + $tp)) if ( ($fp + $tp) > 0);
 
+print join "\t", "SeqName", "Length", "\%Repeats", "TP", "TN", "FP", "FN", "Ns", "Spec", "Sens", "Acc", "FDR";
+print "\n";
 print join "\t", $name_seq, $len, $repf, $tp, $tn, $fp, $fn, $nl, $sp, $sn, $acc, $fdr;
 print "\n";
 
