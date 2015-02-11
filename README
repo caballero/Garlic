@@ -1,10 +1,10 @@
-FakeSequence - An artificial non-functional realistic DNA sequence generator.
+GARLIC - An artificial non-functional realistic DNA sequence generator.
 
 Copyright (C) 2011 Juan Caballero [Institute for Systems Biology]
 
 DESCRIPTION
 
-FakeSequence is an artificial non-functional realistic DNA sequence generator.
+GARLIC is an artificial non-functional realistic DNA sequence generator.
 
 Why do we need it? Because with current sequencing technology we can sequence 
 any organism and start mining the genome. Many genomic analysis use strong 
@@ -38,7 +38,7 @@ new sequence generated.
 REQUERIMENTS
 
 - Perl
-- Genome models. You can download from: [repository] 
+- Genome models. You can download from: http://repeatmasker.org/garlic/ 
   or create your own, see below.
 - RepBase consensus sequences. You need to download the EMBL file from RepBase
   [http://www.girinst.org/repbase] (registration required) and put the file in
@@ -74,7 +74,10 @@ Please read the documentation using:
 
 CITATION
 
-Caballero J ... 
+Realistic artificial DNA sequences as negative controls for computational genomics.
+Caballero J, Smit AF, Hood L, Glusman G.
+Nucl. Acids Res. 2014
+doi: 10.1093/nar/gku356 
 
 LICENSE
 
