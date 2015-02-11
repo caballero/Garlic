@@ -1,4 +1,4 @@
-FakeSequence - An artificial non-functional realistic DNA sequence generator.
+GARLIC - An artificial non-functional realistic DNA sequence generator.
 
 Copyright (C) 2011 Juan Caballero [Institute for Systems Biology]
 
@@ -7,11 +7,11 @@ INSTALLATION INSTRUCTIONS
 All the code is in Perl, so basically just unpack/clone the package in a
 convenient directory and add/create the models under data/
 
-a) Unpacking a TAR-ball
-   > tar zxf fakesequence.tgz
+a) Unpacking a zip
+   > unzip Garlic-master.zip
 
 b) Clonning the repository from GitHub:
-   > git clone git://github.com/caballero/FakeSequence.git
+   > git clone https://github.com/caballero/Garlic.git
    
 Note: the GIT repository only contains the code, no models are included.   
    
@@ -46,3 +46,4 @@ TESTING
 
 Run bin/test.sh to check if the installation works, it will model and create
 and artificial sequence using the Fugu genome.
+
