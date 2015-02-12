@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/local/bin/perl
 
 =head1 NAME 
 
@@ -185,6 +185,11 @@ if (defined $type) {
     $type =~ s/,/|/g;
 }
 
+# Worry about perl string limits/bugs found in earlier versions of perl
+if ( $size > 2100000000 && $] && $] < 5.012 ) {
+  errorExit("With sequence sizes > 2100mb you need to use perl 5.12 or higher!");
+}
+
 # Loading model parameters
 $gct_file     = "$dir/$model/$model.GCt.W$win.data"         if ( ! defined $gct_file);
 $kmer_file    = "$dir/$model/$model.kmer.K$kmer.W$win.data" if ( ! defined $kmer_file);
@@ -203,6 +208,7 @@ warn "Reading GC transitions in $gct_file\n" if(defined $debug);
 my @gcRanges = loadGCt($gct_file);
 
 # GC classes creation
+my %gcRangeLookup = ();
 foreach my $gcRange ( @gcRanges )
 {
   if ( $gcRange =~ /([\d\.]+)\-([\d\.]+)/ )
@@ -211,6 +217,7 @@ foreach my $gcRange ( @gcRanges )
     my $high = $2;
     push @classgc, $high;
     $classgc{$high} = 1;
+    $gcRangeLookup{$high} = $gcRange;
   }else
   {
     die "Error: GCT File ( $gct_file ) contains a non-standard range $gcRange!\n";
@@ -849,12 +856,12 @@ sub createSeq {
     my $len   = shift @_;
     my $win   = shift @_;
     my $seq   = shift @_;
-    warn "creating new sequence\n" if (defined $debug);
+    warn "creating new sequence ( length $len )\n" if (defined $debug);
     
     for (my $i = length $seq; $i <= $len + 100; $i += $win) {
         push @gc_bin, $gc;
-        warn "    $i fragment, GCBin=#-$gc\n" if (defined $debug);
         my $seed   = substr($seq, 1 - $k);
+        warn "    Size: $i bp, transitioning to GCBin " . $gcRangeLookup{$gc} . "\n" if (defined $debug);
         my $subseq = createSubSeq($k, $gc, $win - $k + 1, $seed);
         $seq      .= $subseq;
         $gc        = transGC($gc);
