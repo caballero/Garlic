@@ -182,8 +182,10 @@ my $unpack = 'tar zxf';      # command to unpack the files downloaded
 my $unzip  = 'unzip';        # command to decompress the files downloaded
 my $gunzip = 'gunzip -c';    # command to decompress the files downloaded
 my $ucsc        = 'http://hgdownload.cse.ucsc.edu/goldenPath';        # UCSC url
+my $repeatMasker= 'http://www.repeatmasker.org/genomes';               # RepeatMasker website url
 my $ucsc_genome = "$ucsc/$model/bigZips/" . $files{$model}{'FAS'};
-my $ucsc_repeat = "$ucsc/$model/bigZips/" . $files{$model}{'RMO'};
+#my $ucsc_repeat = "$ucsc/$model/bigZips/" . $files{$model}{'RMA'};
+my $rm_repeat   = "$repeatMasker/" . $files{$model}{'RMA'};
 my $ucsc_trf    = "$ucsc/$model/bigZips/" . $files{$model}{'TRF'};
 my $ucsc_gene   = "$ucsc/$model/database/" . $files{$model}{'GEN'};
 
@@ -347,9 +349,13 @@ sub getUCSC_trf
 
 sub getUCSC_repeat
 {
-
   # RepeatMasker output
-  my $target_file = $files{$model}{'RMO'};
+  my $target_file = $files{$model}{'RMA'};
+
+  if ( $target_file =~ /^\s*\S+\/\S+\/(\S+\.fa.align.gz)\s*$/ )
+  {
+    $target_file = $1;
+  }
   die "Sorry, $model RepeatMasker file is missing\n"
       unless ( defined $target_file );
 
@@ -360,11 +366,12 @@ sub getUCSC_repeat
 
   } else
   {
-    warn "obtaining RepeatMasker files from $ucsc\n" if ( defined $verbose );
+    #warn "obtaining RepeatMasker files from $ucsc\n" if ( defined $verbose );
+    warn "obtaining RepeatMasker files from $repeatMasker\n" if ( defined $verbose );
     mkdir 'RM' unless ( -e 'RM' and -d 'RM' );
     chdir 'RM' or die "cannot move to RM directory\n";
-    system( "$get $ucsc_repeat" );
-    die "cannot find RepeatMasker out in $ucsc_repeat\n"
+    system( "$get $rm_repeat" );
+    die "cannot find RepeatMasker align in $rm_repeat\n"
         unless ( -e $target_file );
   }
 
@@ -372,7 +379,7 @@ sub getUCSC_repeat
 
   chdir '..';
   warn "searching RM files\n" if ( defined $verbose );
-  $repeat = searchFiles( '.out$', 'RM' );
+  $repeat = searchFiles( '.align$', 'RM' );
   die "cannot find RM files!" unless ( defined $repeat );
 }
 
@@ -471,6 +478,7 @@ sub readFasta
 # Should work with both *.align and *.out files
 sub maskRepeat
 {
+
   # mask sequences with RepeatMasker annotation
   warn "masking repeats\n" if ( defined $verbose );
   my %mask = ();
@@ -825,13 +833,14 @@ sub profileRepeats
   warn "profiling repeats\n" if ( defined $verbose );
   loadGenesBin()             if ( defined $gene );
   profileTRF()               if ( defined $trf );
-  profileRMAlign()                if ( defined $repeat );
+  profileRMAlign()           if ( defined $repeat );
 
   my $repfile = "$model.repeats.W$win.data";
   warn "writing repeats info in \"$repfile\"\n";
   open R, ">$repfile" or die "cannot open $repfile\n";
   foreach my $gc ( @gc )
   {
+
     #my $edist = calcPercDist(@{ $ebases{$gc} });
     #my $rdist = calcPercDist(@{ $rbases{$gc} });
     #my $sdist = calcPercDist(@{ $sbases{$gc} });
@@ -1156,6 +1165,7 @@ sub profileTRF
 
 sub profileRMAlign
 {
+
   # parse RepeatMasker output, mix spliced repeats
   warn "  parsing RepeatMasker align file\n" if ( defined $verbose );
   my %repdata = ();
@@ -1173,8 +1183,9 @@ sub profileRMAlign
     my $lineNum     = 0;
     while ( <T> )
     {
-      # Must be in this format
-      # 239 29.42 1.92 0.97 chr1 11678 11780 (249238841) C MER5B#DNA/hAT-Charlie (74) 104 1 m_b1s502i1 4
+
+# Must be in this format
+# 239 29.42 1.92 0.97 chr1 11678 11780 (249238841) C MER5B#DNA/hAT-Charlie (74) 104 1 m_b1s502i1 4
       $lineNum++;
       chomp;
       next unless ( m/^\d+/ );
@@ -1188,32 +1199,34 @@ sub profileRMAlign
       my $end    = $line[ 6 ];
 
       my ( $dir, $type, $fam, $rini, $rend );
-      if ( $line[8] eq "C" )
+      if ( $line[ 8 ] eq "C" )
       {
+
         # Negative strand hit
-        $dir    = "-";
-        if ( $line[9] =~ /(\S+)\#(\S+)/ )
+        $dir = "-";
+        if ( $line[ 9 ] =~ /(\S+)\#(\S+)/ )
         {
-          $type   = $1;
-          $fam    = $2;
+          $type = $1;
+          $fam  = $2;
         }
-        $rini   = $line[ 12 ];
-        $rend   = $line[ 11 ];
-      }else
+        $rini = $line[ 12 ];
+        $rend = $line[ 11 ];
+      } else
       {
+
         # Plus strand hit
-        $dir       = "+";
-        if ( $line[8] =~ /(\S+)\#(\S+)/ )
+        $dir = "+";
+        if ( $line[ 8 ] =~ /(\S+)\#(\S+)/ )
         {
-          $type   = $1;
-          $fam    = $2;
+          $type = $1;
+          $fam  = $2;
         }
-        $rini   = $line[ 9 ];
-        $rend   = $line[ 10 ];
+        $rini = $line[ 9 ];
+        $rend = $line[ 10 ];
       }
 
       next unless ( defined $seq{$seq_id} );
-      my $rid = "REP.$nf.$line[-1]";
+      my $rid   = "REP.$nf.$line[-1]";
       my $label = "$type:$fam:$dir:$div:$ins:$del:$rini:$rend";
 
       unless ( defined $no_intron )
@@ -1270,11 +1283,12 @@ sub profileRMAlign
 
   foreach my $rid ( keys %repdata )
   {
+
     # Fix a bug in the previous version which placed the position
     # in the wrong place ( always at the begining of a sequence and more
     # likely to be in the N stretches in an assembly ).
-    my $pos = $repdata{$rid}{'ini'}
-              + int( ( $repdata{$rid}{'end'} - $repdata{$rid}{'ini'} ) / 2 );
+    my $pos = $repdata{$rid}{'ini'} +
+        int( ( $repdata{$rid}{'end'} - $repdata{$rid}{'ini'} ) / 2 );
     my $gc = getBinGC( $repdata{$rid}{'seq_id'}, $pos );
     push @{ $repeat{$gc} }, $repdata{$rid}{'label'};
   }
@@ -1346,7 +1360,7 @@ sub removeTmp
   if ( defined $keep_dw_files )
   {
     $keep{ $files{$model}{'FAS'} } = 1;
-    $keep{ $files{$model}{'RMO'} } = 1;
+    $keep{ $files{$model}{'RMA'} } = 1;
     $keep{ $files{$model}{'TRF'} } = 1;
     $keep{ $files{$model}{'GEN'} } = 1;
   }
@@ -1385,6 +1399,7 @@ sub calcGC
 
 sub classGC
 {
+
   # GC ranges must be equal to @gc values or weird stuff will happen
   my $gc = shift @_;
   return $gc if ( $gc eq 'NA' );
@@ -1428,6 +1443,7 @@ sub calcBinGC
       push @{ $gcHash{$seq_id} }, $gc;
       if ( $gc ne "NA" )
       {
+
         # 0-1000 = 0-100.0%
         $count[ int( 1000 * $gc ) ]++;
       }
@@ -1440,8 +1456,9 @@ sub calcBinGC
   # Calculate a cumulative 1kb count for each gc level
   #
   my @cumulative;
+
   # Start with the first count gc=0
-  $count[ 0 ]      = 0 if ( !defined $count[ 0 ] );
+  $count[ 0 ] = 0 if ( !defined $count[ 0 ] );
   $cumulative[ 0 ] = $count[ 0 ];
   foreach my $i ( 1 .. $#count )
   {
@@ -1470,7 +1487,7 @@ sub calcBinGC
 
   #
   # setup @gc range strings ( ie. "30.1-35.6", "35.7-41.3" ... )
-  # 
+  #
   @gc = ();
   my $lastCut = -1;
   foreach my $bin ( @gcBins )
@@ -1484,8 +1501,8 @@ sub calcBinGC
   }
 
   #
-  # Now calculate the average gc over a larger scale 
-  # ( binsize = 10kb by default ).  
+  # Now calculate the average gc over a larger scale
+  # ( binsize = 10kb by default ).
   #
   foreach my $seq_id ( keys( %seq ) )
   {
@@ -1604,227 +1621,261 @@ sub loadFiles
 {
 
   # UCSC GB files, hash structure is: $files{MODEL}{TYPE} = FILE
-  # TYPE can be FAS=Fasta sequences, RMO=RepeatMasker out,
+  # TYPE can be FAS=Fasta sequences, RMA=RepeatMasker align,
   # TRF=Tandem Repeat Masker out, GEN=Gene annotation
 
   # Human
   $files{'hg19'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'hg19'}{'RMO'} = 'chromOut.tar.gz';
+  #$files{'hg19'}{'RMA'} = 'chromOut.tar.gz';
+  $files{'hg19'}{'RMA'} = 'hg19/RepeatMasker-rm405-db20140131/hg19.fa.align.gz';
   $files{'hg19'}{'TRF'} = 'chromTrf.tar.gz';
   $files{'hg19'}{'GEN'} = 'ensGene.txt.gz';
 
   $files{'hg18'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'hg18'}{'RMO'} = 'chromOut.tar.gz';
+  #$files{'hg18'}{'RMA'} = 'chromOut.tar.gz';
+  $files{'hg18'}{'RMA'} = 'hg18/RepeatMasker-rm319-db20071204/hg18.fa.align.gz';
   $files{'hg18'}{'TRF'} = 'chromTrf.tar.gz';
   $files{'hg18'}{'GEN'} = 'ensGene.txt.gz';
 
   $files{'hg17'}{'FAS'} = 'chromFa.zip';
-  $files{'hg17'}{'RMO'} = 'chromOut.zip';
+  #$files{'hg17'}{'RMA'} = 'chromOut.zip';
+  $files{'hg17'}{'RMA'} = 'hg17/RepeatMasker-rm300-db20040702/hg17.fa.align.gz';
   $files{'hg17'}{'TRF'} = 'chromTrf.zip';
   $files{'hg17'}{'GEN'} = 'ensGene.txt.gz';
 
   # Cat
-  $files{'felCat4'}{'FAS'} = 'felCat4.fa.gz';
-  $files{'felCat4'}{'RMO'} = 'felCat4.fa.out.gz';
-  $files{'felCat4'}{'TRF'} = 'felCat4.trf.bed.gz';
-  $files{'felCat4'}{'GEN'} = 'refGene.txt.gz';
+  $files{'felCat5'}{'FAS'} = 'felCat5.fa.gz';
+  #$files{'felCat5'}{'RMA'} = 'felCat5.fa.out.gz';
+  $files{'felCat5'}{'RMA'} = 'felCat5/RepeatMasker-rm405-db20140131/felCat5.fa.align.gz';
+  $files{'felCat5'}{'TRF'} = 'felCat5.trf.bed.gz';
+  $files{'felCat5'}{'GEN'} = 'refGene.txt.gz';
 
   # Chicken
   $files{'galGal3'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'galGal3'}{'RMO'} = 'chromOut.tar.gz';
+  #$files{'galGal3'}{'RMA'} = 'chromOut.tar.gz';
+  $files{"galGal3"}{"RMA"} = "galGal3/RepeatMasker-rm327-db20090204/galGal3.fa.align.gz";
   $files{'galGal3'}{'TRF'} = 'chromTrf.tar.gz';
   $files{'galGal3'}{'GEN'} = 'ensGene.txt.gz';
 
   # Chimpanzee
-  $files{'panTro3'}{'FAS'} = 'panTro3.fa.gz';
-  $files{'panTro3'}{'RMO'} = 'panTro3.fa.out.gz';
-  $files{'panTro3'}{'TRF'} = 'panTro3.trf.bed.gz';
-  $files{'panTro3'}{'GEN'} = 'refGene.txt.gz';
+  $files{'panTro4'}{'FAS'} = 'panTro4.fa.gz';
+  #$files{'panTro4'}{'RMA'} = 'panTro4.fa.out.gz';
+  $files{"panTro4"}{"RMA"} = "panTro4/RepeatMasker-rm405-db20140131/panTro4.fa.align.gz";
+  $files{'panTro4'}{'TRF'} = 'panTro4.trf.bed.gz';
+  $files{'panTro4'}{'GEN'} = 'refGene.txt.gz';
 
   # Cow
   $files{'bosTau4'}{'FAS'} = 'bosTau4.fa.gz';
-  $files{'bosTau4'}{'RMO'} = 'bosTau4.fa.out.gz';
+  #$files{'bosTau4'}{'RMA'} = 'bosTau4.fa.out.gz';
+  $files{"bosTau4"}{"RMA"} = "bosTau4/RepeatMasker-rm328-db20090604/bosTau4.fa.align.gz";
   $files{'bosTau4'}{'TRF'} = 'bosTau4.trf.bed.gz';
   $files{'bosTau4'}{'GEN'} = 'ensGene.txt.gz';
 
   # Dog
   $files{'canFam2'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'canFam2'}{'RMO'} = 'chromOut.tar.gz';
+  #$files{'canFam2'}{'RMA'} = 'chromOut.tar.gz';
+  $files{"canFam2"}{"RMA"} = "canFam2/RepeatMasker-rm330-db20120124/canFam2.fa.align.gz";
   $files{'canFam2'}{'TRF'} = 'chromTrf.tar.gz';
   $files{'canFam2'}{'GEN'} = 'ensGene.txt.gz';
 
   # Elephant
   $files{'loxAfr3'}{'FAS'} = 'loxAfr3.fa.gz';
-  $files{'loxAfr3'}{'RMO'} = 'loxAfr3.fa.out.gz';
+  #$files{'loxAfr3'}{'RMA'} = 'loxAfr3.fa.out.gz';
+  $files{"loxAfr3"}{"RMA"} = "loxAfr3/RepeatMasker-rm405-db20140131/loxAfr3.fa.align.gz";
   $files{'loxAfr3'}{'TRF'} = 'loxAfr3.trf.bed.gz';
   $files{'loxAfr3'}{'GEN'} = 'ensGene.txt.gz';
 
   # Fugu
   $files{'fr2'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'fr2'}{'RMO'} = 'chromOut.tar.gz';
+  #$files{'fr2'}{'RMA'} = 'chromOut.tar.gz';
+  $files{"fr2"}{"RMA"} = "fr2/RepeatMasker-rm325-db20080611/fr2.fa.align.gz";
   $files{'fr2'}{'TRF'} = 'chromTrf.tar.gz';
   $files{'fr2'}{'GEN'} = 'ensGene.txt.gz';
 
   # Guinea Pig
   $files{'cavPor3'}{'FAS'} = 'cavPor3.fa.gz';
-  $files{'cavPor3'}{'RMO'} = 'cavPor3.fa.out.gz';
+  #$files{'cavPor3'}{'RMA'} = 'cavPor3.fa.out.gz';
+  $files{"cavPor3"}{"RMA"} = "cavPor3/RepeatMasker-rm405-db20140131/cavPor3.fa.align.gz";
   $files{'cavPor3'}{'TRF'} = 'cavPor3.trf.bed.gz';
   $files{'cavPor3'}{'GEN'} = 'ensGene.txt.gz';
 
   # Horse
   $files{'equCab2'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'equCab2'}{'RMO'} = 'chromOut.tar.gz';
+  #$files{'equCab2'}{'RMA'} = 'chromOut.tar.gz';
+  $files{"equCab2"}{"RMA"} = "equCab2/RepeatMasker-rm405-db20140131/equCab2.fa.align.gz";
   $files{'equCab2'}{'TRF'} = 'chromTrf.tar.gz';
   $files{'equCab2'}{'GEN'} = 'ensGene.txt.gz';
 
   # Lizard
   $files{'anoCar2'}{'FAS'} = 'anoCar2.fa.gz';
-  $files{'anoCar2'}{'RMO'} = 'anoCar2.fa.out.gz';
+  #$files{'anoCar2'}{'RMA'} = 'anoCar2.fa.out.gz';
+  $files{"anoCar2"}{"RMA"} = "anoCar2/RepeatMasker-rm405-db20140131/anoCar2.fa.align.gz";
   $files{'anoCar2'}{'TRF'} = 'anoCar2.trf.bed.gz';
   $files{'anoCar2'}{'GEN'} = 'ensGene.txt.gz';
 
   # Marmoset
   $files{'calJac3'}{'FAS'} = 'calJac3.fa.gz';
-  $files{'calJac3'}{'RMO'} = 'calJac3.fa.out.gz';
+  #$files{'calJac3'}{'RMA'} = 'calJac3.fa.out.gz';
+  $files{"calJac3"}{"RMA"} = "calJac3/RepeatMasker-rm405-db20140131/calJac3.fa.align.gz";
   $files{'calJac3'}{'TRF'} = 'calJac3.trf.bed.gz';
   $files{'calJac3'}{'GEN'} = 'ensGene.txt.gz';
 
   # Medaka
-  $files{'oryLat2'}{'FAS'} = 'oryLat2.fa.gz';
-  $files{'oryLat2'}{'RMO'} = 'oryLat2.fa.out.gz';
-  $files{'oryLat2'}{'TRF'} = 'oryLat2.trf.bed.gz';
-  $files{'oryLat2'}{'GEN'} = 'ensGene.txt.gz';
+  #$files{'oryLat2'}{'FAS'} = 'oryLat2.fa.gz';
+  #$files{'oryLat2'}{'RMA'} = 'oryLat2.fa.out.gz';
+  #$files{'oryLat2'}{'TRF'} = 'oryLat2.trf.bed.gz';
+  #$files{'oryLat2'}{'GEN'} = 'ensGene.txt.gz';
 
   # Mouse
   $files{'mm10'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'mm10'}{'RMO'} = 'chromOut.tar.gz';
+  #$files{'mm10'}{'RMA'} = 'chromOut.tar.gz';
+  $files{"mm10"}{"RMA"} = "mm10/RepeatMasker-rm405-db20140131/mm10.fa.align.gz";
   $files{'mm10'}{'TRF'} = 'chromTrf.tar.gz';
   $files{'mm10'}{'GEN'} = 'ensGene.txt.gz';
 
   $files{'mm9'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'mm9'}{'RMO'} = 'chromOut.tar.gz';
+  #$files{'mm9'}{'RMA'} = 'chromOut.tar.gz';
+  $files{"mm9"}{"RMA"} = "mm9/RepeatMasker-rm328-db20090604/mm9.fa.align.gz";
   $files{'mm9'}{'TRF'} = 'chromTrf.tar.gz';
   $files{'mm9'}{'GEN'} = 'ensGene.txt.gz';
 
   # Oposum
   $files{'monDom5'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'monDom5'}{'RMO'} = 'chromOut.tar.gz';
+  #$files{'monDom5'}{'RMA'} = 'chromOut.tar.gz';
+  $files{"monDom5"}{"RMA"} = "monDom5/RepeatMasker-rm405-db20140131/monDom5.fa.align.gz";
   $files{'monDom5'}{'TRF'} = 'chromTrf.tar.gz';
   $files{'monDom5'}{'GEN'} = 'ensGene.txt.gz';
 
   # Orangutan
   $files{'ponAbe2'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'ponAbe2'}{'RMO'} = 'chromOut.tar.gz';
+  #$files{'ponAbe2'}{'RMA'} = 'chromOut.tar.gz';
+  $files{"ponAbe2"}{"RMA"} = "ponAbe2/RepeatMasker-rm405-db20140131/ponAbe2.fa.align.gz";
   $files{'ponAbe2'}{'TRF'} = 'chromTrf.tar.gz';
   $files{'ponAbe2'}{'GEN'} = 'ensGene.txt.gz';
 
   # Panda
   $files{'ailMel1'}{'FAS'} = 'ailMel1.fa.gz';
-  $files{'ailMel1'}{'RMO'} = 'ailMel1.fa.out.gz';
+  #$files{'ailMel1'}{'RMA'} = 'ailMel1.fa.out.gz';
+  $files{"ailMel1"}{"RMA"} = "ailMel1/RepeatMasker-rm405-db20140131/ailMel1.fa.align.gz";
   $files{'ailMel1'}{'TRF'} = 'ailMel1.trf.bed.gz';
   $files{'ailMel1'}{'GEN'} = 'ensGene.txt.gz';
 
   # Pig
   $files{'susScr2'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'susScr2'}{'RMO'} = 'chromOut.tar.gz';
+  #$files{'susScr2'}{'RMA'} = 'chromOut.tar.gz';
+  $files{"susScr2"}{"RMA"} = "susScr2/RepeatMasker-rm330-db20120124/susScr2.fa.align.gz";
   $files{'susScr2'}{'TRF'} = 'chromTrf.tar.gz';
   $files{'susScr2'}{'GEN'} = 'ensGene.txt.gz';
 
   # Platypus
   $files{'ornAna1'}{'FAS'} = 'ornAna1.fa.gz';
-  $files{'ornAna1'}{'RMO'} = 'ornAna1.fa.out.gz';
+  #$files{'ornAna1'}{'RMA'} = 'ornAna1.fa.out.gz';
+  $files{"ornAna1"}{"RMA"} = "ornAna1/RepeatMasker-rm405-db20140131/ornAna1.fa.align.gz";
   $files{'ornAna1'}{'TRF'} = 'ornAna1.trf.bed.gz';
   $files{'ornAna1'}{'GEN'} = 'ensGene.txt.gz';
 
   # Rabbit
   $files{'oryCun2'}{'FAS'} = 'oryCun2.fa.gz';
-  $files{'oryCun2'}{'RMO'} = 'oryCun2.fa.out.gz';
+  #$files{'oryCun2'}{'RMA'} = 'oryCun2.fa.out.gz';
+  $files{"oryCun2"}{"RMA"} = "oryCun2/RepeatMasker-rm405-db20140131/oryCun2.fa.align.gz";
   $files{'oryCun2'}{'TRF'} = 'oryCun2.trf.bed.gz';
   $files{'oryCun2'}{'GEN'} = 'ensGene.txt.gz';
 
   # Rat
   $files{'rn4'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'rn4'}{'RMO'} = 'chromOut.tar.gz';
+  #$files{'rn4'}{'RMA'} = 'chromOut.tar.gz';
+  $files{"rn4"}{"RMA"} = "rn4/RepeatMasker-rm330-db20120124/rn4.fa.align.gz";
   $files{'rn4'}{'TRF'} = 'chromTrf.tar.gz';
   $files{'rn4'}{'GEN'} = 'ensGene.txt.gz';
 
   # Rhesus
   $files{'rheMac2'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'rheMac2'}{'RMO'} = 'chromOut.tar.gz';
+  #$files{'rheMac2'}{'RMA'} = 'chromOut.tar.gz';
+  $files{"rheMac2"}{"RMA"} = "rheMac2/RepeatMasker-rm319-db20071204/rheMac2.fa.align.gz";
   $files{'rheMac2'}{'TRF'} = 'chromTrf.tar.gz';
   $files{'rheMac2'}{'GEN'} = 'ensGene.txt.gz';
 
   # Sheep
-  $files{'oviAri1'}{'FAS'} = 'oviAri1.fa.gz';
-  $files{'oviAri1'}{'RMO'} = 'oviAri1.fa.out.gz';
-  $files{'oviAri1'}{'TRF'} = 'oviAri1.trf.bed.gz';
-  $files{'oviAri1'}{'GEN'} = 'refGene.txt.gz';
+  #$files{'oviAri1'}{'FAS'} = 'oviAri1.fa.gz';
+  #$files{'oviAri1'}{'RMA'} = 'oviAri1.fa.out.gz';
+  #$files{'oviAri1'}{'TRF'} = 'oviAri1.trf.bed.gz';
+  #$files{'oviAri1'}{'GEN'} = 'refGene.txt.gz';
 
   # Stickleback
   $files{'gasAcu1'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'gasAcu1'}{'RMO'} = 'chromOut.tar.gz';
+  #$files{'gasAcu1'}{'RMA'} = 'chromOut.tar.gz';
+  $files{"gasAcu1"}{"RMA"} = "gasAcu1/RepeatMasker-rm405-db20140131/gasAcu1.fa.align.gz";
   $files{'gasAcu1'}{'TRF'} = 'chromTrf.tar.gz';
   $files{'gasAcu1'}{'GEN'} = 'ensGene.txt.gz';
 
   # Tetraodon
-  $files{'tetNig2'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'tetNig2'}{'RMO'} = 'chromOut.tar.gz';
-  $files{'tetNig2'}{'TRF'} = 'chromTrf.tar.gz';
-  $files{'tetNig2'}{'GEN'} = 'ensGene.txt.gz';
+  #$files{'tetNig2'}{'FAS'} = 'chromFa.tar.gz';
+  #$files{'tetNig2'}{'RMA'} = 'chromOut.tar.gz';
+  #$files{'tetNig2'}{'TRF'} = 'chromTrf.tar.gz';
+  #$files{'tetNig2'}{'GEN'} = 'ensGene.txt.gz';
 
   # X. tropicalis
   $files{'xenTro2'}{'FAS'} = 'xenTro2.fa.gz';
-  $files{'xenTro2'}{'RMO'} = 'xenTro2.rmsk.out.gz';
+  #$files{'xenTro2'}{'RMA'} = 'xenTro2.rmsk.out.gz';
+  $files{"xenTro2"}{"RMA"} = "xenTro2/RepeatMasker-rm327-db20090202/xenTro2.fa.align.gz";
   $files{'xenTro2'}{'TRF'} = 'xenTro2.trf.bed.gz';
   $files{'xenTro2'}{'GEN'} = 'ensGene.txt.gz';
 
   # Zebra finch
   $files{'taeGut1'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'taeGut1'}{'RMO'} = 'chromOut.tar.gz';
+  #$files{'taeGut1'}{'RMA'} = 'chromOut.tar.gz';
+  $files{"taeGut1"}{"RMA"} = "taeGut1/RepeatMasker-rm405-db20140131/taeGut1.fa.align.gz";
   $files{'taeGut1'}{'TRF'} = 'chromTrf.tar.gz';
   $files{'taeGut1'}{'GEN'} = 'ensGene.txt.gz';
 
   # Zefrafish
   $files{'danRer7'}{'FAS'} = 'danRer7.fa.gz';
-  $files{'danRer7'}{'RMO'} = 'danRer7.fa.out.gz';
+  #$files{'danRer7'}{'RMA'} = 'danRer7.fa.out.gz';
+  $files{"danRer7"}{"RMA"} = "danRer7/RepeatMasker-rm405-db20140131/danRer7.fa.align.gz";
   $files{'danRer7'}{'TRF'} = 'danRer7.trf.bed.gz';
   $files{'danRer7'}{'GEN'} = 'ensGene.txt.gz';
 
   # C. intestinalis
   $files{'ci2'}{'FAS'} = 'ScaffoldFa.zip';
-  $files{'ci2'}{'RMO'} = 'Scaffold.out.zip';
+  #$files{'ci2'}{'RMA'} = 'Scaffold.out.zip';
+  $files{"ci2"}{"RMA"} = "ci2/RepeatMasker-rm405-db20140131/ci2.fa.align.gz";
   $files{'ci2'}{'TRF'} = 'ScaffoldTrf.zip';
   $files{'ci2'}{'GEN'} = 'ensGene.txt.gz';
 
   # S. purpuratus
   $files{'strPur2'}{'FAS'} = 'strPur2.fa.gz';
-  $files{'strPur2'}{'RMO'} = 'strPur2.fa.out.gz';
+  #$files{'strPur2'}{'RMA'} = 'strPur2.fa.out.gz';
+  $files{"strPur2"}{"RMA"} = "strPur2/RepeatMasker-rm405-db20140131/strPur2.fa.align.gz";
   $files{'strPur2'}{'TRF'} = 'strPur2.trf.bed.gz';
   $files{'strPur2'}{'GEN'} = 'refGene.txt.gz';
 
   # A. gambiae
   $files{'anoGam1'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'anoGam1'}{'RMO'} = 'chromOut.tar.gz';
+  #$files{'anoGam1'}{'RMA'} = 'chromOut.tar.gz';
+  $files{"anoGam1"}{"RMA"} = "anoGam1/RepeatMasker-rm405-db20140131/anoGam1.fa.align.gz";
   $files{'anoGam1'}{'TRF'} = 'chromTrf.tar.gz';
   $files{'anoGam1'}{'GEN'} = 'ensGene.txt.gz';
 
   # A. mellifera
-  $files{'apiMel2'}{'FAS'} = 'GroupFa.zip';
-  $files{'apiMel2'}{'RMO'} = 'GroupOut.zip';
-  $files{'apiMel2'}{'TRF'} = 'GroupTrf.zip';
-  $files{'apiMel2'}{'GEN'} = 'ensGene.txt.gz';
+  $files{'apiMel3'}{'FAS'} = 'GroupFa.zip';
+  #$files{'apiMel3'}{'RMA'} = 'GroupOut.zip';
+  $files{"apiMel3"}{"RMA"} = "apiMel3/RepeatMasker-rm405-db20140131/apiMel3.fa.align.gz";
+  $files{'apiMel3'}{'TRF'} = 'GroupTrf.zip';
+  $files{'apiMel3'}{'GEN'} = 'ensGene.txt.gz';
 
   # D. melanogaster
   $files{'dm3'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'dm3'}{'RMO'} = 'chromOut.tar.gz';
+  #$files{'dm3'}{'RMA'} = 'chromOut.tar.gz';
+  $files{"dm3"}{"RMA"} = "dm3/RepeatMasker-rm405-db20140131/dm3.fa.align.gz";
   $files{'dm3'}{'TRF'} = 'chromTrf.tar.gz';
   $files{'dm3'}{'GEN'} = 'ensGene.txt.gz';
 
   # C. elegans
-  $files{'ce3'}{'FAS'} = 'chromFa.tar.gz';
-  $files{'ce3'}{'RMO'} = 'chromOut.tar.gz';
-  $files{'ce3'}{'TRF'} = 'chromTrf.tar.gz';
-  $files{'ce3'}{'GEN'} = 'ensGene.txt.gz';
+  $files{'ce10'}{'FAS'} = 'chromFa.tar.gz';
+  #$files{'ce10'}{'RMA'} = 'chromOut.tar.gz';
+  $files{"ce10"}{"RMA"} = "ce10/RepeatMasker-rm405-db20140131/ce10.fa.align.gz";
+  $files{'ce10'}{'TRF'} = 'chromTrf.tar.gz';
+  $files{'ce10'}{'GEN'} = 'ensGene.txt.gz';
 }
 
 # EOF
