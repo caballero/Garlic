@@ -45,6 +45,7 @@ Optional or automatic parameters:
   --no_simple      Don't insert simple repeats
   --no_mask        Don't lower-case repeats
   --align          Print evolved repeat alignments to consensus
+  --useBED         Use BED format for insert data
   
   --repbase_file   RepBase file (EMBL format)
   --repeats_file   File with repeats information*
@@ -145,6 +146,7 @@ my $insert_file  =       undef; # Repeat insert file
 my $doFrag       =           1; # Fragment repeats flag
 my $numseqs      =           1; # Number of sequences to create
 my $showAln      =       undef; # print evolved repeats alignment to consensus
+my $useBED       =       undef; # use BED format for insert data
 
 ## Parameters extraction
 pod2usage(-verbose => 2) if (!GetOptions( 
@@ -172,7 +174,8 @@ pod2usage(-verbose => 2) if (!GetOptions(
     'repeat_file:s'  => \$repeat_file,
     'insert_file:s'  => \$insert_file,
     'repbase_file:s' => \$repbase_file,
-    'align'          => \$showAln )
+    'align'          => \$showAln,
+    'useBED'         => \$useBED )
 );
 
 pod2usage(-verbose => 2) if  (defined $help);
@@ -224,8 +227,6 @@ foreach my $gcRange ( @gcRanges )
   }
 }
 
-#die "GC:" . Dumper( \@classgc ) . "\n";
-
 warn "Reading k-mers in $kmer_file\n" if(defined $debug);
 loadKmers($kmer_file);
 
@@ -244,7 +245,44 @@ unless (defined $no_repeat) {
     loadInserts($insert_file);
 }
 
-for (my $snum = 1; $snum <= $numseqs; $snum++) {
+# 
+# Useful datastructure for optimizing searches
+#
+my %byGCByRepeat = ();
+foreach my $gcBin ( keys( %repeat ) )
+{
+  foreach my $ele ( @{ $repeat{$gcBin} } )
+  {
+    next if ( $ele eq "" );
+    my @fields = split(/:/, $ele );
+    my $this_age = $fields[3]+$fields[4]+$fields[5]+($fields[7] * 10);
+    push @{ $byGCByRepeat{$gcBin}{$fields[0]} }, [ $this_age, $ele ];
+  }
+  foreach my $id ( keys( %{$byGCByRepeat{$gcBin}} ) )
+  {
+    @{$byGCByRepeat{$gcBin}{$id}} = sort { $a->[0] <=> $b->[0] } @{ $byGCByRepeat{$gcBin}{$id} }
+  }
+}
+    
+# Backup previous data
+if ( -e "$out.inserts" )
+{
+  unlink "$out.inserts.bak" if ( -e "$out.inserts.bak" );
+  rename( "$out.inserts", "$out.inserts.bak" );
+}
+if ( -e "$out.base.fasta" )
+{
+  unlink "$out.base.fasta.bak" if ( -e "$out.base.fasta.bak" );
+  rename( "$out.base.fasta", "$out.base.fasta.bak" );
+}
+if ( -e "$out.fasta" )
+{
+  unlink "$out.fasta.bak" if ( -e "$out.fasta.bak" );
+  rename( "$out.fasta", "$out.fasta.bak" );
+}
+ 
+my $snum;
+for ($snum = 1; $snum <= $numseqs; $snum++) {
     # Generation of base sequence
     my $fgc    = newGC();
     my @fseeds = keys %{ $elemk{$fgc} };
@@ -276,8 +314,11 @@ for (my $snum = 1; $snum <= $numseqs; $snum++) {
         $seq = insertLowComplex($seq) unless (defined $no_simple);
       }
       open  INS, ">>$out.inserts" or errorExit("cannot open $out.inserts");
-      print INS  "### ARTIFICIAL SEQUENCE $snum ###\n";
-      print INS  "#INI\tEND\tNUM\tREPEAT\tREPEAT_EVOL\n", 
+      unless ( defined $useBED )
+      {
+        print INS  "### ARTIFICIAL SEQUENCE $snum ###\n";
+        print INS  "#(INI\tEND]-zero_based\tNUM\tREPEAT\tREPEAT_EVOL\n", 
+      }
       print INS  join "\n", @inserts;
       print INS  "\n";
       close INS;
@@ -478,7 +519,7 @@ sub loadRepeatConsensus {
         chomp;
         if (m/^ID\s+(.+?)\s+/) {
             $rep = $1;
-            $rep =~ s/_\dend//;
+            #$rep =~ s/_\dend//;
             $alt = undef;
         }
         elsif (m/^DE\s+RepbaseID:\s+(.+)/) {
@@ -488,9 +529,12 @@ sub loadRepeatConsensus {
             $seq =  $1;
             $seq =~ s/\s//g;
             $rep_seq{$rep} .= checkBases($seq);
-            if (defined $alt) {
-                $rep_seq{$alt} .= checkBases($seq) unless ($rep eq $alt);
-            }
+            # We don't need to worry about matching up alternative names
+            # now that we are using the RepeatMasker *.align file for
+            # IDs.
+            #if (defined $alt) {
+            #    $rep_seq{$alt} .= checkBases($seq) unless ($rep eq $alt);
+            #}
         }
     }
     close R;
@@ -510,11 +554,11 @@ sub loadRepeats {
             $gc = $1;
         }
         else {
-            # rename some repeats mislabeled in RepBase
-            s/\?//;
-            s/-int//;
-            s/^ALR\/Alpha/ALR/;
-            s/^L1M4b/L1M4B/;
+            # No longer needed now that we use *.align data
+            #s/\?//;
+            #s/-int//;
+            #s/^ALR\/Alpha/ALR/;
+            #s/^L1M4b/L1M4B/;
             if (defined $type) {
                 next unless (m/$type/i);
             }
@@ -533,7 +577,7 @@ sub loadRepeats {
         }
     }
     close R;
-    warn "found: SIMPLE=$nsim REPEAT=$nrep\n" if (defined $debug);
+    warn "Loaded: SIMPLE=$nsim TE=$nrep\n" if (defined $debug);
 }
 
 # loadInserts => read the repeat inserts info
@@ -550,14 +594,14 @@ sub loadInserts {
         else {
             # rename some repeats mislabeled in RepBase
             my ($rep1, $rep2, $frq) = split (/\t/, $_);
-            $rep1 =~ s/\?//g;
-            $rep1 =~ s/-int//g;
-            $rep1 =~ s/^ALR\/Alpha/ALR/g;
-            $rep1 =~ s/^L1M4b/L1M4B/g;
-            $rep2 =~ s/\?//g;
-            $rep2 =~ s/-int//g;
-            $rep2 =~ s/^ALR\/Alpha/ALR/g;
-            $rep2 =~ s/^L1M4b/L1M4B/g;
+            #$rep1 =~ s/\?//g;
+            #$rep1 =~ s/-int//g;
+            #$rep1 =~ s/^ALR\/Alpha/ALR/g;
+            #$rep1 =~ s/^L1M4b/L1M4B/g;
+            #$rep2 =~ s/\?//g;
+            #$rep2 =~ s/-int//g;
+            #$rep2 =~ s/^ALR\/Alpha/ALR/g;
+            #$rep2 =~ s/^L1M4b/L1M4B/g;
             if (defined $type) {
                 next unless ($rep1 =~ m/$type/i and $rep2 =~ m/$type/i);
             }
@@ -697,7 +741,6 @@ sub addTransitions {
     my $tsit = 0;
     my $skip = 0;
     my ($con, $mat, $mut) = split (/\n/, $aln);
-    warn "calling addTransition():\n" if ( $debug );
     my @pos  = selPosition($seq, $gcl);
     while ($nsit > 0) {
         last unless(defined $pos[0]);
@@ -922,6 +965,7 @@ sub insertRepeat {
     warn "Trying to add $repthr\% in repeats\n" if (defined $debug);
     
     while ($repfra < $repthr) {
+        warn "TE fraction = $repfra\n" if ( defined $debug );
         $tot_try++;
         last if ($tot_try >= $ins_cyc);
         
@@ -929,25 +973,41 @@ sub insertRepeat {
         my $pos  = int(rand ( (length $s) - 100));
         my $frag = substr ($s, $pos, 100); # at least 100 clean bases to try
         next if ($frag =~ m/[acgt]/);
-        my $gc   = $gc_bin[int($pos/ $win)];
+        my $gc   = $gc_bin[int($pos/$win)];
         next unless (defined $gc);
-        next unless (defined $repeat{$gc}[0]); # at least one element
+        next unless ( @{$repeat{$gc}} ); # at least one element
         
         # our bag of elements to insert
-        my @ins = @{ $repeat{$gc} };
-        my $ins = join "|", @ins;
-        my $new = $ins[int(rand @ins)];
+        my $repeatGCSize = $#{$repeat{$gc}} + 1;
+        my $new = $repeat{$gc}->[int(rand $repeatGCSize)];
         my $seq = '';
         my $aln = '';
+        my $frag_list;
         warn "selected: $new\n" if (defined $debug);
-        ($seq, $new, $aln) = evolveRepeat($new, $gc, 99999);
-        next if ($seq eq 'BAD');
+        ($seq, $new, $aln, $frag_list) = evolveRepeat($new, $gc, 99999);
+        if ( $seq eq 'BAD' )
+        {
+          warn " - evolveRepeat returned bad status\n" if ( $debug );
+          next;
+        }
+        # Why?
         $seq =~ s/BAD//g;
-        next if ((length $seq) < 10);
+        if ( (length $seq) < 10 )
+        {
+          warn " - sequence length after evolution is too short ( < 10bp ).\n" 
+             if ( $debug );
+          next; 
+        }
         $seq = lc $seq;
         
         $frag = substr ($s, $pos, length $seq);
-        next if ($frag =~ m/[acgt]/); # we've a repeat here, trying other position
+
+        if ( $frag =~ m/[acgt]/ )
+        {
+          warn " - Location of insertion already contains some " 
+             . "previously inserted repeat sequence!\n" if ( $debug );
+          next;
+        }
         
         $urep++;
 
@@ -975,9 +1035,24 @@ sub insertRepeat {
         if (defined $showAln) { 
             push @inserts, "$pos\t$pos_end\t$urep\t$new\[$seq\]\t$info\n$con\n$mat\n$mut\n";
         }
+        elsif ( defined $useBED )
+        {
+            my $sum_len = 0;
+            my $posIdx = $pos;
+            foreach my $frag ( @{ $frag_list } )
+            {
+              $sum_len += $frag->[0];
+              push @inserts, "artificial_sequence_$snum\t$posIdx\t" .
+                             ($posIdx+$frag->[0]) . "\t" .
+                             $frag->[1] . "\t$urep";
+              $posIdx += $frag->[0];
+            }
+            die "Ooops $pos_end != $pos + $sum_len\n" if ( ($pos + $sum_len) != $pos_end );
+        }
         else {
             push @inserts, "$pos\t$pos_end\t$urep\t$new\[$seq\]\t$info";
         }
+        warn "  Inserting: $pos\t$pos_end\t$urep\t$new\t$info\n" if ( $debug );
         $repfra  = 100 * $rbase / length $s;
         $tot_try = 0;
     }
@@ -1014,11 +1089,12 @@ sub insertLowComplex {
         next if ($frag =~ m/[acgt]/);
         my $gc   = $gc_bin[int($pos/ $win)];
         next unless (defined $gc);
-        next unless (defined $simple{$gc}[0]); # at least one element
+        next unless ( @{$simple{$gc}} ); # at least one element
         
         # our bag of elements to insert
-        my @ins = @{ $simple{$gc} };
-        my $new = $ins[int(rand @ins)];
+        my $simpleGCSize = $#{$simple{$gc}} + 1;
+        my $new = $simple{$gc}->[int(rand $simpleGCSize)];
+
         warn "selected: $new\n" if (defined $debug);
         my ($seq, $aln) = evolveSimple($new, $gc);
         warn "  - evolved simple repeat len = " . length( $seq ) . "\n" if ( defined $debug );
@@ -1055,6 +1131,10 @@ sub insertLowComplex {
 
         if (defined $showAln) {
             push @inserts, "$pos\t$pos_end\t$usim\t$new\[$seq\]\t$info\n$con\n$mat\n$mut\n";
+        }
+        elsif ( defined $useBED )
+        {
+            push @inserts, "artificial_sequence_$snum\t$pos\t$pos_end\t$new\t$usim\t[$seq\]\t$info";
         }
         else {
             push @inserts, "$pos\t$pos_end\t$usim\t$new\[$seq\]\t$info";
@@ -1141,7 +1221,12 @@ sub evolveRepeat {
     if ($frag =~ /-/) {
         ($min, $max) = split (/-/, $frag);
         $frag = getRangeValue($min, $max);
-        $frag = length $rep_seq{$type} if ($frag > length $rep_seq{$type});
+        if ($frag > length $rep_seq{$type})
+        {
+          warn "Observed fragment length ( $frag )  is greater than " .
+               "consensus length ( " . length( $rep_seq{$type} ) . ".";
+          $frag = length $rep_seq{$type};
+        }
     }
     if ($break =~ /-/) {
         ($min, $max) = split (/-/, $break);
@@ -1167,33 +1252,61 @@ sub evolveRepeat {
     ($seq, $aln) = addInsertions(   $seq, $nins, $gc,    $aln) if($nins > 0);
     ($seq, $aln) = addDeletions(    $seq, $ndel, $gc, 0, $aln) if($ndel > 0);
     
-    # split the repeat if required    
+    # Place multiple repeat insertions inside this repeat if required    
+    my %insertions = ();
+    warn "Considering further repeat insertions: break = $break, age = $age, doFrag = $doFrag ins_cyc=$ins_cyc\n" if ( $debug );
     if ($break > 1 and $age > 10 and $doFrag == 1) {
         my $num = 1;
         for (my $try = 0; $try <= $ins_cyc; $try++) {
             $num++;
-            warn "generating insert: $gc, $type#$fam, $age\n" if (defined $debug);
-            my ($insert, $repinfo, $insaln) = getInsert($gc, "$type#$fam", $age);
-			if ($insert eq 'BAD' or (length $insert) < 1) {
-				warn "   insert rejected\n" if (defined $debug);
-				$num--;
-				next;
-			}
+            warn "  Generating internal insert: parent_gc=$gc, parent_age=$age\n" if (defined $debug);
+            my ($insert, $repinfo, $insaln, $frag_list ) = getInsert($gc, "$type#$fam", $age);
+            if ($insert eq 'BAD' or (length $insert) < 1) {
+              warn "   - Insert rejected\n" if (defined $debug);
+              $num--;
+              next;
+            }
             my $target = int(rand(length $seq));
-            my ($con, $mat, $mut) = split (/\n/, $aln);
-            my ($inscon, $insmat, $insmut) = split (/\n/, $insaln);
-            substr($seq, $target, 1) = $insert;
-			substr($con, $target, 1) = $inscon;
-			substr($mat, $target, 1) = $insmat;
-			substr($mut, $target, 1) = $insmut;
-			$aln  = join "\n", $con, $mat, $mut;
-			$rep .= ",$repinfo\[$insert\]";
-            
-			last if ($num > $break);
+            push @{ $insertions{$target} }, [ $insert, $repinfo, $insaln, $frag_list ];
+            last if ($num > $break);
         }
     }
+
+    my @fragments = ();
+    my $totInserts = 0;
+    if ( keys( %insertions ) )
+    {
+      my $parentRepInfo = $rep;
+      my ($con, $mat, $mut) = split (/\n/, $aln);
+      my $prevEnd = length( $seq )-1;
+      foreach my $insertLocation ( sort { $b <=> $a } keys( %insertions ) )
+      {
+        unshift @fragments, [ ($prevEnd - $insertLocation + 1), $parentRepInfo ]; 
+        foreach my $insert ( @{ $insertions{$insertLocation} } )
+        {
+          $totInserts++;
+          unshift @fragments, @{$insert->[3]};
+          my ($inscon, $insmat, $insmut) = split (/\n/, $insert->[2]);
+          substr($seq, $insertLocation, 0) = $insert->[0];
+          substr($con, $insertLocation, 0) = $inscon;
+          substr($mat, $insertLocation, 0) = $insmat;
+          substr($mut, $insertLocation, 0) = $insmut;
+          $rep .= ",$insert->[1]\[$insert->[0]\]";
+        }
+        $prevEnd = $insertLocation - 1;
+      }
+      if ( $prevEnd >= 0 )
+      {
+        unshift @fragments, [ $prevEnd+1, $parentRepInfo ]; 
+      }
+      $aln  = join "\n", $con, $mat, $mut;
+    }else
+    {
+        push @fragments, [ length($seq), $rep ]; 
+    }
+    warn "  Added $totInserts inserts\n" if ( $debug );
     
-    return ($seq, $rep, $aln);
+    return ($seq, $rep, $aln, \@fragments);
 }
 
 # getInsert => select a new repeat to insert into another
@@ -1201,8 +1314,14 @@ sub getInsert {
     my ($gc, $rep, $age) = @_;
     my $new_rep = '';
     my $new_aln = '';
+    my $frag_list;
     my $seq     = 'BAD';
     my $tries   = 0;
+    my $new_age = $age - 20;
+    $new_age    = 10 if ($new_age < 10);
+
+    my %blackList = ();
+
     while (1) {
         $tries++;
         last if ($tries > $mut_cyc);
@@ -1213,26 +1332,46 @@ sub getInsert {
         foreach my $ins (@rep) {
             $new_rep = $ins;
             $p += $inserts{$gc}{$rep}{$ins};
-            last if ($dice <= $p);
+            last if ($dice <= $p && ! exists $blackList{ $new_rep });
         }
         $new_rep =~ s/#/:/;
-        # our bag of elements to insert
-        my @rep_bag = ();
-        foreach my $sel (@{ $repeat{$gc} }) {
-            push @rep_bag, $sel if ($sel =~ m/^$new_rep:/);
+        warn "   Trying $new_rep\n" if ( $debug );
+        my $new_rep_id = $new_rep;
+        $new_rep_id = $1 if ( $new_rep_id =~ /(\S+):.*/ ); 
+        my $numRepeats = $#{ $byGCByRepeat{$gc}{$new_rep_id} };
+        my $minIdx = 0;
+        my $maxIdx = $numRepeats;
+        # Find the index for the first val which is > $new_age
+        while ( 1 )
+        {
+          last if ( ( $maxIdx - $minIdx ) <= 1 );
+          my $threshIdx = $minIdx + int( ( $maxIdx - $minIdx + 1 ) / 2 );
+          my $val = $byGCByRepeat{$gc}{$new_rep_id}->[$threshIdx]->[0];
+          if ( $val > $new_age )
+          {
+            $maxIdx = $threshIdx - 1;
+          }elsif ( $val <= $new_age )
+          {
+            $minIdx = $threshIdx;
+          }
         }
-        last unless ($#rep_bag > 0);
-        my @ins = shuffle(@rep_bag);
-        my $new = $ins[int(rand @ins)];
-        warn "insert: $new\n" if (defined $debug);
-        my $new_age = $age - 20;
-        $new_age    = 10 if ($new_age < 10);
+        if ( $minIdx  == 0 )
+        {
+          warn "   No instances of this repeat are young enough\n" if ( $debug );
+          $blackList{ $new_rep }++;
+          last; 
+        }
+        # $minIdx is the last age-value compatible with this parent ( ie. <= $new_age ).
+        my $new = $byGCByRepeat{$gc}{$new_rep_id}->[int(rand ($minIdx + 1))]->[1];
+        warn "  Selected insert: $new\n" if (defined $debug);
+        # This keeps insertions from being inserted into themselves in the next
+        # evolution.
         $new =~ s/\d+$/1/;
-        ($seq, $new_rep, $new_aln) = evolveRepeat($new, $gc, $new_age);
+        ($seq, $new_rep, $new_aln, $frag_list) = evolveRepeat($new, $gc, $new_age);
         next if ($seq eq 'BAD');
         last;
     }
-    return ($seq, $new_rep, $new_aln);
+    return ($seq, $new_rep, $new_aln, $frag_list);
 }
 
 # randSel => select a random numbers in a finite range

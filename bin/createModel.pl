@@ -468,9 +468,9 @@ sub readFasta
   }
 }
 
+# Should work with both *.align and *.out files
 sub maskRepeat
 {
-
   # mask sequences with RepeatMasker annotation
   warn "masking repeats\n" if ( defined $verbose );
   my %mask = ();
@@ -485,11 +485,11 @@ sub maskRepeat
     while ( <FH> )
     {
       s/^\s*//;
-      next unless ( m/^\d+/ );    # skip headers
+      next unless ( m/^\d+\s+\d+\.\d+/ );    # skip headers
       next if ( m/Simple_repeat|Low_complexity|Unknown|Satellite/ );
       my @arr = split( /\s+/, $_ );
       $seq_id = $arr[ 4 ];
-      next unless ( defined $seq{$seq_id} );
+      next unless ( exists $seq{$seq_id} );
       $ini = $arr[ 5 ];
       $end = $arr[ 6 ];
       $len = $end - $ini - 1;
@@ -825,7 +825,7 @@ sub profileRepeats
   warn "profiling repeats\n" if ( defined $verbose );
   loadGenesBin()             if ( defined $gene );
   profileTRF()               if ( defined $trf );
-  profileRM()                if ( defined $repeat );
+  profileRMAlign()                if ( defined $repeat );
 
   my $repfile = "$model.repeats.W$win.data";
   warn "writing repeats info in \"$repfile\"\n";
@@ -1154,11 +1154,10 @@ sub profileTRF
   }
 }
 
-sub profileRM
+sub profileRMAlign
 {
-
   # parse RepeatMasker output, mix spliced repeats
-  warn "  parsing RepeatMasker files\n" if ( defined $verbose );
+  warn "  parsing RepeatMasker align file\n" if ( defined $verbose );
   my %repdata = ();
   my $nf      = 0;
   foreach my $file ( @repeat )
@@ -1174,32 +1173,47 @@ sub profileRM
     my $lineNum     = 0;
     while ( <T> )
     {
+      # Must be in this format
+      # 239 29.42 1.92 0.97 chr1 11678 11780 (249238841) C MER5B#DNA/hAT-Charlie (74) 104 1 m_b1s502i1 4
       $lineNum++;
       chomp;
-      s/^\s+//;
       next unless ( m/^\d+/ );
       next if ( m/Simple_repeat|Low_complexity|Unknown|Satellite/ );
       my @line   = split( /\s+/, $_ );
-      my $seq_id = $line[ 4 ];
-      my $ini    = $line[ 5 ];
-      my $end    = $line[ 6 ];
       my $div    = $line[ 1 ];
       my $ins    = $line[ 2 ];
       my $del    = $line[ 3 ];
-      my $dir    = $line[ 8 ];
-      my $type   = $line[ 9 ];
-      my $fam    = $line[ 10 ];
-      my $rini   = $line[ 11 ];
-      my $rend   = $line[ 12 ];
+      my $seq_id = $line[ 4 ];
+      my $ini    = $line[ 5 ];
+      my $end    = $line[ 6 ];
+
+      my ( $dir, $type, $fam, $rini, $rend );
+      if ( $line[8] eq "C" )
+      {
+        # Negative strand hit
+        $dir    = "-";
+        if ( $line[9] =~ /(\S+)\#(\S+)/ )
+        {
+          $type   = $1;
+          $fam    = $2;
+        }
+        $rini   = $line[ 12 ];
+        $rend   = $line[ 11 ];
+      }else
+      {
+        # Plus strand hit
+        $dir       = "+";
+        if ( $line[8] =~ /(\S+)\#(\S+)/ )
+        {
+          $type   = $1;
+          $fam    = $2;
+        }
+        $rini   = $line[ 9 ];
+        $rend   = $line[ 10 ];
+      }
+
       next unless ( defined $seq{$seq_id} );
       my $rid = "REP.$nf.$line[-1]";
-
-      if ( $dir eq 'C' )
-      {
-        $rini = $line[ 13 ];
-        $rend = $line[ 12 ];
-        $dir  = '-';
-      }
       my $label = "$type:$fam:$dir:$div:$ins:$del:$rini:$rend";
 
       unless ( defined $no_intron )
