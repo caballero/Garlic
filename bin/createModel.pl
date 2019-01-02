@@ -107,6 +107,7 @@ use warnings;
 use Getopt::Long;
 use Pod::Usage;
 use File::Find;
+use Cwd;
 
 # Parameters initialization
 my $model           = undef;     # Model definition
@@ -458,11 +459,11 @@ sub readFasta
     }
     warn "    reading $file\n" if ( defined $verbose );
     my $fileh = defineFH( $file );
-    open FH, "$fileh" or die "cannot open $file\n";
+    open FH, "$fileh" or die "cannot open $fileh in " . cwd() . "\n";
     while ( <FH> )
     {
       chomp;
-      if ( m/^>(.+)/ )
+      if ( /^>(\S+)/ )
       {
         $seq_id = $1;
       } else
@@ -489,7 +490,7 @@ sub maskRepeat
       next if ( $file =~ m/$exclude/ );
     }
     my $fileh = defineFH( $file );
-    open FH, "$fileh" or die "cannot open $file\n";
+    open FH, "$fileh" or die "cannot open >$fileh<: $!\n";
     while ( <FH> )
     {
       s/^\s*//;
@@ -501,7 +502,9 @@ sub maskRepeat
       $ini = $arr[ 5 ];
       $end = $arr[ 6 ];
       $len = $end - $ini - 1;
-      substr( $seq{$seq_id}, $ini - 1, $len ) = 'R' x $len;
+      if ( $len > 0 ) {
+        substr( $seq{$seq_id}, $ini - 1, $len ) = 'R' x $len;
+      }
     }
     close FH;
   }
@@ -513,6 +516,7 @@ sub maskTRF
   # mask sequences with TRF annotation
   warn "masking simple repeats\n" if ( defined $verbose );
   my %mask = ();
+  my $ranges = 0;
   foreach my $file ( @trf )
   {
     if ( defined $exclude )
@@ -525,14 +529,24 @@ sub maskTRF
     {
       my @arr = split( /\s+/, $_ );
       $seq_id = $arr[ 0 ];
-      next unless ( defined $seq{$seq_id} );
+      if ( ! exists $seq{$seq_id} )
+      {
+	warn "Simple repeat target sequence \'$seq_id\' is not in the genome!\n";
+	next;
+      }
       $ini = $arr[ 1 ];
       $end = $arr[ 2 ];
       $len = $end - $ini - 1;
       substr( $seq{$seq_id}, $ini - 1, $len ) = 'S' x $len;
+      $ranges++;
     }
     close FH;
   }
+  if ( $ranges < 1 )
+  {
+    print "  - There were no simple repeats to mask.\n";
+  }
+  warn "  - Masked $ranges simple repeat ranges.\n" if ( defined $verbose);
 }
 
 sub maskExon
@@ -1103,6 +1117,7 @@ sub profileTRF
 
   # parse TRF output, remove overlapping repeats
   warn "  parsing TRF files\n" if ( defined $verbose );
+  my $count = 0;
   foreach my $file ( @trf )
   {
     if ( defined $exclude )
@@ -1121,13 +1136,20 @@ sub profileTRF
       my $seq_id    = $line[ 0 ];
       my $ini       = $line[ 1 ];
       my $end       = $line[ 2 ];
+      if ( $line[3] ne "trf" )
+      {
+	die "Simple repeat file $file is not in the expected format!\n";
+      }
       my $period    = $line[ 5 ];
       my $div       = 100 - $line[ 7 ];
       my $indel     = $line[ 8 ];
       my $consensus = $line[ -1 ];
       my $dir       = '+';
-      next unless ( defined $seq{$seq_id} );
-
+      if ( ! defined $seq{$seq_id} )
+      {
+	warn "Simple repeat on sequence \'$seq_id\' was not found in genome!\n";
+	next;
+      }
       my $alt_con = checkRevComp( $consensus );
       if ( $consensus ne $alt_con )
       {
@@ -1148,12 +1170,14 @@ sub profileTRF
           next;    # because last repeat is shorter
         } else
         {
+          $count--;
           pop @{ $repeat{$last_gc} };    # last repeat removal
         }
       }
 
       my $gc = getBinGC( $seq_id, $ini );
       push @{ $repeat{$gc} }, $label;
+      $count++;
       $last_ini = $ini;
       $last_end = $end;
       $last_con = $consensus;
@@ -1161,6 +1185,7 @@ sub profileTRF
     }
     close T;
   }
+  warn "  Profiled $count simple repeats\n" if ( defined $verbose );
 }
 
 sub profileRMAlign
@@ -1623,7 +1648,6 @@ sub loadFiles
   # UCSC GB files, hash structure is: $files{MODEL}{TYPE} = FILE
   # TYPE can be FAS=Fasta sequences, RMA=RepeatMasker align,
   # TRF=Tandem Repeat Masker out, GEN=Gene annotation
-
   # Human
   $files{'hg19'}{'FAS'} = 'chromFa.tar.gz';
   #$files{'hg19'}{'RMA'} = 'chromOut.tar.gz';

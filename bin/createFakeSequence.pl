@@ -1215,7 +1215,7 @@ sub insertLowComplex
     my $frag = substr( $s, $pos, 100 );    # at least 100 bases to try
     next if ( $frag =~ m/[acgt]/ );
     my $gc = $gc_bin[ int( $pos / $win ) ];
-    next unless ( defined $gc );
+    next unless ( defined $simple{$gc} );
     next unless ( @{ $simple{$gc} } );     # at least one element
 
     # our bag of elements to insert
