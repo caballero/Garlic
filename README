@@ -84,3 +84,14 @@ LICENSE
 All the code is under the GPLv3 licence, see LICENSE file for details.
 
 
+CHANGES
+
+1.5 : 
+  - "unitialized value" warnings caused by UCSC model lookups fixed.
+  - TRF data should be in UCSC BED format which uses 0-based/half-open coordinates.
+    Fixed a bug in the code where 1-based was assumed, causing a zero-valued start
+    coordinate to go negative.
+  - createModel.pl: Added support for relative paths in input parameters.
+
+
+

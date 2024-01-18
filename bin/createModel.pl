@@ -184,11 +184,22 @@ my $unzip  = 'unzip';        # command to decompress the files downloaded
 my $gunzip = 'gunzip -c';    # command to decompress the files downloaded
 my $ucsc        = 'http://hgdownload.cse.ucsc.edu/goldenPath';        # UCSC url
 my $repeatMasker= 'http://www.repeatmasker.org/genomes';               # RepeatMasker website url
-my $ucsc_genome = "$ucsc/$model/bigZips/" . $files{$model}{'FAS'};
 #my $ucsc_repeat = "$ucsc/$model/bigZips/" . $files{$model}{'RMA'};
-my $rm_repeat   = "$repeatMasker/" . $files{$model}{'RMA'};
-my $ucsc_trf    = "$ucsc/$model/bigZips/" . $files{$model}{'TRF'};
-my $ucsc_gene   = "$ucsc/$model/database/" . $files{$model}{'GEN'};
+
+## TODO: This should be deprecated.  The main program should always expect the user
+##       to provide these files as parameters.  A seperate utility could be created
+##       to download these files from various sources if desired, although maintaining
+##       that in the long run may not be worthwhile.
+my $ucsc_genome;
+my $rm_repeat;
+my $ucsc_trf;
+my $ucsc_gene;
+if ( exists $files{$model} ) {
+  $ucsc_genome = "$ucsc/$model/bigZips/" . $files{$model}{'FAS'};
+  $rm_repeat   = "$repeatMasker/" . $files{$model}{'RMA'};
+  $ucsc_trf    = "$ucsc/$model/bigZips/" . $files{$model}{'TRF'};
+  $ucsc_gene   = "$ucsc/$model/database/" . $files{$model}{'GEN'};
+}
 
 # Main variables
 my @fasta     = ();            # list of fasta files
@@ -223,44 +234,85 @@ unless ( -e "$dir/$model" and -d "$dir/$model" )
   mkdir "$dir/$model";
 }
 warn "moving to $dir/$model\n" if ( defined $verbose );
-chdir "$dir/$model" or die "cannot move to $dir/$model";
+
+my $startDir = cwd();
 
 # Get files from UCSC genome database if required
 print "Getting data from UCSC if required...\n";
-getUCSC_fasta() unless ( defined $fasta );
-getUCSC_repeat()
-    unless ( defined $repeat
-             or ( defined $no_repeat_table and defined $no_mask_repeat ) );
-getUCSC_trf()
-    unless ( defined $trf
-             or ( defined $no_repeat_table and defined $no_mask_trf ) );
-getUCSC_gene() unless ( defined $gene or defined $no_mask_gene );
 
-# Creating list of files to process
-@fasta  = split( /,/, $fasta );
-@repeat = split( /,/, $repeat );
-@trf    = split( /,/, $trf );
-@gene   = split( /,/, $gene );
-@region = split( /,/, $region ) if ( defined $region );
+my $outDir = "$dir/$model";
+
+sub buildAbsPathFileList {
+  my $fileStr = shift;
+
+  my @files;
+  foreach my $file ( split(/,/, $fileStr) ) {
+    # Convert relative paths (if used) to absolute
+    push @files, Cwd::abs_path($file);
+  }
+  return @files;
+}
+
+if ( defined $fasta && $fasta ne "" ) {
+  @fasta = buildAbsPathFileList($fasta);
+}else {
+  getUCSC_fasta($outDir);
+}
+
+unless( $no_repeat_table ) {
+  if ( defined $repeat && $repeat ne "" ) {
+    @repeat = buildAbsPathFileList($repeat);
+  }else {
+    getUCSC_repeat($outDir);
+  }
+  if ( defined $trf && $trf ne "" ) {
+    @trf = buildAbsPathFileList($trf);
+  }else {
+    getUCSC_trf($outDir);
+  }
+}
+
+if ( defined $gene && $gene ne "" ) {
+  @gene = buildAbsPathFileList($gene);
+}else {
+  getUCSC_gene($outDir);
+}
+
+if ( defined $region && $region ne "" ) {
+  @region = buildAbsPathFileList($region);
+}
+
 $exclude =~ s/,/|/g if ( defined $exclude );
+
+# The remainder of the program assumes we are working in $dir/$model
+chdir "$dir/$model" or die "cannot move to $dir/$model";
 
 # Load sequences and mask it
 print "Loading sequences...\n";
 readFasta();
 print "Calc GC bins...\n";
 calcBinGC() unless ( defined $gc_post_mask );
-print "Masking repeats...\n";
-maskRepeat() unless ( defined $no_mask_repeat );
-print "Masking TRF...\n";
-maskTRF() unless ( defined $no_mask_trf );
 
-print "Masking Genes/Exons...\n";
+unless ( defined $no_mask_repeat ) {
+  print "Masking repeats...\n";
+  maskRepeat();
+}
+
+unless ( defined $no_mask_trf ) {
+  print "Masking TRF...\n";
+  maskTRF();
+}
+
 if ( defined $mask_exon )
 {
+  print "Masking Exons...\n";
   maskExon();
 } else
 {
-  maskGene() unless ( defined $no_mask_gene );
+  unless ( defined $no_mask_gene ) {
+    print "Masking Genes...\n";
+   maskGene();
+  }
 }
 
 calcBinGC() if ( defined $gc_post_mask );
@@ -303,6 +355,7 @@ sub searchFiles
 
 sub getUCSC_gene
 {
+  my $outDir = shift;
 
   # Gene models to mask functional regions
   $gene = $files{$model}{'GEN'};
@@ -314,13 +367,14 @@ sub getUCSC_gene
   } else
   {
     warn "obtaining Gene files from $ucsc\n" if ( defined $verbose );
-    system( "$get $ucsc_gene" );
+    system( "$get --directory-prefix=$outDir $ucsc_gene" );
     die "cannot find gene ann in $ucsc_gene\n" unless ( -e $gene );
   }
 }
 
 sub getUCSC_trf
 {
+  my $outDir = shift;
 
   # TRF output is used for simple repeat annotation
   my $target_file = $files{$model}{'TRF'};
@@ -336,7 +390,7 @@ sub getUCSC_trf
     warn "obtaining TRF files from $ucsc\n" if ( defined $verbose );
     mkdir 'TRF' unless ( -e 'TRF' and -d 'TRF' );
     chdir 'TRF' or die "cannot move to TRF directory\n";
-    system( "$get $ucsc_trf" );
+    system( "$get --directory-prefix=$outDir $ucsc_trf" );
     die "cannot find TRF output in $ucsc_trf\n" unless ( -e $target_file );
   }
 
@@ -350,6 +404,7 @@ sub getUCSC_trf
 
 sub getUCSC_repeat
 {
+  my $outDir = shift;
   # RepeatMasker output
   my $target_file = $files{$model}{'RMA'};
 
@@ -371,7 +426,7 @@ sub getUCSC_repeat
     warn "obtaining RepeatMasker files from $repeatMasker\n" if ( defined $verbose );
     mkdir 'RM' unless ( -e 'RM' and -d 'RM' );
     chdir 'RM' or die "cannot move to RM directory\n";
-    system( "$get $rm_repeat" );
+    system( "$get --directory-prefix=$outDir $rm_repeat" );
     die "cannot find RepeatMasker align in $rm_repeat\n"
         unless ( -e $target_file );
   }
@@ -386,6 +441,7 @@ sub getUCSC_repeat
 
 sub getUCSC_fasta
 {
+  my $outDir = shift;
 
   # Chromosomal sequences
   my $target_file = $files{$model}{'FAS'};
@@ -400,7 +456,7 @@ sub getUCSC_fasta
     warn "obtaining fasta files from $ucsc\n" if ( defined $verbose );
     mkdir 'fasta' unless ( -e 'fasta' and -d 'fasta' );
     chdir 'fasta' or die "cannot move to fasta directory\n";
-    system( "$get $ucsc_genome" );
+    system( "$get --directory-prefix=$outDir $ucsc_genome" );
     die "cannot find genomic seq in $ucsc_genome\n" unless ( -e $target_file );
   }
 
@@ -537,7 +593,13 @@ sub maskTRF
       $ini = $arr[ 1 ];
       $end = $arr[ 2 ];
       $len = $end - $ini - 1;
-      substr( $seq{$seq_id}, $ini - 1, $len ) = 'S' x $len;
+      # RMH: This is an inconsistency.  TRF output is normally 1-based/fully-closed, however,
+      #      the input is assuming TRF data from UCSC which is in bed format 0-based/half-open.
+      #      The original code subtracted 1 from the start which will make the substr function
+      #      wrap around to the end.  The new line assumes 0-based coordinates and leaves the
+      #      start alone.
+      #substr( $seq{$seq_id}, $ini - 1, $len ) = 'S' x $len;
+      substr( $seq{$seq_id}, $ini, $len ) = 'S' x $len;
       $ranges++;
     }
     close FH;
@@ -1114,7 +1176,6 @@ sub calcQuartiles
 
 sub profileTRF
 {
-
   # parse TRF output, remove overlapping repeats
   warn "  parsing TRF files\n" if ( defined $verbose );
   my $count = 0;
