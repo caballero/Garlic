@@ -1080,6 +1080,7 @@ sub insertRepeat
 
   while ( $repfra < $repthr )
   {
+    my $locus_info;
     warn "TE fraction = $repfra\n" if ( defined $debug );
     $tot_try++;
     last if ( $tot_try >= $ins_cyc );
@@ -1099,7 +1100,7 @@ sub insertRepeat
     my $aln          = '';
     my $frag_list;
     warn "selected: $new\n" if ( defined $debug );
-    ( $seq, $new, $aln, $frag_list ) = evolveRepeat( $new, $gc, 99999 );
+    ( $seq, $new, $aln, $frag_list, $locus_info ) = evolveRepeat( $new, $gc, 99999, 1 );
     if ( $seq eq 'BAD' )
     {
       warn " - evolveRepeat returned bad status\n" if ( $debug );
@@ -1152,8 +1153,47 @@ sub insertRepeat
 
     if ( defined $showAln )
     {
+      #push @inserts,
+      #    "$pos\t$pos_end\t$urep\t$new\[$seq\]\t$info\n$con\n$mat\n$mut\n";
+      # RMH: The transitions/transversion/insertions/deletions are now calcualted
+      #      by evolveRepeat and reported after the canonical repeat pattern.
+      #      The format is:
+      #         prototype_details;instance_details[sequence],...
+      #      Where prototype details are:
+      #         family:class:orientation:%div:%ins:%del:fraglen:break
+      #
+      #         family: The family identifier for the TE
+      #         class: The TE classification
+      #         orientation: '+','-'
+      #         %div: The percent divergence of the prototype being simulated
+      #         %ins: The percent insertion of the prorotype being simulated
+      #         %del: The percent deletion of the prototype being simulated
+      #         fraglen: The length of the TE fragment being simulated
+      #         break: The number of fragments for this prototype
+      #
+      #      and instance details are:
+      #         level:%transitions:%transversions:%insertions:%deletions
+      #
+      #         level: For fragmented insertions this indicates the level of 
+      #                the fragment (starting from 1).  e.g An insertion of a
+      #                MLT1 in an AluSx would have three fragments listed as:
+      #                AluSx:::::::;1::::
+      #                MLT11:::::::;2::::
+      #                AluSx:::::::;1::::
+      #
+      #         %transitions: The percent transitions (relative to the consensus
+      #                       fragment length).
+      #         %transversions: The percent transversions (relative to the consensus
+      #                       fragment length).
+      #         %deletions: The percent deletions (relative to the consensus
+      #                       fragment length).
+      #         %insertions: The percent insertions (relative to the consensus
+      #                       fragment length).
+      # e.g:
+      # AluSz:SINE/Alu:-:16.4:0.0:0.6:308:1;1:7.14:8.12:0.00:0.32[GGCCGGGGGCGG...]
+      #          
       push @inserts,
-          "$pos\t$pos_end\t$urep\t$new\[$seq\]\t$info\n$con\n$mat\n$mut\n";
+          "$pos\t$pos_end\t$urep\t$locus_info\n$con\n$mat\n$mut\n";
     } elsif ( defined $useBED )
     {
       my $sum_len = 0;
@@ -1172,7 +1212,9 @@ sub insertRepeat
           if ( ( $pos + $sum_len ) != $pos_end );
     } else
     {
-      push @inserts, "$pos\t$pos_end\t$urep\t$new\[$seq\]\t$info";
+      #push @inserts, "$pos\t$pos_end\t$urep\t$new\[$seq\]\t$info";
+      push @inserts,
+          "$pos\t$pos_end\t$urep\t$locus_info\n";
     }
     warn "  Inserting: $pos\t$pos_end\t$urep\t$new\t$info\n" if ( $debug );
     $repfra  = 100 * $rbase / length $s;
@@ -1328,7 +1370,7 @@ sub evolveSimple
 # evolveRepeat => return the evolved repeat
 sub evolveRepeat
 {
-  my ( $rep, $gc, $old_age ) = @_;
+  my ( $rep, $gc, $old_age, $level ) = @_;
   return ( 'BAD', $rep ) unless ( $rep =~ m/:/ );
 
   my $seq = '';
@@ -1402,10 +1444,26 @@ sub evolveRepeat
   ( $seq, $aln ) = addInsertions( $seq, $nins, $gc, $aln ) if ( $nins > 0 );
   ( $seq, $aln ) = addDeletions( $seq, $ndel, $gc, 0, $aln ) if ( $ndel > 0 );
 
+  # Calculate the pre-fragmentation alignment stats
+  my ( $dc1, $pat, $dc2 ) = split( /\n/, $aln );
+  $dc1 =~ s/-//g;
+  my $slen = length($dc1);
+  $nsit = $pat=~ tr/i/i/;              
+  my $psit = sprintf( "%.2f", 100 * $nsit / $slen );
+  $nver = $pat =~ tr/v/v/;                                       
+  my $pver = sprintf( "%.2f", 100 * $nver / $slen );           
+  $ndel = $pat =~ tr/d/d/;      
+  my $pdel = sprintf( "%.2f", 100 * $ndel / $slen );             
+  $nins = $pat =~ tr/n/n/;                                        
+  my $pins = sprintf( "%.2f", 100 * $nins / $slen );               
+  # Append stats to output just after the prototype definition.
+  #  Insertion Info Format: ";level:transition%:transversion%:insertion%:deleltion%"
+  my $inst_info = ";$level:$psit:$pver:$pins:$pdel";
+
   # Place multiple repeat insertions inside this repeat if required
   my %insertions = ();
   warn
-"Considering further repeat insertions: break = $break, age = $age, doFrag = $doFrag ins_cyc=$ins_cyc\n"
+"Considering further repeat insertions: level = $level, break = $break, age = $age, doFrag = $doFrag ins_cyc=$ins_cyc\n"
       if ( $debug );
   if ( $break > 1 and $age > 10 and $doFrag == 1 )
   {
@@ -1415,8 +1473,10 @@ sub evolveRepeat
       $num++;
       warn "  Generating internal insert: parent_gc=$gc, parent_age=$age\n"
           if ( defined $debug );
-      my ( $insert, $repinfo, $insaln, $frag_list ) =
-          getInsert( $gc, "$type#$fam", $age );
+
+      my ( $insert, $repinfo, $insaln, $frag_list, $newrepinfo ) =
+          getInsert( $gc, "$type#$fam", $age, $level + 1 );
+
       if ( $insert eq 'BAD' or ( length $insert ) < 1 )
       {
         warn "   - Insert rejected\n" if ( defined $debug );
@@ -1425,22 +1485,31 @@ sub evolveRepeat
       }
       my $target = int( rand( length $seq ) );
       push @{ $insertions{$target} },
-          [ $insert, $repinfo, $insaln, $frag_list ];
+          [ $insert, $repinfo, $insaln, $frag_list, $newrepinfo ];
       last if ( $num > $break );
     }
   }
 
   my @fragments  = ();
   my $totInserts = 0;
+  my $newRep = "";
   if ( keys( %insertions ) )
   {
-    my $parentRepInfo = $rep;
+    my $parentRepInfo = $rep . $inst_info;
     my ( $con, $mat, $mut ) = split( /\n/, $aln );
     my $prevEnd = length( $seq ) - 1;
-    foreach my $insertLocation ( sort { $b <=> $a } keys( %insertions ) )
+    my $end = length($seq);
+    my $firstOne = 1;
+    my $insertLocation = 0;
+    foreach $insertLocation ( sort { $b <=> $a } keys( %insertions ) )
     {
       unshift @fragments,
           [ ( $prevEnd - $insertLocation + 1 ), $parentRepInfo ];
+      if ( $newRep eq "" ) {
+        $newRep = "$parentRepInfo\[" . substr( $seq, $insertLocation, ($end-$insertLocation)) . "]";
+      }else {
+        $newRep = "$parentRepInfo\[" . substr( $seq, $insertLocation, ($end-$insertLocation)) . "]," . $newRep;
+      }
       foreach my $insert ( @{ $insertions{$insertLocation} } )
       {
         $totInserts++;
@@ -1451,9 +1520,16 @@ sub evolveRepeat
         substr( $mat, $insertLocation, 0 ) = $insmat;
         substr( $mut, $insertLocation, 0 ) = $insmut;
         $rep .= ",$insert->[1]\[$insert->[0]\]";
+        $newRep = "$insert->[4]," . $newRep;
       }
       $prevEnd = $insertLocation - 1;
+      $end = $insertLocation;
     }
+    if ( $newRep eq "" ) {
+      $newRep = "$parentRepInfo\[" . substr( $seq, $insertLocation, ($end-$insertLocation)) . "]";
+    }else {
+      $newRep = "$parentRepInfo\[" . substr( $seq, $insertLocation, ($end-$insertLocation)) . "]," . $newRep;
+    } 
     if ( $prevEnd >= 0 )
     {
       unshift @fragments, [ $prevEnd + 1, $parentRepInfo ];
@@ -1461,17 +1537,24 @@ sub evolveRepeat
     $aln = join "\n", $con, $mat, $mut;
   } else
   {
+    $newRep = "$rep$inst_info\[$seq\]";
     push @fragments, [ length( $seq ), $rep ];
   }
   warn "  Added $totInserts inserts\n" if ( $debug );
 
-  return ( $seq, $rep, $aln, \@fragments );
+  #warn "Dumper: " . Dumper(\@fragments) . "\n";
+  #warn "Dumper: rep=$rep\n";
+  #warn "Dumper: seq=$seq\n";
+  #warn "Dumper: newRep=$newRep\n";
+
+  return ( $seq, $rep, $aln, \@fragments, $newRep );
 }
 
 # getInsert => select a new repeat to insert into another
 sub getInsert
 {
-  my ( $gc, $rep, $age ) = @_;
+  my ( $gc, $rep, $age, $level ) = @_;
+  my $newrepinfo = '';
   my $new_rep = '';
   my $new_aln = '';
   my $frag_list;
@@ -1533,12 +1616,12 @@ sub getInsert
     # This keeps insertions from being inserted into themselves in the next
     # evolution.
     $new =~ s/\d+$/1/;
-    ( $seq, $new_rep, $new_aln, $frag_list ) =
-        evolveRepeat( $new, $gc, $new_age );
+    ( $seq, $new_rep, $new_aln, $frag_list, $newrepinfo ) =
+        evolveRepeat( $new, $gc, $new_age, $level );
     next if ( $seq eq 'BAD' );
     last;
   }
-  return ( $seq, $new_rep, $new_aln, $frag_list );
+  return ( $seq, $new_rep, $new_aln, $frag_list, $newrepinfo );
 }
 
 # randSel => select a random numbers in a finite range
